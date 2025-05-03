@@ -15,4 +15,7 @@ export class User {
 
   @Column()
   createdAt?: Date;
+
+  @Column()
+  updatedAd?: Date;
 }
