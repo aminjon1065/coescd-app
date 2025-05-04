@@ -1,17 +1,19 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
+import { Role } from './enums/role.enum';
 
 @Controller('users')
 export class UsersController {
@@ -22,6 +24,7 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @Roles(Role.Regular)
   @Get()
   findAll(@ActiveUser() user: ActiveUserData) {
     console.log(user);

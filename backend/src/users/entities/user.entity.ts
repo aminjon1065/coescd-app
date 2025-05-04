@@ -1,5 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { IsOptional } from 'class-validator';
+import { Role } from '../enums/role.enum';
 
 @Entity()
 export class User {
@@ -19,4 +20,6 @@ export class User {
   updatedAd?: Date;
   @Column({ default: false })
   isVerified: boolean;
+  @Column({ enum: Role, default: Role.Regular })
+  role: Role;
 }
