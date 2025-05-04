@@ -1,17 +1,10 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AuthenticationService } from './authentication.service';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { Response } from 'express';
-import { Auth } from '../decorators/auth.decorators';
-import { AuthType } from '../enums/auth-type.enum';
+import { Auth } from './decorators/auth.decorators';
+import { AuthType } from './enums/auth-type.enum';
 
 @Auth(AuthType.None)
 @Controller('authentication')
