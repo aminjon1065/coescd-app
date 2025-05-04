@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -9,23 +10,35 @@ import { Repository } from 'typeorm';
 import { HashingService } from '../hashing/hashing.service';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
+import { JwtService } from '@nestjs/jwt';
+import jwtConfig from '../config/jwt.config';
+import JwtConfig from '../config/jwt.config';
+import { ConfigType } from '@nestjs/config';
 
 @Injectable()
 export class AuthenticationService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     private readonly hashingService: HashingService,
+    private readonly jwtService: JwtService,
+    @Inject(jwtConfig.KEY)
+    private readonly jwtConfiguration: ConfigType<typeof JwtConfig>,
   ) {}
 
   async signUp(signUpDto: SignUpDto) {
     try {
       const user = new User();
       user.email = signUpDto.email;
+      user.createdAt = new Date();
+      user.updatedAd = new Date();
+      user.name = signUpDto.name;
+      user.isVerified = false;
       user.password = await this.hashingService.hash(signUpDto.password);
       await this.userRepository.save(user);
     } catch (error) {
+      console.log(error);
       const pgUniqueViolationErrorCode = '23505';
-      if (error === pgUniqueViolationErrorCode) {
+      if (error.code === pgUniqueViolationErrorCode) {
         throw new ConflictException();
       }
       throw error;
@@ -46,6 +59,20 @@ export class AuthenticationService {
     if (!isEqual) {
       throw new UnauthorizedException('User does not match');
     }
-    return true;
+    const access_token = await this.jwtService.signAsync(
+      {
+        sub: user.id,
+        email: user.email,
+      },
+      {
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
+        secret: this.jwtConfiguration.secret,
+        expiresIn: this.jwtConfiguration.accessTokenTtl,
+      },
+    );
+    return {
+      access_token,
+    };
   }
 }
