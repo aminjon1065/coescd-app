@@ -12,6 +12,10 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
+import { Permission } from '../iam/authorization/permission.type';
+import { Policies } from '../iam/authorization/decorators/policies.decorator';
+import { FrameworkContributorPolicy } from '../iam/authorization/policies/framework-contributor.policy';
 import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { Role } from './enums/role.enum';
 
@@ -24,7 +28,11 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  @Roles(Role.Regular)
+  @Roles(Role.Admin)
+  @Permissions(Permission.CREATEUSER)
+  @Policies(
+    new FrameworkContributorPolicy() /** new MinAgePolicy(18), new OnlyAdminPolicy */,
+  )
   @Get()
   findAll(@ActiveUser() user: ActiveUserData) {
     console.log(user);

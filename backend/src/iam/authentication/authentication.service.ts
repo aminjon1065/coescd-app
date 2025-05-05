@@ -80,6 +80,7 @@ export class AuthenticationService {
           email: user.email,
           name: user.name,
           role: user.role,
+          permissions: user.permissions,
         },
       ),
       this.signToken(user.id, this.jwtConfiguration.refreshTokenTtl, {
@@ -93,11 +94,11 @@ export class AuthenticationService {
     };
   }
 
-  async refreshTokens(refreshTokenDto: RefreshTokenDto) {
+  async refreshTokens(token: string) {
     try {
       const { sub, refreshTokenId } = await this.jwtService.verifyAsync<
         Pick<ActiveUserData, 'sub'> & { refreshTokenId: string }
-      >(refreshTokenDto.refreshToken, {
+      >(token, {
         secret: this.jwtConfiguration.secret,
         audience: this.jwtConfiguration.audience,
         issuer: this.jwtConfiguration.issuer,
