@@ -10,6 +10,7 @@ interface AuthUser {
   name: string;
   role: string;
   permissions: string[];
+  department: object;
 }
 
 interface AuthContextType {
@@ -24,8 +25,10 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   accessToken: null,
   loading: true,
-  setAccessToken: () => {},
-  logout: () => {},
+  setAccessToken: () => {
+  },
+  logout: () => {
+  },
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -33,7 +36,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
   const pathname = usePathname();
   useEffect(() => {
     const initialize = async () => {
@@ -43,11 +45,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       try {
         const res = await axios.post('/authentication/refresh-tokens', {}, { withCredentials: true });
-        const token = res.data.accessToken;
-        setAccessToken(token);
-
-        const userData = parseJwt(token);
-        setUser(userData);
+        const { user, accessToken } = res.data;
+        setUser(user);
+        setAccessToken(accessToken);
         setLoading(false);
       } catch {
         setAccessToken(null);

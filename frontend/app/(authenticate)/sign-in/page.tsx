@@ -22,8 +22,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const token = await signIn(email, password);
-      const user = parseJwt(token);
+      const { token, user } = await signIn(email, password);
       console.log(user);
       setAccessToken(token);
       router.push('/dashboard');

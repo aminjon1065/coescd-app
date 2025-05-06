@@ -56,6 +56,12 @@ export class AuthenticationService {
   async signIn(signInDto: SignInDto) {
     const user = await this.userRepository.findOne({
       where: { email: signInDto.email },
+      relations: {
+        department: {
+          parent: true,
+          chief: true,
+        },
+      },
     });
     if (!user) {
       throw new UnauthorizedException('User does not exist');
@@ -91,6 +97,7 @@ export class AuthenticationService {
     return {
       accessToken,
       refreshToken,
+      user,
     };
   }
 

@@ -32,14 +32,15 @@ export class AuthenticationController {
     @Res({ passthrough: true }) response: Response,
     @Body() signInDto: SignInDto,
   ) {
-    const tokens = await this.authService.signIn(signInDto);
+    const { accessToken, refreshToken, user } =
+      await this.authService.signIn(signInDto);
     // return this.authService.signIn(signInDto);
-    response.cookie('refreshToken', tokens.refreshToken, {
+    response.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
     });
-    return { accessToken: tokens.accessToken };
+    return { accessToken, user };
   }
 
   @HttpCode(HttpStatus.OK)
@@ -53,8 +54,11 @@ export class AuthenticationController {
       throw new UnauthorizedException('No refresh token found');
     }
 
-    const { accessToken, refreshToken: newRefreshToken } =
-      await this.authService.refreshTokens(refreshToken);
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user,
+    } = await this.authService.refreshTokens(refreshToken);
 
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
@@ -62,6 +66,6 @@ export class AuthenticationController {
       sameSite: 'lax',
     });
 
-    return { accessToken };
+    return { accessToken, user };
   }
 }

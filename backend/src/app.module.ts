@@ -5,6 +5,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { IamModule } from './iam/iam.module';
+import { DepartmentModule } from './department/department.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { IamModule } from './iam/iam.module';
     }),
     UsersModule,
     IamModule,
+    DepartmentModule,
+    TaskModule,
   ],
   controllers: [AppController],
   providers: [AppService],
