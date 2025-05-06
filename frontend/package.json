@@ -1,6 +1,7 @@
 {
   "name": "frontend",
   "version": "0.1.0",
+  "author": "Amin Aliev",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

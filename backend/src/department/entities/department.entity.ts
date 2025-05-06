@@ -9,8 +9,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-
-export type DepartmentType = 'main' | 'management' | 'division' | 'section';
+import { DepartmentEnum } from '../enums/department.enum';
+import { IsOptional } from 'class-validator';
 
 @Entity('departments')
 export class Department {
@@ -20,21 +20,23 @@ export class Department {
   @Column()
   name: string;
 
-  @Column({ type: 'enum', enum: ['main', 'management', 'division', 'section'] })
-  type: DepartmentType;
+  @Column({ type: 'enum', enum: DepartmentEnum })
+  type: DepartmentEnum;
 
   @ManyToOne(() => Department, (department) => department.children, {
     nullable: true,
   })
   @JoinColumn({ name: 'parent_id' })
-  parent: Department;
+  @IsOptional()
+  parent: Department | null;
 
   @OneToMany(() => Department, (department) => department.parent)
   children: Department[];
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'chief_id' })
-  chief: User;
+  @IsOptional()
+  chief: User | null;
 
   @OneToMany(() => User, (user) => user.department)
   users: User[];

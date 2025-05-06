@@ -38,7 +38,7 @@ export class AuthenticationService {
       const user = new User();
       user.email = signUpDto.email;
       user.createdAt = new Date();
-      user.updatedAd = new Date();
+      user.updatedAt = new Date();
       user.name = signUpDto.name;
       user.isVerified = false;
       user.password = await this.hashingService.hash(signUpDto.password);

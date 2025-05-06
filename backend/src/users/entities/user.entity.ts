@@ -27,9 +27,6 @@ export class User {
   name: string;
   @Column({ nullable: true })
   position: string;
-  @Column()
-  @IsOptional()
-  updatedAd?: Date;
   @Column({ default: false })
   isVerified: boolean;
   @Column({ enum: Role, default: Role.Regular })
