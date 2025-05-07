@@ -5,6 +5,8 @@ import { Department } from './entities/department.entity';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { User } from '../users/entities/user.entity';
+import { DepartmentEnum } from './enums/department.enum';
+import { IsNull } from 'typeorm';
 
 @Injectable()
 export class DepartmentService {
@@ -31,11 +33,13 @@ export class DepartmentService {
     department.chief = chief;
 
     // НЕ устанавливаем users вручную — они будут привязаны отдельно
-    return this.departmentRepository.save(department);
+    return await this.departmentRepository.save(department);
   }
 
-  async findAll() {
+  async findAll(type?: DepartmentEnum) {
+    const where = type ? { type } : {};
     return this.departmentRepository.find({
+      where,
       relations: ['parent', 'chief', 'children'],
     });
   }
@@ -49,6 +53,18 @@ export class DepartmentService {
       throw new NotFoundException('Department not found');
     }
     return department;
+  }
+
+  async findTree(): Promise<Department[]> {
+    return this.departmentRepository.find({
+      where: { parent: IsNull() },
+      relations: {
+        children: {
+          children: true, // до второго уровня
+        },
+        chief: true,
+      },
+    });
   }
 
   async update(id: number, dto: UpdateDepartmentDto) {

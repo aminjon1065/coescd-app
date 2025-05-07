@@ -120,3 +120,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+#nprogress .bar {
+  background: #2563eb; /* синий-500 */
+  height: 2px;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #2563eb, 0 0 5px #2563eb;
+}
