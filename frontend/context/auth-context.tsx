@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import axios from '@/lib/axios';
-import { parseJwt } from '@/utils/jwt';
+import Loading from '@/app/loading';
 
 interface AuthUser {
   email: string;
@@ -15,6 +15,7 @@ interface AuthUser {
 
 interface AuthContextType {
   user: AuthUser | null;
+  setUser: (user: AuthUser | null) => void;
   accessToken: string | null;
   loading: boolean;
   setAccessToken: (token: string | null) => void;
@@ -23,6 +24,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  setUser: () => {
+  },
   accessToken: null,
   loading: true,
   setAccessToken: () => {
@@ -53,22 +56,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setAccessToken(null);
         setUser(null);
         setLoading(false);
-        router.replace('/sign-in');
       }
     };
 
     initialize();
   }, []);
 
+  useEffect(() => {
+    // если мы не в процессе загрузки, и пользователь неавторизован — редирект
+    if (!loading && !user && pathname !== '/sign-in') {
+      router.replace('/sign-in');
+    }
+  }, [loading, user, pathname, router]);
+
   const logout = () => {
     setAccessToken(null);
     setUser(null);
     router.push('/login');
   };
+  if (loading || (!user && pathname !== '/sign-in')) {
+    return (
+      <Loading />
+    );
+  }
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, setAccessToken, logout }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, setUser, accessToken, loading, setAccessToken, logout }}>
+      {children}
     </AuthContext.Provider>
   );
 };

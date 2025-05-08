@@ -1,4 +1,4 @@
-import axios from './axios';
+import axios, { setUser } from './axios';
 import { setAccessToken } from './axios';
 
 /**
@@ -6,9 +6,10 @@ import { setAccessToken } from './axios';
  */
 export async function signIn(email: string, password: string) {
   const res = await axios.post('/authentication/sign-in', { email, password });
-  const token = res.data.accessToken;
-  setAccessToken(token);
-  return token;
+  const { accessToken, user } = res.data;
+  setAccessToken(accessToken);
+  setUser(user);
+  return { accessToken, user };
 }
 
 /**
@@ -21,6 +22,7 @@ export async function tryRefresh() {
     setAccessToken(token);
     return token;
   } catch (err) {
+    console.error(err);
     setAccessToken(null);
     return null;
   }

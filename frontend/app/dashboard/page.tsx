@@ -1,5 +1,4 @@
 import React from 'react';
-import Layout from '@/app/dashboard/layout';
 
 const Page = () => {
   return (

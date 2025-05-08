@@ -21,6 +21,8 @@ import {
   RefreshTokenIdsStorage,
 } from './refresh-token-ids.storage/refresh-token-ids.storage';
 import { randomUUID } from 'crypto';
+import { plainToInstance } from 'class-transformer';
+import { SafeUserDto } from './dto/safe-user.dto';
 
 @Injectable()
 export class AuthenticationService {
@@ -97,7 +99,7 @@ export class AuthenticationService {
     return {
       accessToken,
       refreshToken,
-      user,
+      user: plainToInstance(SafeUserDto, user),
     };
   }
 

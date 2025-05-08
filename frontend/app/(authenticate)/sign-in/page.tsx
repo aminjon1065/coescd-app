@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from '@/lib/auth';
-import { parseJwt } from '@/utils/jwt';
 import { useAuth } from '@/context/auth-context';
 import { LoginForm } from '@/components/login-form';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAccessToken } = useAuth();
+  const { setAccessToken, setUser } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,11 +21,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
       const { token, user } = await signIn(email, password);
       console.log(user);
       setAccessToken(token);
+      setUser(user) // 👈 вот это нужно!
       router.push('/dashboard');
     } catch {
       setError('Неверный email или пароль');
@@ -46,6 +47,12 @@ export default function LoginPage() {
           loading={loading}
         />
       </div>
+      <Button>
+        <Link href={'/'}>Home</Link>
+      </Button>
+      <Button>
+        <Link href={'/dashboard'}>Dashboard</Link>
+      </Button>
     </div>
   );
 }
