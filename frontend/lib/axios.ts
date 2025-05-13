@@ -17,20 +17,6 @@ const refreshToken = async () => {
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
 };
-
-interface AuthUser {
-  email: string;
-  name: string;
-  role: string;
-  permissions: string[];
-  department: object;
-}
-
-export const setUser = (userData: AuthUser | null) => {
-  user = userData;
-};
-
-
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
   withCredentials: true,

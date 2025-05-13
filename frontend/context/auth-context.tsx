@@ -40,6 +40,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const PUBLIC_ROUTES = ['/sign-in', '/forgot-password'];
+
   useEffect(() => {
     const initialize = async () => {
       if (pathname === '/sign-in') {
@@ -63,21 +65,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    const isPublic = PUBLIC_ROUTES.includes(pathname);
+
     // если мы не в процессе загрузки, и пользователь неавторизован — редирект
-    if (!loading && !user && pathname !== '/sign-in') {
+    if (!loading && !user && !isPublic) {
       router.replace('/sign-in');
     }
-  }, [loading, user, pathname, router]);
+  }, [loading, user, pathname, router, PUBLIC_ROUTES]);
 
   const logout = () => {
     setAccessToken(null);
     setUser(null);
-    router.push('/login');
+    router.push('/sign-in');
   };
-  if (loading || (!user && pathname !== '/sign-in')) {
-    return (
-      <Loading />
-    );
+  if (loading || (!user && !PUBLIC_ROUTES.includes(pathname))) {
+    return <Loading />;
   }
 
   return (

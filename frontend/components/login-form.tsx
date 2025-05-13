@@ -10,6 +10,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ModeToggle } from '@/components/toggle-theme';
+import Link from 'next/link';
+import { LogIn } from 'lucide-react';
 
 export function LoginForm({
                             className,
@@ -57,12 +59,12 @@ export function LoginForm({
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
+                  <Link
+                    href="/forgot-password"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
                     Forgot your password?
-                  </a>
+                  </Link>
                 </div>
                 <Input
                   id="password"
@@ -73,6 +75,7 @@ export function LoginForm({
                 />
               </div>
               <Button type="submit" className="w-full">
+                <LogIn />
                 Login
               </Button>
               <Button variant="outline" className="w-full">

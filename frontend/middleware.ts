@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const PUBLIC_PATHS = ['/sign-in', '/api/authentication']
+const PUBLIC_PATHS = ['/sign-in','/forgot-password', '/api/authentication']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -21,6 +21,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next|favicon.ico|sign-in|api/authentication|.*\\..*).*)',
+    '/((?!_next|favicon.ico|sign-in|forgot-password|api/authentication|.*\\..*).*)',
   ],
 }

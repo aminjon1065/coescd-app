@@ -1,4 +1,4 @@
-import axios, { setUser } from './axios';
+import axios from './axios';
 import { setAccessToken } from './axios';
 
 /**
@@ -8,7 +8,6 @@ export async function signIn(email: string, password: string) {
   const res = await axios.post('/authentication/sign-in', { email, password });
   const { accessToken, user } = res.data;
   setAccessToken(accessToken);
-  setUser(user);
   return { accessToken, user };
 }
 

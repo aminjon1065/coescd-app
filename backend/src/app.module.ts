@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { IamModule } from './iam/iam.module';
 import { DepartmentModule } from './department/department.module';
 import { TaskModule } from './task/task.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { TaskModule } from './task/task.module';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        autoLoadEntities: true,
         synchronize: true,
       }),
       inject: [ConfigService],
@@ -31,6 +33,7 @@ import { TaskModule } from './task/task.module';
     IamModule,
     DepartmentModule,
     TaskModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

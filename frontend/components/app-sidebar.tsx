@@ -15,10 +15,12 @@ import {
 } from '@/components/ui/sidebar';
 import { ModeToggle } from '@/components/toggle-theme';
 import { data, sideBarRoutes } from '@/data/routes/sideBarRoutes';
+import { useAuth } from '@/context/auth-context';
 
 // This is sample data.
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth();
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -30,7 +32,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -23,6 +23,9 @@ export class User {
   email: string;
   @Column()
   password: string;
+  @Column({ nullable: true })
+  @IsOptional()
+  avatar: string;
   @Column()
   name: string;
   @Column({ nullable: true })

@@ -15,9 +15,10 @@ import {
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
-  SidebarMenuSubItem,
+  SidebarMenuSubItem, useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
+import { log } from 'node:util';
 
 export function NavMain({
                           items,
@@ -33,6 +34,8 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const { state } = useSidebar();
+  console.log(state);
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Menu</SidebarGroupLabel>
@@ -47,12 +50,23 @@ export function NavMain({
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
-                    <span>{item.title}</span>
-                    <ChevronRight
-                      className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
+                  {
+                    state === 'collapsed'
+                      ?
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <Link href={item.url}>
+                          {item.icon && <item.icon />}
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      :
+                      <SidebarMenuButton tooltip={item.title}>
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                        <ChevronRight
+                          className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                  }
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
@@ -70,14 +84,41 @@ export function NavMain({
               </SidebarMenuItem>
             </Collapsible>
             :
-            <SidebarMenuSubItem key={item.title}>
-              <SidebarMenuSubButton asChild>
+            <SidebarMenuItem
+              key={item.title}
+              className="group"
+            >
+              <SidebarMenuButton asChild tooltip={item.title}>
                 <Link href={item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
                 </Link>
-              </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          // <SidebarMenuSubItem key={item.title}>
+          //   <SidebarMenuSubButton asChild>
+          //     <Collapsible
+          //       key={item.title}
+          //       asChild
+          //       defaultOpen={item.isActive}
+          //       className="group/collapsible"
+          //     >
+          //       <CollapsibleTrigger asChild>
+          //         <SidebarMenuButton tooltip={item.title}>
+          //           {item.icon && <item.icon />}
+          //           <span>{item.title}</span>
+          //           <ChevronRight
+          //             className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+          //         </SidebarMenuButton>
+          //       </CollapsibleTrigger>
+          //
+          //       <Link href={item.url}>
+          //         {item.icon && <item.icon />}
+          //         <span>{item.title}</span>
+          //       </Link>
+          //     </Collapsible>
+          //   </SidebarMenuSubButton>
+          // </SidebarMenuSubItem>
         ))}
       </SidebarMenu>
     </SidebarGroup>
