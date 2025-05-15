@@ -4,7 +4,7 @@ let accessToken: string | null = null;
 // функция для обновления токена
 const refreshToken = async () => {
   try {
-    const response = await axios.post('/api/authentication/refresh-tokens', {}, { withCredentials: true });
+    const response = await api.post('/authentication/refresh-tokens', {}, { withCredentials: true });
     accessToken = response.data.accessToken;
     return accessToken;
   } catch (err) {
@@ -18,7 +18,7 @@ export const setAccessToken = (token: string | null) => {
   accessToken = token;
 };
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8008/api',
   withCredentials: true,
 });
 

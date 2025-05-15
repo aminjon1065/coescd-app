@@ -34,7 +34,7 @@ interface AuthUser {
   email: string;
   name: string;
   role: string;
-  avatar: string;
+  avatar?: string;
   permissions: string[];
   department: object;
 }

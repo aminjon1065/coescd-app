@@ -1,17 +1,19 @@
+'use client';
+
 import React from 'react';
-import { DataTableDemoUser } from '@/app/dashboard/users/components/dataTableUser';
+import UsersTable from './components/usersTable';
+import Head from 'next/head';
+import ProtectedContent from '@/ProtectedContent';
 
-
-export const metadata = {
-  title: 'Users',
-};
-
-const Page = () => {
+export default function Page() {
   return (
     <>
-      <DataTableDemoUser />
+      <Head>
+        <title>Users</title>
+      </Head>
+      <ProtectedContent>
+        <UsersTable />
+      </ProtectedContent>
     </>
   );
-};
-
-export default Page;
+}

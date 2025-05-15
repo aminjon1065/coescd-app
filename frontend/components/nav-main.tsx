@@ -18,7 +18,6 @@ import {
   SidebarMenuSubItem, useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { log } from 'node:util';
 
 export function NavMain({
                           items,

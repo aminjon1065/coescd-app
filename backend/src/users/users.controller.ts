@@ -23,16 +23,16 @@ import { Role } from './enums/role.enum';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
-  }
-
   @Roles(Role.Admin)
   @Permissions(Permission.CREATEUSER)
   @Policies(
     new FrameworkContributorPolicy() /** new MinAgePolicy(18), new OnlyAdminPolicy */,
   )
+  @Post()
+  create(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto);
+  }
+
   @Get()
   findAll(@ActiveUser() user: ActiveUserData) {
     console.log(user);
