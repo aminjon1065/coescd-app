@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isBrowser } from '@/utils/isBrowser';
 
 let accessToken: string | null = null;
 // функция для обновления токена
@@ -38,8 +39,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isSignInPage = isBrowser() && window.location.pathname === '/sign-in';
+    const is401 = error.response?.status === 401;
+    if (is401 && !originalRequest._retry && accessToken && !isSignInPage) {
       originalRequest._retry = true;
 
       try {
@@ -47,7 +49,7 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (err) {
-        if (typeof window !== 'undefined') {
+        if (isBrowser()) {
           window.location.href = '/sign-in';
         }
         return Promise.reject(err);
