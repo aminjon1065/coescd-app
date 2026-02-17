@@ -8,6 +8,7 @@ import { IamModule } from './iam/iam.module';
 import { DepartmentModule } from './department/department.module';
 import { TaskModule } from './task/task.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { DocumentModule } from './document/document.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     DepartmentModule,
     TaskModule,
     AnalyticsModule,
+    DocumentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

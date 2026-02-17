@@ -13,7 +13,7 @@
 
 ### 1. `auth`
 
-* Регистрация, вход, refresh токены
+* Регистрация админом, вход, refresh токены
 * Защита: `RolesGuard`, `PermissionsGuard`, `PoliciesGuard`
 * Cookie-based с HttpOnly refresh
 

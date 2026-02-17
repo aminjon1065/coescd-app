@@ -16,8 +16,13 @@ import React from 'react';
 const labelMap: Record<string, string> = {
   dashboard: 'Дашборд',
   analytic: 'Аналитика',
+  tasks: 'Задачи',
   documentation: 'Документация',
+  sent: 'Исходящие',
+  internal: 'Внутренние',
   users: 'Пользователи',
+  gis: 'Карта ЧС',
+  files: 'Файлы',
   settings: 'Settings',
   roles: 'Roles',
   profile: 'Profile',

@@ -1,11 +1,7 @@
-import React from 'react';
+'use client';
 
-const Page = () => {
-  return (
-    <div>
-      Sent.
-    </div>
-  );
-};
+import { DocumentTable } from '../components/document-table';
 
-export default Page;
+export default function SentDocumentsPage() {
+  return <DocumentTable title="Исходящие документы" type="outgoing" defaultDocType="outgoing" />;
+}

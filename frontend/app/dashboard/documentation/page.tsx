@@ -1,11 +1,7 @@
-import React from 'react';
+'use client';
 
-const Page = () => {
-  return (
-    <div>
-      Documentation page
-    </div>
-  );
-};
+import { DocumentTable } from './components/document-table';
 
-export default Page;
+export default function IncomingDocumentsPage() {
+  return <DocumentTable title="Входящие документы" type="incoming" defaultDocType="incoming" />;
+}

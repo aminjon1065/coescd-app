@@ -133,17 +133,21 @@ export class AuthenticationService {
     }
   }
 
-  private async signToken<T>(userId: number, expiresIn: number, payload?: T) {
+  private async signToken<T extends object>(
+    userId: number,
+    expiresIn: number,
+    payload?: T,
+  ) {
     return await this.jwtService.signAsync(
       {
         sub: userId,
-        ...payload,
-      } as ActiveUserData,
+        ...(payload ?? {}),
+      },
       {
         audience: this.jwtConfiguration.audience,
         issuer: this.jwtConfiguration.issuer,
         secret: this.jwtConfiguration.secret,
-        expiresIn: this.jwtConfiguration.accessTokenTtl,
+        expiresIn,
       },
     );
   }

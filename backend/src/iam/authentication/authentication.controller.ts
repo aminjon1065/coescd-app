@@ -15,18 +15,24 @@ import { Response } from 'express';
 import { Auth } from './decorators/auth.decorators';
 import { AuthType } from './enums/auth-type.enum';
 import { Request } from 'express';
+import { Roles } from '../authorization/decorators/roles.decorator';
+import { Role } from '../../users/enums/role.enum';
+import { Permissions } from '../authorization/decorators/permissions.decorator';
+import { Permission } from '../authorization/permission.type';
 
-@Auth(AuthType.None)
 @Controller('authentication')
 export class AuthenticationController {
   constructor(private readonly authService: AuthenticationService) {}
 
+  @Roles(Role.Admin)
+  @Permissions(Permission.CREATEUSER)
   @Post('sign-up')
   signUp(@Body() signUpDto: SignUpDto) {
     return this.authService.signUp(signUpDto);
   }
 
   @HttpCode(HttpStatus.OK)
+  @Auth(AuthType.None)
   @Post('sign-in')
   async signIn(
     @Res({ passthrough: true }) response: Response,
@@ -44,6 +50,7 @@ export class AuthenticationController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Auth(AuthType.None)
   @Post('refresh-tokens')
   async refreshToken(
     @Req() request: Request,

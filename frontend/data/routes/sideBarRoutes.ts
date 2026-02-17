@@ -3,7 +3,7 @@ import {
   BookOpen,
   Command,
   CompassIcon, FileChartColumnIcon, FolderOpenIcon,
-  Frame, Map, MapPinnedIcon,
+  Frame, ListTodoIcon, Map, MapPinnedIcon,
   PieChart, UsersRoundIcon,
 } from 'lucide-react';
 
@@ -57,6 +57,11 @@ export const sideBarRoutes = [
     icon: FileChartColumnIcon,
   },
   {
+    title: 'Задачи',
+    url: '/dashboard/tasks',
+    icon: ListTodoIcon,
+  },
+  {
     title: 'Документация',
     url: '/dashboard/documentation',
     icon: BookOpen,
@@ -68,6 +73,10 @@ export const sideBarRoutes = [
       {
         title: 'Исходящие',
         url: '/dashboard/documentation/sent',
+      },
+      {
+        title: 'Внутренние',
+        url: '/dashboard/documentation/internal',
       },
     ],
   },
@@ -86,7 +95,4 @@ export const sideBarRoutes = [
     url: '/dashboard/users',
     icon: UsersRoundIcon,
   },
-
-
-
 ];

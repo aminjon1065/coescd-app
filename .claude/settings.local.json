@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(npm install:*)",
+      "Bash(yarn add:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx next build:*)",
+      "Bash(npx nest build:*)",
+      "Bash(yarn build)",
+      "Bash(./node_modules/.bin/nest build:*)",
+      "Bash(yarn install:*)"
+    ]
+  }
+}

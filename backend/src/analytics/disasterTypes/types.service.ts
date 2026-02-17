@@ -11,7 +11,7 @@ export class TypesService {
   constructor(
     @InjectRepository(DisasterType)
     private readonly typeRepo: Repository<DisasterType>,
-    @InjectRepository(DisasterType)
+    @InjectRepository(DisasterCategory)
     private readonly categoryRepo: Repository<DisasterCategory>,
   ) {}
 
