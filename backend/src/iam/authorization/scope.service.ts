@@ -5,6 +5,7 @@ import { Role } from '../../users/enums/role.enum';
 import { User } from '../../users/entities/user.entity';
 import { Document } from '../../document/entities/document.entity';
 import { Task } from '../../task/entities/task.entity';
+import { FileEntity } from '../../files/entities/file.entity';
 
 @Injectable()
 export class ScopeService {
@@ -75,6 +76,48 @@ export class ScopeService {
     }
 
     throw new ForbiddenException('Forbidden by task scope');
+  }
+
+  assertFileScope(actor: ActiveUserData, file: FileEntity): void {
+    if (this.isAdmin(actor)) {
+      return;
+    }
+    if (file.owner?.id === actor.sub) {
+      return;
+    }
+    if (
+      this.isManager(actor) &&
+      actor.departmentId &&
+      file.department?.id === actor.departmentId
+    ) {
+      return;
+    }
+    throw new ForbiddenException('Forbidden by file scope');
+  }
+
+  applyFileScope(
+    qb: SelectQueryBuilder<FileEntity>,
+    actor: ActiveUserData,
+    aliases: {
+      ownerAlias: string;
+      departmentAlias: string;
+    },
+  ): void {
+    if (this.isAdmin(actor)) {
+      return;
+    }
+    qb.andWhere(
+      new Brackets((scopeQb) => {
+        scopeQb.where(`${aliases.ownerAlias}.id = :userId`, {
+          userId: actor.sub,
+        });
+        if (this.isManager(actor) && actor.departmentId) {
+          scopeQb.orWhere(`${aliases.departmentAlias}.id = :departmentId`, {
+            departmentId: actor.departmentId,
+          });
+        }
+      }),
+    );
   }
 
   applyDocumentScope(

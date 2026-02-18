@@ -11,12 +11,16 @@ import { IamModule } from '../src/iam/iam.module';
 import { UsersModule } from '../src/users/users.module';
 import { DocumentModule } from '../src/document/document.module';
 import { TaskModule } from '../src/task/task.module';
+import { FilesModule } from '../src/files/files.module';
 import { User } from '../src/users/entities/user.entity';
 import { Department } from '../src/department/entities/department.entity';
 import { Task } from '../src/task/entities/task.entity';
 import { Document } from '../src/document/entities/document.entity';
+import { FileEntity } from '../src/files/entities/file.entity';
 import { Role } from '../src/users/enums/role.enum';
 import { DepartmentEnum } from '../src/department/enums/department.enum';
+import { FilesStorageService } from '../src/files/storage/files-storage.service';
+import { Readable } from 'stream';
 
 const db = newDb({ autoCreateForeignKeyIndices: true });
 db.public.registerFunction({
@@ -34,6 +38,7 @@ describe('RBAC + ABAC (e2e)', () => {
   let departmentRepo: Repository<Department>;
   let taskRepo: Repository<Task>;
   let documentRepo: Repository<Document>;
+  let fileRepo: Repository<FileEntity>;
 
   let adminUser: User;
   let managerDept1: User;
@@ -42,6 +47,52 @@ describe('RBAC + ABAC (e2e)', () => {
   let lockoutUser: User;
   let taskDept2: Task;
   let documentDept2: Document;
+  let fileDept2: FileEntity;
+
+  const objectStore = new Map<string, { body: Buffer; mimeType: string }>();
+  const filesStorageMock: Partial<FilesStorageService> = {
+    getBucket: () => 'test-files',
+    uploadObject: async (params: {
+      key: string;
+      body: Buffer;
+      mimeType: string;
+    }) => {
+      objectStore.set(params.key, { body: params.body, mimeType: params.mimeType });
+    },
+    getObjectStream: async (key: string) => {
+      const stored = objectStore.get(key);
+      if (!stored) {
+        throw new Error('File stream is unavailable');
+      }
+      return Readable.from(stored.body);
+    },
+    deleteObject: async (key: string) => {
+      objectStore.delete(key);
+    },
+    getPresignedUploadUrl: async (params: {
+      key: string;
+      mimeType: string;
+      expiresInSeconds: number;
+    }) =>
+      `https://signed.test/upload/${encodeURIComponent(params.key)}?ttl=${params.expiresInSeconds}`,
+    getPresignedDownloadUrl: async (params: {
+      key: string;
+      originalName: string;
+      mimeType: string;
+      expiresInSeconds: number;
+    }) =>
+      `https://signed.test/download/${encodeURIComponent(params.key)}?ttl=${params.expiresInSeconds}`,
+    getObjectMetadata: async (key: string) => {
+      const stored = objectStore.get(key);
+      if (!stored) {
+        throw new Error('not found');
+      }
+      return {
+        contentLength: stored.body.byteLength,
+        contentType: stored.mimeType,
+      };
+    },
+  };
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-secret';
@@ -58,6 +109,11 @@ describe('RBAC + ABAC (e2e)', () => {
     process.env.AUTH_SIGNIN_LOCKOUT_SECONDS = '900';
     process.env.AUTH_REFRESH_MAX_ATTEMPTS = '2';
     process.env.AUTH_REFRESH_WINDOW_SECONDS = '60';
+    process.env.FILES_UPLOAD_MAX_BYTES = '1048576';
+    process.env.FILES_ALLOWED_MIME_TYPES = 'text/plain,application/pdf';
+    process.env.FILES_PRESIGNED_ENABLED = 'true';
+    process.env.FILES_PRESIGNED_UPLOAD_TTL_SECONDS = '120';
+    process.env.FILES_PRESIGNED_DOWNLOAD_TTL_SECONDS = '90';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -69,7 +125,7 @@ describe('RBAC + ABAC (e2e)', () => {
             type: 'postgres',
             synchronize: true,
             autoLoadEntities: true,
-            entities: [User, Department, Task, Document],
+            entities: [User, Department, Task, Document, FileEntity],
           }),
           dataSourceFactory: async (options) => {
             const dataSource = db.adapters.createTypeormDataSource(
@@ -82,8 +138,12 @@ describe('RBAC + ABAC (e2e)', () => {
         UsersModule,
         DocumentModule,
         TaskModule,
+        FilesModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(FilesStorageService)
+      .useValue(filesStorageMock)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.use(cookieParser());
@@ -96,6 +156,9 @@ describe('RBAC + ABAC (e2e)', () => {
     taskRepo = moduleFixture.get<Repository<Task>>(getRepositoryToken(Task));
     documentRepo = moduleFixture.get<Repository<Document>>(
       getRepositoryToken(Document),
+    );
+    fileRepo = moduleFixture.get<Repository<FileEntity>>(
+      getRepositoryToken(FileEntity),
     );
 
     await seedTestData();
@@ -211,6 +274,26 @@ describe('RBAC + ABAC (e2e)', () => {
         sender: regularDept2,
         receiver: regularDept2,
         department: dept2,
+      }),
+    );
+
+    const key = 'local/2/2026/02/e2e-file-dept2.txt';
+    objectStore.set(key, {
+      body: Buffer.from('dept2-file-content'),
+      mimeType: 'text/plain',
+    });
+    fileDept2 = await fileRepo.save(
+      fileRepo.create({
+        originalName: 'dept2.txt',
+        storageKey: key,
+        bucket: 'test-files',
+        mimeType: 'text/plain',
+        sizeBytes: String(Buffer.byteLength('dept2-file-content')),
+        checksumSha256: 'a'.repeat(64),
+        owner: regularDept2,
+        department: dept2,
+        status: 'active',
+        deletedAt: null,
       }),
     );
   }
@@ -370,6 +453,115 @@ describe('RBAC + ABAC (e2e)', () => {
       .get(`/task/${taskDept2.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
+  });
+
+  it('files: manager can upload and regular cannot upload', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const regularToken = await signIn('regular1@test.local', 'operator123');
+
+    const uploadResponse = await request(app.getHttpServer())
+      .post('/files/upload')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .attach('file', Buffer.from('manager file payload'), {
+        filename: 'manager.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+
+    expect(uploadResponse.body.id).toBeDefined();
+    expect(uploadResponse.body.mimeType).toBe('text/plain');
+
+    await request(app.getHttpServer())
+      .post('/files/upload')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .attach('file', Buffer.from('regular payload'), {
+        filename: 'regular.txt',
+        contentType: 'text/plain',
+      })
+      .expect(403);
+  });
+
+  it('files: regular cannot read foreign department file and admin can', async () => {
+    const regularToken = await signIn('regular1@test.local', 'operator123');
+    const adminToken = await signIn('admin@test.local', 'admin123');
+
+    await request(app.getHttpServer())
+      .get(`/files/${fileDept2.id}`)
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get(`/files/${fileDept2.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+  });
+
+  it('files: presigned upload + complete + download-url work for manager', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+
+    const uploadUrlResponse = await request(app.getHttpServer())
+      .post('/files/upload-url')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        originalName: 'direct-upload.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 17,
+      })
+      .expect(201);
+
+    expect(uploadUrlResponse.body.uploadUrl).toContain('https://signed.test/upload/');
+    const key: string = uploadUrlResponse.body.key;
+    objectStore.set(key, {
+      body: Buffer.from('direct upload data'),
+      mimeType: 'text/plain',
+    });
+
+    const completeResponse = await request(app.getHttpServer())
+      .post('/files/upload-complete')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        key,
+        originalName: 'direct-upload.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 18,
+        checksumSha256: 'b'.repeat(64),
+      })
+      .expect(201);
+
+    const fileId = completeResponse.body.id as number;
+    expect(fileId).toBeDefined();
+
+    const signedDownloadResponse = await request(app.getHttpServer())
+      .get(`/files/${fileId}/download-url`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(signedDownloadResponse.body.downloadUrl).toContain(
+      'https://signed.test/download/',
+    );
+  });
+
+  it('files: upload-url validates mime whitelist and size limit', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+
+    await request(app.getHttpServer())
+      .post('/files/upload-url')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        originalName: 'bad.bin',
+        mimeType: 'application/octet-stream',
+        sizeBytes: 32,
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/files/upload-url')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        originalName: 'big.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 2_000_000,
+      })
+      .expect(400);
   });
 
   it('change-password revokes refresh sessions and old password', async () => {

@@ -1,118 +1,123 @@
-# 🧱 Архитектура платформы КЧС
+﻿# 🧱 Архитектура платформы КЧС
 
-## 🧭 Общая структура
+## 🧭 Текущее состояние
 
-* **Backend**: NestJS + PostgreSQL + WebSocket (gateway)
-* **Frontend**: Next.js 15 App Router + TailwindCSS + Shadcn
-* **Auth**: Cookie-based JWT, roles & permissions
-* **Infra**: Redis (queues & pub/sub), MinIO/S3, PostGIS
+### ✅ Реализовано
 
----
+- **Backend**: NestJS + PostgreSQL (TypeORM)
+- **Frontend**: Next.js App Router + TailwindCSS + Shadcn
+- **IAM/Auth**:
+  - Cookie-based JWT (access + refresh)
+  - `RolesGuard`, `PermissionsGuard`, `PoliciesGuard`
+  - RBAC + базовый ABAC (scope по owner/department)
+  - CSRF (double-submit) для refresh/logout
+  - Rate-limit/lockout для auth endpoints
+  - Auth audit log (`auth_audit_logs`)
+  - Session lifecycle: `change-password`, `logout-all-devices`, disable user
+- **Модули API**:
+  - `users`, `department`, `task`, `document`, `analytics`, `files`
+- **Качество**:
+  - e2e матрица RBAC+ABAC+auth hardening
+- **Схема БД**:
+  - `synchronize: false`
+  - TypeORM migrations + CLI scripts
 
-## 📦 Backend (NestJS)
+### 🟡 В процессе
 
-### 1. `auth`
+- Полное покрытие миграциями всей текущей схемы (migration coverage audit)
+- Приведение документации модулей к фактической реализации
+- `files` Phase 3: интеграция `file_links` с остальными доменами
 
-* Регистрация админом, вход, refresh токены
-* Защита: `RolesGuard`, `PermissionsGuard`, `PoliciesGuard`
-* Cookie-based с HttpOnly refresh
+### 🔜 Планируется
 
-### 2. `users`
-
-* Пользователи, департаменты, роли
-* Структура: Главное управление → Управление → Отдел → Отделение
-
-### 3. `analytics`
-
-* ЧС-события: CRUD
-* Отчёты по регионам и периодам
-* Подключение модуля `prediction` (ИИ)
-
-### 4. `documents`
-
-* `incoming`, `outgoing`, `internal`
-* Вложенные файлы, статусы, история изменений
-* Привязка к департаменту
-
-### 5. `files`
-
-* Загрузка, скачивание, структура папок
-* Контроль доступа по ролям
-* Версионирование (опционально)
-
-### 6. `gis`
-
-* Карты и слои: PostGIS
-* ЧС зоны, опасные участки, полигоны
-* API для отображения в OpenLayers/Mapbox
-
-### 7. `chat`
-
-* Комнаты, сообщения
-* WebSocket Gateway
-* Seen, online, typing-индикаторы
-
-### 8. `calls`
-
-* Видеоконференции через WebRTC signaling
-* Видеозвонки 1:1 и групповые
-* Интеграция с календарём (планирование)
+- `files` (MinIO/S3 + metadata + RBAC/ABAC + audit)
+- `gis` (PostGIS layers/features)
+- `chat` (WebSocket rooms/messages)
+- `calls` (WebRTC signaling)
+- Интеграция prediction/ML
 
 ---
 
-## 🧩 Frontend (Next.js)
+## 📦 Backend (фактические модули)
 
-### Layout и Shell
+### 1. `iam`
 
-* AppSidebar: динамика + `CanAccess`
-* Header: PageBreadcrumbs по текущему пути
-* AuthProvider + middleware.ts
+- Вход/refresh/logout/logout-all-devices
+- Смена пароля и ревокация сессий
+- Роли, permissions, policy-based access
+- Защита auth: csrf + rate-limit + lockout + audit
 
-### Роутинг
+### 2. `users` + `department`
 
-```
-/analytics
-/analytics/reports
-/documents/incoming
-/documents/outgoing
-/files
-/gis
-/chat/:roomId
-/calls/:id
-```
+- Пользователи, департаменты, роли, custom permissions
+- Admin control: изменение `isActive`
 
-### Компоненты
+### 3. `task`
 
-* Таблицы с фильтрами и пагинацией
-* Editor для отчётов и документов
-* FileDropZone + TreeView
-* OpenLayers карта с легендами и слоями
-* Чат: Scroll + input + attachments
-* Видеозвонки: WebRTC media + controls
+- CRUD задач
+- RBAC + ABAC (owner/department scope)
+
+### 4. `document`
+
+- CRUD документов (`incoming`, `outgoing`, `internal`)
+- RBAC + ABAC (owner/department scope)
+
+### 5. `analytics`
+
+- Типы/категории/события
+- Базовые отчеты и prediction-заглушка
+
+### 6. `files`
+
+- Upload/download/list/delete + link API
+- S3/MinIO storage adapter
+- Опциональный presigned URL flow (`/files/upload-url`, `/files/upload-complete`, `/files/:id/download-url`)
+- MIME whitelist + upload size limits через env
+- RBAC + ABAC scope + file access audit
 
 ---
 
-## 🔒 Доступ и безопасность
+## 🧩 Frontend (фактический статус)
 
-* `@Roles()`, `@Permissions()`, `@Policies()`
-* Frontend: `CanAccess`, SSR middleware
-* Защита API: rate-limit, csrf, XSS-safe
+- App Router, dashboard pages, auth context
+- Axios клиент с bearer + refresh
+- CSRF header для `refresh/logout`
+
+---
+
+## 🔒 Безопасность
+
+- `@Roles()`, `@Permissions()`, `@Policies()`
+- JWT + refresh rotation
+- CSRF double-submit для cookie-flow
+- Sign-in lockout и refresh rate-limit
+- Auth audit log
 
 ---
 
 ## ☁️ Инфраструктура
 
-* **PostgreSQL** + **PostGIS**: геоданные
-* **Redis**: очередь задач + WebSocket pub/sub
-* **MinIO**: хранение файлов
-* **Sentry/Logtail**: мониторинг и логирование
-* **Docker + Docker Compose**
+- **PostgreSQL**
+- **Redis** (refresh/session storage; fallback in-memory для тестов)
+- **Docker/Compose**: требуется актуализация под финальный runtime стек
 
 ---
 
-## 🚧 В дальнейшем
+## 🛠️ Операционные команды (backend)
 
-* Подключение ИИ предсказания (FastAPI / Python)
-* Push-уведомления (Web + Mobile)
-* Мобильное приложение на React Native Expo
-* Управление инцидентами в реальном времени (LiveMap + голосовой вызов)
+```bash
+npm run build
+npm run test:e2e
+npm run seed:iam
+npm run migration:run
+npm run migration:revert
+```
+
+---
+
+## 📚 Документация
+
+- `docs/architecture.md` — целевая архитектура
+- `docs/rbac.md` — RBAC/ABAC и auth hardening
+- `docs/migrations.md` — процесс миграций
+- `docs/files-module-plan.md` — план и архитектура модуля files

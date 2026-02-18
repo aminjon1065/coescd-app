@@ -9,6 +9,7 @@ import { DepartmentModule } from './department/department.module';
 import { TaskModule } from './task/task.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { DocumentModule } from './document/document.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DocumentModule } from './document/document.module';
     TaskModule,
     AnalyticsModule,
     DocumentModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
