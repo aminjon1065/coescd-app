@@ -1,8 +1,15 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateDepartmentDto } from './create-department.dto';
-import { IsInt, IsOptional } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import { DepartmentEnum } from '../enums/department.enum';
 
-export class UpdateDepartmentDto extends PartialType(CreateDepartmentDto) {
+export class UpdateDepartmentDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsEnum(DepartmentEnum)
+  type?: DepartmentEnum;
+
   @IsOptional()
   @IsInt()
   parentId?: number | null;

@@ -16,11 +16,21 @@ import {
 import { ModeToggle } from '@/components/toggle-theme';
 import { data, sideBarRoutes } from '@/data/routes/sideBarRoutes';
 import { useAuth } from '@/context/auth-context';
+import { useMemo } from 'react';
 
 // This is sample data.
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
+  const visibleRoutes = useMemo(
+    () =>
+      sideBarRoutes.filter((route) => {
+        if (!route.adminOnly) return true;
+        return user?.role === 'admin';
+      }),
+    [user?.role],
+  );
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -28,7 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/*<TeamSwitcher teams={data.teams} />*/}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={sideBarRoutes} />
+        <NavMain items={visibleRoutes} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>

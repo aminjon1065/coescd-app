@@ -2,10 +2,30 @@ import {
   AudioWaveform,
   BookOpen,
   Command,
-  CompassIcon, FileChartColumnIcon, FolderOpenIcon,
-  Frame, ListTodoIcon, Map, MapPinnedIcon,
-  PieChart, UsersRoundIcon,
+  CompassIcon,
+  FileChartColumnIcon,
+  FolderOpenIcon,
+  Frame,
+  ListTodoIcon,
+  Map,
+  MapPinnedIcon,
+  PieChart,
+  UsersRoundIcon,
+  Building2Icon,
 } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
+
+export type SidebarRoute = {
+  title: string;
+  url: string;
+  icon?: LucideIcon;
+  isActive?: boolean;
+  adminOnly?: boolean;
+  items?: {
+    title: string;
+    url: string;
+  }[];
+};
 
 export const data = {
   user: {
@@ -15,11 +35,10 @@ export const data = {
   },
   teams: [
     {
-      name: 'Сайт комитета',
+      name: 'Committee Site',
       logo: CompassIcon,
       plan: 'Enterprise',
     },
-
     {
       name: 'Acme Corp.',
       logo: AudioWaveform,
@@ -33,7 +52,7 @@ export const data = {
   ],
   projects: [
     {
-      name: 'Чат общение',
+      name: 'Chat',
       url: '#',
       icon: Frame,
     },
@@ -50,38 +69,38 @@ export const data = {
   ],
 };
 
-export const sideBarRoutes = [
+export const sideBarRoutes: SidebarRoute[] = [
   {
-    title: 'Аналитика',
+    title: 'Analytics',
     url: '/dashboard/analytic',
     icon: FileChartColumnIcon,
   },
   {
-    title: 'Задачи',
+    title: 'Tasks',
     url: '/dashboard/tasks',
     icon: ListTodoIcon,
   },
   {
-    title: 'Документация',
+    title: 'Documentation',
     url: '/dashboard/documentation',
     icon: BookOpen,
     items: [
       {
-        title: 'Входящие',
+        title: 'Incoming',
         url: '/dashboard/documentation',
       },
       {
-        title: 'Исходящие',
+        title: 'Outgoing',
         url: '/dashboard/documentation/sent',
       },
       {
-        title: 'Внутренние',
+        title: 'Internal',
         url: '/dashboard/documentation/internal',
       },
     ],
   },
   {
-    title: 'Файлы',
+    title: 'Files',
     url: '/dashboard/files',
     icon: FolderOpenIcon,
   },
@@ -91,8 +110,15 @@ export const sideBarRoutes = [
     icon: MapPinnedIcon,
   },
   {
-    title: 'Пользователи',
+    title: 'Users',
     url: '/dashboard/users',
     icon: UsersRoundIcon,
+    adminOnly: true,
+  },
+  {
+    title: 'Departments',
+    url: '/dashboard/departments',
+    icon: Building2Icon,
+    adminOnly: true,
   },
 ];
