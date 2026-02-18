@@ -41,11 +41,11 @@ export class UsersService {
     const user = this.userRepository.create({
       email: createUserDto.email,
       name: createUserDto.name,
-      avatar: createUserDto.avatar ?? null,
-      position: createUserDto.position ?? null,
+      avatar: createUserDto.avatar,
+      position: createUserDto.position,
       role: createUserDto.role ?? Role.Regular,
       password: await this.hashingService.hash(createUserDto.password),
-      department: department ?? null,
+      department: department ?? undefined,
     });
     return this.userRepository.save(user);
   }

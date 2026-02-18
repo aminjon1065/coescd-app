@@ -40,7 +40,7 @@ export class User {
   permissions: PermissionType[];
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
-  department: Department;
+  department: Department | null;
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at' })
