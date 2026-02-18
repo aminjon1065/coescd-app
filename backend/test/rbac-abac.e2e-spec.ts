@@ -496,6 +496,26 @@ describe('RBAC + ABAC (e2e)', () => {
       .expect(200);
   });
 
+  it('authorization matrix endpoint is available only for admin', async () => {
+    const adminToken = await signIn('admin@test.local', 'admin123');
+    const regularToken = await signIn('regular1@test.local', 'operator123');
+
+    const adminResponse = await request(app.getHttpServer())
+      .get('/iam/authorization/matrix')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(adminResponse.body.permissions).toBeInstanceOf(Array);
+    expect(adminResponse.body.rolePermissions?.admin).toBeInstanceOf(Array);
+    expect(adminResponse.body.rolePermissions?.manager).toBeInstanceOf(Array);
+    expect(adminResponse.body.rolePermissions?.regular).toBeInstanceOf(Array);
+
+    await request(app.getHttpServer())
+      .get('/iam/authorization/matrix')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+  });
+
   it('files: manager can request upload-url and regular cannot', async () => {
     const managerToken = await signIn('manager1@test.local', 'manager123');
     const regularToken = await signIn('regular1@test.local', 'operator123');

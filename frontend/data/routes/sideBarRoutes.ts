@@ -12,6 +12,7 @@ import {
   PieChart,
   UsersRoundIcon,
   Building2Icon,
+  ShieldCheckIcon,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
@@ -113,6 +114,12 @@ export const sideBarRoutes: SidebarRoute[] = [
     title: 'Users',
     url: '/dashboard/users',
     icon: UsersRoundIcon,
+    adminOnly: true,
+  },
+  {
+    title: 'Access Control',
+    url: '/dashboard/access',
+    icon: ShieldCheckIcon,
     adminOnly: true,
   },
   {

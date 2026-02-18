@@ -29,6 +29,7 @@ import { ScopeService } from './authorization/scope.service';
 import { AuthRateLimitService } from './authentication/auth-rate-limit.service';
 import { AuthAuditService } from './authentication/auth-audit.service';
 import { AuthAuditLog } from './authentication/entities/auth-audit-log.entity';
+import { AuthorizationAdminController } from './authorization/authorization-admin.controller';
 
 @Module({
   imports: [
@@ -56,6 +57,6 @@ import { AuthAuditLog } from './authentication/entities/auth-audit-log.entity';
     AuthAuditService,
   ],
   exports: [RefreshTokenIdsStorage],
-  controllers: [AuthenticationController],
+  controllers: [AuthenticationController, AuthorizationAdminController],
 })
 export class IamModule {}
