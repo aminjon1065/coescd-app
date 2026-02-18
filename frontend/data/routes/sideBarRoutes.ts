@@ -13,6 +13,7 @@ import {
   UsersRoundIcon,
   Building2Icon,
   ShieldCheckIcon,
+  ClipboardListIcon,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
@@ -126,6 +127,12 @@ export const sideBarRoutes: SidebarRoute[] = [
     title: 'Departments',
     url: '/dashboard/departments',
     icon: Building2Icon,
+    adminOnly: true,
+  },
+  {
+    title: 'Audit Logs',
+    url: '/dashboard/audit-logs',
+    icon: ClipboardListIcon,
     adminOnly: true,
   },
 ];

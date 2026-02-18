@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -20,16 +21,36 @@ import { Role } from './enums/role.enum';
 import { UserScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
 import { UpdateUserPermissionsDto } from './dto/update-user-permissions.dto';
 import { SetUserActiveDto } from './dto/set-user-active.dto';
+import { Request } from 'express';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  private getRequestIp(request: Request): string {
+    const xForwardedFor = request.headers['x-forwarded-for'];
+    if (typeof xForwardedFor === 'string' && xForwardedFor.length > 0) {
+      return xForwardedFor.split(',')[0].trim();
+    }
+    return request.ip ?? 'unknown';
+  }
+
+  private getUserAgent(request: Request): string {
+    return request.headers['user-agent'] ?? 'unknown';
+  }
+
   @Roles(Role.Admin)
   @Permissions(Permission.USERS_CREATE)
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(
+    @Body() createUserDto: CreateUserDto,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.usersService.create(createUserDto, user, {
+      ip: this.getRequestIp(request),
+      userAgent: this.getUserAgent(request),
+    });
   }
 
   @Get()
@@ -53,8 +74,12 @@ export class UsersController {
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
     @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
   ) {
-    return this.usersService.update(+id, updateUserDto, user);
+    return this.usersService.update(+id, updateUserDto, user, {
+      ip: this.getRequestIp(request),
+      userAgent: this.getUserAgent(request),
+    });
   }
 
   @Patch(':id/permissions')
@@ -63,21 +88,41 @@ export class UsersController {
   updateCustomPermissions(
     @Param('id') id: string,
     @Body() dto: UpdateUserPermissionsDto,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
   ) {
-    return this.usersService.updateCustomPermissions(+id, dto.permissions);
+    return this.usersService.updateCustomPermissions(+id, dto.permissions, user, {
+      ip: this.getRequestIp(request),
+      userAgent: this.getUserAgent(request),
+    });
   }
 
   @Delete(':id')
   @Permissions(Permission.USERS_DELETE)
   @Policies(new UserScopePolicy())
-  remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
-    return this.usersService.remove(+id, user);
+  remove(
+    @Param('id') id: string,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.usersService.remove(+id, user, {
+      ip: this.getRequestIp(request),
+      userAgent: this.getUserAgent(request),
+    });
   }
 
   @Patch(':id/active')
   @Roles(Role.Admin)
   @Permissions(Permission.USERS_UPDATE)
-  setActive(@Param('id') id: string, @Body() dto: SetUserActiveDto) {
-    return this.usersService.setActive(+id, dto.isActive);
+  setActive(
+    @Param('id') id: string,
+    @Body() dto: SetUserActiveDto,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.usersService.setActive(+id, dto.isActive, user, {
+      ip: this.getRequestIp(request),
+      userAgent: this.getUserAgent(request),
+    });
   }
 }

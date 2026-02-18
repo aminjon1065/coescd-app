@@ -10,9 +10,11 @@
   - Cookie-based JWT (access + refresh)
   - `RolesGuard`, `PermissionsGuard`, `PoliciesGuard`
   - RBAC + базовый ABAC (scope по owner/department)
+  - DB-backed role permissions matrix (`/api/iam/authorization/matrix`)
   - CSRF (double-submit) для refresh/logout
   - Rate-limit/lockout для auth endpoints
   - Auth audit log (`auth_audit_logs`)
+  - User change audit log (`user_change_audit_logs`)
   - Session lifecycle: `change-password`, `logout-all-devices`, disable user
 - **Модули API**:
   - `users`, `department`, `task`, `document`, `analytics`, `files`
@@ -21,10 +23,11 @@
 - **Схема БД**:
   - `synchronize: false`
   - TypeORM migrations + CLI scripts
+  - bootstrap migration для пустой БД
 
 ### 🟡 В процессе
 
-- Полное покрытие миграциями всей текущей схемы (migration coverage audit)
+- Полное покрытие миграциями всей текущей схемы (migration coverage audit, baseline уже bootstrap-ом)
 - Полный unit test stabilization (`npm test`) для legacy spec-файлов с корректными DI-моками
 - Операционная финализация production runtime (compose/monitoring/backup runbook)
 
@@ -110,6 +113,10 @@
 - App Router, dashboard pages, auth context
 - Axios клиент с bearer + refresh
 - CSRF header для `refresh/logout`
+- Admin screens:
+  - Departments CRUD + chief assignment
+  - Access Control: role matrix editing + custom user permissions
+  - Audit Logs: auth/user/files unified feed
 
 ---
 

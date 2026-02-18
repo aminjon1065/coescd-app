@@ -24,7 +24,7 @@ import {
 import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { SafeUserDto } from './dto/safe-user.dto';
-import { resolveUserPermissions } from '../authorization/role-permissions.map';
+import { RolePermissionsService } from '../authorization/role-permissions.service';
 
 @Injectable()
 export class AuthenticationService {
@@ -35,6 +35,7 @@ export class AuthenticationService {
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof JwtConfig>,
     private readonly refreshTokenIdsStorage: RefreshTokenIdsStorage,
+    private readonly rolePermissionsService: RolePermissionsService,
   ) {}
 
   async signUp(signUpDto: SignUpDto) {
@@ -84,7 +85,7 @@ export class AuthenticationService {
   }
 
   async generateTokens(user: User) {
-    const effectivePermissions = resolveUserPermissions(
+    const effectivePermissions = this.rolePermissionsService.resolveUserPermissions(
       user.role,
       user.permissions,
     );
@@ -213,7 +214,10 @@ export class AuthenticationService {
 
   private toSafeUser(user: User): SafeUserDto {
     const safeUser = plainToInstance(SafeUserDto, user);
-    safeUser.permissions = resolveUserPermissions(user.role, user.permissions);
+    safeUser.permissions = this.rolePermissionsService.resolveUserPermissions(
+      user.role,
+      user.permissions,
+    );
     return safeUser;
   }
 

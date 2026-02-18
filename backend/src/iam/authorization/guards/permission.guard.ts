@@ -5,11 +5,14 @@ import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import { REQUEST_USER_KEY } from '../../iam.constants';
 import { PermissionType } from '../permission.type';
 import { PERMISSION_KEY } from '../decorators/permissions.decorator';
-import { resolveUserPermissions } from '../role-permissions.map';
+import { RolePermissionsService } from '../role-permissions.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly rolePermissionsService: RolePermissionsService,
+  ) {}
 
   canActivate(
     context: ExecutionContext,
@@ -23,7 +26,7 @@ export class PermissionsGuard implements CanActivate {
     const user: ActiveUserData = context.switchToHttp().getRequest()[
       REQUEST_USER_KEY
     ];
-    const effectivePermissions = resolveUserPermissions(
+    const effectivePermissions = this.rolePermissionsService.resolveUserPermissions(
       user.role,
       user.permissions,
     );

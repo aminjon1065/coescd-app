@@ -3,7 +3,7 @@ import { Permission, PermissionType } from './permission.type';
 
 const ALL_PERMISSIONS = Object.values(Permission) as PermissionType[];
 
-export const ROLE_PERMISSIONS: Record<Role, PermissionType[]> = {
+export const DEFAULT_ROLE_PERMISSIONS: Record<Role, PermissionType[]> = {
   [Role.Admin]: ALL_PERMISSIONS,
   [Role.Manager]: [
     Permission.USERS_READ,
@@ -32,7 +32,7 @@ export const ROLE_PERMISSIONS: Record<Role, PermissionType[]> = {
 };
 
 export function getRolePermissions(role: Role): PermissionType[] {
-  return ROLE_PERMISSIONS[role] ?? [];
+  return DEFAULT_ROLE_PERMISSIONS[role] ?? [];
 }
 
 export function resolveUserPermissions(

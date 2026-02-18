@@ -15,11 +15,17 @@ import { PermissionType } from '../iam/authorization/permission.type';
 import { ScopeService } from '../iam/authorization/scope.service';
 import { RefreshTokenIdsStorage } from '../iam/authentication/refresh-token-ids.storage/refresh-token-ids.storage';
 import { Department } from '../department/entities/department.entity';
+import {
+  UserChangeAuditAction,
+  UserChangeAuditLog,
+} from './entities/user-change-audit-log.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
+    @InjectRepository(UserChangeAuditLog)
+    private readonly userChangeAuditRepository: Repository<UserChangeAuditLog>,
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
     private readonly hashingService: HashingService,
@@ -27,7 +33,11 @@ export class UsersService {
     private readonly refreshTokenIdsStorage: RefreshTokenIdsStorage,
   ) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(
+    createUserDto: CreateUserDto,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
     const department = createUserDto.departmentId
       ? await this.departmentRepository.findOneBy({ id: createUserDto.departmentId })
       : null;
@@ -47,7 +57,20 @@ export class UsersService {
       password: await this.hashingService.hash(createUserDto.password),
       department: department ?? undefined,
     });
-    return this.userRepository.save(user);
+    const created = await this.userRepository.save(user);
+    await this.logUserChange({
+      action: 'user.create',
+      actorId: actor.sub,
+      targetUserId: created.id,
+      changes: {
+        email: created.email,
+        role: created.role,
+        departmentId: created.department?.id ?? null,
+      },
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+    });
+    return created;
   }
 
   async findAll(actor: ActiveUserData) {
@@ -104,7 +127,12 @@ export class UsersService {
     return user;
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto, actor: ActiveUserData) {
+  async update(
+    id: number,
+    updateUserDto: UpdateUserDto,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
     const user = await this.userRepository.findOne({
       where: { id },
       relations: { department: true },
@@ -113,6 +141,14 @@ export class UsersService {
       throw new NotFoundException(`User with id ${id} not found`);
     }
     this.scopeService.assertUserScope(actor, user);
+    const before = {
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      position: user.position,
+      role: user.role,
+      departmentId: user.department?.id ?? null,
+    };
 
     if (
       (updateUserDto.role !== undefined || updateUserDto.departmentId !== undefined) &&
@@ -149,10 +185,33 @@ export class UsersService {
     }
 
     await this.userRepository.save(user);
-    return this.findOne(id, actor);
+    const updated = await this.findOne(id, actor);
+    await this.logUserChange({
+      action: 'user.update',
+      actorId: actor.sub,
+      targetUserId: updated.id,
+      changes: {
+        before,
+        after: {
+          email: updated.email,
+          name: updated.name,
+          avatar: updated.avatar,
+          position: updated.position,
+          role: updated.role,
+          departmentId: updated.department?.id ?? null,
+        },
+      },
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+    });
+    return updated;
   }
 
-  async remove(id: number, actor: ActiveUserData) {
+  async remove(
+    id: number,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
     const user = await this.userRepository.findOne({
       where: { id },
       relations: { department: true },
@@ -161,29 +220,105 @@ export class UsersService {
       throw new NotFoundException(`User with id ${id} not found`);
     }
     this.scopeService.assertUserScope(actor, user);
-    return this.userRepository.remove(user);
+    await this.userRepository.remove(user);
+    await this.logUserChange({
+      action: 'user.delete',
+      actorId: actor.sub,
+      targetUserId: id,
+      changes: {
+        email: user.email,
+        role: user.role,
+      },
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+    });
+    return user;
   }
 
-  async updateCustomPermissions(id: number, permissions: PermissionType[]) {
+  async updateCustomPermissions(
+    id: number,
+    permissions: PermissionType[],
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
+    const before = [...(user.permissions ?? [])];
     user.permissions = permissions;
-    return this.userRepository.save(user);
+    const updated = await this.userRepository.save(user);
+    await this.logUserChange({
+      action: 'user.permissions.update',
+      actorId: actor.sub,
+      targetUserId: updated.id,
+      changes: {
+        before,
+        after: updated.permissions,
+      },
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+    });
+    return updated;
   }
 
-  async setActive(id: number, isActive: boolean) {
+  async setActive(
+    id: number,
+    isActive: boolean,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
+    const before = user.isActive;
     user.isActive = isActive;
     const updated = await this.userRepository.save(user);
     if (!isActive) {
       await this.refreshTokenIdsStorage.invalidate(id);
     }
+    await this.logUserChange({
+      action: 'user.active.update',
+      actorId: actor.sub,
+      targetUserId: updated.id,
+      changes: {
+        before,
+        after: updated.isActive,
+      },
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+    });
     return updated;
   }
 
+  private async logUserChange(params: {
+    action: UserChangeAuditAction;
+    actorId: number | null;
+    targetUserId: number | null;
+    changes: Record<string, unknown> | null;
+    ip: string | null;
+    userAgent: string | null;
+    reason?: string | null;
+  }): Promise<void> {
+    const [actor, targetUser] = await Promise.all([
+      params.actorId ? this.userRepository.findOneBy({ id: params.actorId }) : null,
+      params.targetUserId
+        ? this.userRepository.findOneBy({ id: params.targetUserId })
+        : null,
+    ]);
+
+    await this.userChangeAuditRepository.save(
+      this.userChangeAuditRepository.create({
+        action: params.action,
+        actor: actor ?? null,
+        targetUser: targetUser ?? null,
+        success: true,
+        changes: params.changes,
+        ip: params.ip,
+        userAgent: params.userAgent,
+        reason: params.reason ?? null,
+      }),
+    );
+  }
 }
