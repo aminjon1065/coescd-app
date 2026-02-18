@@ -25,10 +25,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const visibleRoutes = useMemo(
     () =>
       sideBarRoutes.filter((route) => {
-        if (!route.adminOnly) return true;
-        return user?.role === 'admin';
+        if (route.allowedRoles && (!user || !route.allowedRoles.includes(user.role))) {
+          return false;
+        }
+        if (
+          route.requiredAnyPermissions &&
+          route.requiredAnyPermissions.length > 0 &&
+          (!user?.permissions ||
+            !route.requiredAnyPermissions.some((permission) =>
+              user.permissions.includes(permission),
+            ))
+        ) {
+          return false;
+        }
+        return true;
       }),
-    [user?.role],
+    [user],
   );
 
   return (

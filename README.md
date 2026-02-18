@@ -153,6 +153,14 @@ npm run migration:revert
 ## 📚 Документация
 
 - `docs/architecture.md` — целевая архитектура
+- `docs/architecture/context-map.md` — bounded contexts и связи EDM/Tasks/Files/GIS/Analytics/IAM
+- `docs/architecture/permission-model.md` — RBAC + ABAC + delegation model
+- `docs/architecture/domain-workflows.md` — lifecycle/workflow модели доменов
+- `docs/architecture/data-model-v1.md` — целевая data model (PostgreSQL/PostGIS/Files/Analytics)
+- `docs/architecture/adr/ADR-001-modular-monolith.md` — архитектурное решение по deploy-модели
+- `docs/architecture/edm-functional-spec-v1.md` — бизнес-спека EDM v1 (routes/delegation/numbering/audit)
+- `docs/architecture/edm-schema-v1.md` — DB-схема EDM v1 (documents/routes/stages/actions/delegations)
+- `docs/architecture/edm-api-contract-v1.md` — API contract EDM v1 (commands/queries/errors)
 - `docs/rbac.md` — RBAC/ABAC и auth hardening
 - `docs/migrations.md` — процесс миграций
 - `docs/implementation-plan.md` — phased plan to production (`1 admin -> 200+ users`)

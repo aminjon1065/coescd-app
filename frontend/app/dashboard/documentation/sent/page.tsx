@@ -3,5 +3,11 @@
 import { DocumentTable } from '../components/document-table';
 
 export default function SentDocumentsPage() {
-  return <DocumentTable title="Исходящие документы" type="outgoing" defaultDocType="outgoing" />;
+  return (
+    <DocumentTable
+      title="Канцелярский журнал: исходящие"
+      presetType="outgoing"
+      defaultDocType="outgoing"
+    />
+  );
 }

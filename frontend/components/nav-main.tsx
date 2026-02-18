@@ -34,7 +34,6 @@ export function NavMain({
   }[]
 }) {
   const { state } = useSidebar();
-  console.log(state);
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Menu</SidebarGroupLabel>

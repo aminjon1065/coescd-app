@@ -16,13 +16,15 @@ import {
   ClipboardListIcon,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
+import { Role } from '@/enums/RoleEnum';
 
 export type SidebarRoute = {
   title: string;
   url: string;
   icon?: LucideIcon;
   isActive?: boolean;
-  adminOnly?: boolean;
+  allowedRoles?: Role[];
+  requiredAnyPermissions?: string[];
   items?: {
     title: string;
     url: string;
@@ -73,6 +75,11 @@ export const data = {
 
 export const sideBarRoutes: SidebarRoute[] = [
   {
+    title: 'Dashboard',
+    url: '/dashboard',
+    icon: PieChart,
+  },
+  {
     title: 'Analytics',
     url: '/dashboard/analytic',
     icon: FileChartColumnIcon,
@@ -110,29 +117,30 @@ export const sideBarRoutes: SidebarRoute[] = [
     title: 'GIS',
     url: '/dashboard/gis',
     icon: MapPinnedIcon,
+    requiredAnyPermissions: ['gis.write', 'analytics.write'],
   },
   {
-    title: 'Users',
+    title: 'Staff',
     url: '/dashboard/users',
     icon: UsersRoundIcon,
-    adminOnly: true,
+    allowedRoles: [Role.Admin, Role.Manager],
   },
   {
     title: 'Access Control',
     url: '/dashboard/access',
     icon: ShieldCheckIcon,
-    adminOnly: true,
+    allowedRoles: [Role.Admin],
   },
   {
     title: 'Departments',
     url: '/dashboard/departments',
     icon: Building2Icon,
-    adminOnly: true,
+    allowedRoles: [Role.Admin],
   },
   {
     title: 'Audit Logs',
     url: '/dashboard/audit-logs',
     icon: ClipboardListIcon,
-    adminOnly: true,
+    allowedRoles: [Role.Admin],
   },
 ];

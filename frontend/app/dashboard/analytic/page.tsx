@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,8 +15,10 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import api from '@/lib/axios';
+import axios from 'axios';
 import { IDisaster, DisasterSeverity, DisasterStatus } from '@/interfaces/IDisaster';
 import { ITask } from '@/interfaces/ITask';
+import { IDepartment } from '@/interfaces/IDepartment';
 import { AlertTriangleIcon, ActivityIcon, UsersIcon, SearchIcon } from 'lucide-react';
 import {
   BarChart,
@@ -38,6 +41,52 @@ interface Stats {
   totalDepartments: number;
   totalTasks: number;
   activeTasks: number;
+}
+
+interface EdmDashboardSummary {
+  asOf: string;
+  period: {
+    fromDate: string;
+    toDate: string;
+  };
+  kpis: {
+    totalRoutes: number;
+    finishedRoutes: number;
+    completionRate: number;
+    onTimeRate: number;
+    avgRouteHours: number;
+    totalOverdue: number;
+    totalActiveStages: number;
+    overdueLoadRate: number;
+  };
+  charts: {
+    slaByDepartment: Array<{
+      departmentId: number;
+      total: number;
+      finished: number;
+      onTime: number;
+      late: number;
+      avgHours: number;
+    }>;
+    overdueByDepartment: Array<{
+      departmentId: number;
+      total: number;
+    }>;
+    workloadByDepartment: Array<{
+      departmentId: number;
+      activeStages: number;
+      overdueStages: number;
+      documentsInRoute: number;
+    }>;
+    managerLoad: Array<{
+      userId: number;
+      name: string;
+      departmentId: number | null;
+      assignedStages: number;
+      overdueAssignedStages: number;
+      ownedDocumentsInRoute: number;
+    }>;
+  };
 }
 
 const severityLabel: Record<DisasterSeverity, string> = {
@@ -74,10 +123,19 @@ export default function AnalyticPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [disasters, setDisasters] = useState<IDisaster[]>([]);
   const [tasks, setTasks] = useState<ITask[]>([]);
+  const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<DisasterSeverity | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<DisasterStatus | 'all'>('all');
+  const [edmSummary, setEdmSummary] = useState<EdmDashboardSummary | null>(null);
+  const [edmLoading, setEdmLoading] = useState(false);
+  const [edmError, setEdmError] = useState<string | null>(null);
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return date.toISOString().slice(0, 10);
+  });
+  const [toDate, setToDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     if (!accessToken) return;
@@ -101,6 +159,96 @@ export default function AnalyticPage() {
 
     load();
   }, [accessToken]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const loadDepartments = async () => {
+      try {
+        const response = await api.get<IDepartment[]>('/department');
+        setDepartments(response.data);
+      } catch (error) {
+        console.error('Failed to load departments for analytics labels', error);
+      }
+    };
+
+    loadDepartments();
+  }, [accessToken]);
+
+  const departmentNameById = useMemo(
+    () =>
+      new Map<number, string>(
+        departments.map((department) => [department.id, department.name]),
+      ),
+    [departments],
+  );
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const loadEdmDashboard = async () => {
+      setEdmLoading(true);
+      setEdmError(null);
+      try {
+        const fromIso = new Date(`${fromDate}T00:00:00.000Z`).toISOString();
+        const toIso = new Date(`${toDate}T23:59:59.999Z`).toISOString();
+        const response = await api.get<EdmDashboardSummary>('/edm/reports/dashboard', {
+          params: {
+            fromDate: fromIso,
+            toDate: toIso,
+            topManagers: 10,
+          },
+        });
+        setEdmSummary(response.data);
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error) && error.response?.status === 403) {
+          setEdmSummary(null);
+          setEdmError('У вашей роли нет доступа к отчетам СЭД.');
+          return;
+        }
+        setEdmError('Не удалось загрузить отчетность СЭД.');
+      } finally {
+        setEdmLoading(false);
+      }
+    };
+
+    loadEdmDashboard();
+  }, [accessToken, fromDate, toDate]);
+
+  const downloadEdmReport = async (
+    reportType: 'sla' | 'overdue' | 'workload',
+    format: 'csv' | 'xlsx',
+  ) => {
+    try {
+      const fromIso = new Date(`${fromDate}T00:00:00.000Z`).toISOString();
+      const toIso = new Date(`${toDate}T23:59:59.999Z`).toISOString();
+      const endpoint =
+        format === 'csv'
+          ? `/edm/reports/${reportType}/export`
+          : `/edm/reports/${reportType}/export/xlsx`;
+      const response = await api.get(endpoint, {
+        params: { fromDate: fromIso, toDate: toIso },
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], {
+        type:
+          format === 'csv'
+            ? 'text/csv;charset=utf-8'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `edm-${reportType}-${new Date().toISOString().slice(0, 10)}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download EDM report', error);
+      setEdmError('Не удалось выгрузить отчет. Проверьте доступ и повторите.');
+    }
+  };
 
   const filteredDisasters = useMemo(
     () =>
@@ -142,6 +290,36 @@ export default function AnalyticPage() {
   const affectedPeopleTotal = useMemo(
     () => disasters.reduce((sum, d) => sum + (d.affectedPeople || 0), 0),
     [disasters],
+  );
+
+  const edmSlaByDepartmentChart = useMemo(
+    () =>
+      (edmSummary?.charts.slaByDepartment ?? []).map((row) => ({
+        name: departmentNameById.get(row.departmentId) ?? `Деп. ${row.departmentId}`,
+        completionRate: row.total > 0 ? Number(((row.finished / row.total) * 100).toFixed(2)) : 0,
+        onTimeRate: row.finished > 0 ? Number(((row.onTime / row.finished) * 100).toFixed(2)) : 0,
+      })),
+    [departmentNameById, edmSummary],
+  );
+
+  const edmWorkloadByDepartmentChart = useMemo(
+    () =>
+      (edmSummary?.charts.workloadByDepartment ?? []).map((row) => ({
+        name: departmentNameById.get(row.departmentId) ?? `Деп. ${row.departmentId}`,
+        activeStages: row.activeStages,
+        overdueStages: row.overdueStages,
+      })),
+    [departmentNameById, edmSummary],
+  );
+
+  const edmManagerLoadChart = useMemo(
+    () =>
+      (edmSummary?.charts.managerLoad ?? []).map((row) => ({
+        name: row.name,
+        assignedStages: row.assignedStages,
+        overdueAssignedStages: row.overdueAssignedStages,
+      })),
+    [edmSummary],
   );
 
   if (loading) {
@@ -302,6 +480,165 @@ export default function AnalyticPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Отчетность СЭД</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <Button
+              variant="outline"
+              onClick={() => downloadEdmReport('sla', 'csv')}
+              disabled={edmLoading}
+            >
+              SLA CSV
+            </Button>
+            <Button onClick={() => downloadEdmReport('sla', 'xlsx')} disabled={edmLoading}>
+              SLA XLSX
+            </Button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <Button
+              variant="outline"
+              onClick={() => downloadEdmReport('overdue', 'csv')}
+              disabled={edmLoading}
+            >
+              Просрочки CSV
+            </Button>
+            <Button onClick={() => downloadEdmReport('overdue', 'xlsx')} disabled={edmLoading}>
+              Просрочки XLSX
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => downloadEdmReport('workload', 'csv')}
+              disabled={edmLoading}
+            >
+              Нагрузка CSV
+            </Button>
+            <Button onClick={() => downloadEdmReport('workload', 'xlsx')} disabled={edmLoading}>
+              Нагрузка XLSX
+            </Button>
+          </div>
+
+          {edmLoading && <p className="text-sm text-muted-foreground">Загрузка отчётности СЭД...</p>}
+          {edmError && <p className="text-sm text-red-600">{edmError}</p>}
+
+          {edmSummary && (
+            <>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Маршруты</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{edmSummary.kpis.totalRoutes}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Завершено: {edmSummary.kpis.finishedRoutes}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">SLA</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{edmSummary.kpis.completionRate}%</p>
+                    <p className="text-xs text-muted-foreground">
+                      On-time: {edmSummary.kpis.onTimeRate}%
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Просрочки</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{edmSummary.kpis.totalOverdue}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Load overdue: {edmSummary.kpis.overdueLoadRate}%
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Среднее время</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{edmSummary.kpis.avgRouteHours} ч</p>
+                    <p className="text-xs text-muted-foreground">
+                      Активные этапы: {edmSummary.kpis.totalActiveStages}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>SLA по департаментам</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={edmSlaByDepartmentChart}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="completionRate" name="Completion %" fill="#0ea5e9" />
+                        <Bar dataKey="onTimeRate" name="On-time %" fill="#22c55e" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Нагрузка по департаментам</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={edmWorkloadByDepartmentChart}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="activeStages" name="Активные этапы" fill="#3b82f6" />
+                        <Bar dataKey="overdueStages" name="Просроченные этапы" fill="#ef4444" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Топ менеджеров по нагрузке</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={edmManagerLoadChart}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="assignedStages" name="Назначенные этапы" fill="#6366f1" />
+                      <Bar
+                        dataKey="overdueAssignedStages"
+                        name="Просроченные назначенные"
+                        fill="#f97316"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

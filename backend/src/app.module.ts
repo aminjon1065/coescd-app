@@ -11,12 +11,16 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { DocumentModule } from './document/document.module';
 import { FilesModule } from './files/files.module';
 import { OpsModule } from './ops/ops.module';
+import { EdmModule } from './edm/edm.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -43,8 +47,9 @@ import { OpsModule } from './ops/ops.module';
     DocumentModule,
     FilesModule,
     OpsModule,
+    EdmModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, EdmAlertsScheduler],
 })
 export class AppModule {}

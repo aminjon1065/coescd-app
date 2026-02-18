@@ -4,13 +4,16 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import axios, { setAccessToken as setAxiosAccessToken } from '@/lib/axios';
 import Loading from '@/app/loading';
+import { Role } from '@/enums/RoleEnum';
+import { IDepartment } from '@/interfaces/IDepartment';
 
 interface AuthUser {
+  id?: number;
   email: string;
   name: string;
-  role: string;
+  role: Role;
   permissions: string[];
-  department: object;
+  department?: IDepartment | null;
 }
 
 interface AuthContextType {

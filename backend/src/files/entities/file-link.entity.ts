@@ -9,7 +9,12 @@ import {
 import { FileEntity } from './file.entity';
 import { User } from '../../users/entities/user.entity';
 
-export type FileLinkResourceType = 'document' | 'task' | 'message' | 'report';
+export type FileLinkResourceType =
+  | 'document'
+  | 'edm_document'
+  | 'task'
+  | 'message'
+  | 'report';
 
 @Entity('file_links')
 export class FileLinkEntity {

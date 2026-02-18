@@ -36,7 +36,7 @@ interface AuthUser {
   role: string;
   avatar?: string;
   permissions: string[];
-  department: object;
+  department?: object | null;
 }
 
 export function NavUser({

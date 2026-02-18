@@ -1,120 +1,130 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/context/auth-context';
+import api from '@/lib/axios';
+import { Role } from '@/enums/RoleEnum';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  AlertTriangleIcon,
   ActivityIcon,
-  UsersIcon,
-  BuildingIcon,
-  ListTodoIcon,
+  AlertTriangleIcon,
+  Building2Icon,
   ClipboardListIcon,
+  FileIcon,
+  ShieldCheckIcon,
+  UsersIcon,
 } from 'lucide-react';
-import api from '@/lib/axios';
-import { useAuth } from '@/context/auth-context';
-import Link from 'next/link';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import { extractListItems, ListResponse } from '@/lib/list-response';
 
-interface Stats {
-  totalDisasters: number;
-  activeDisasters: number;
-  totalUsers: number;
-  totalDepartments: number;
-  totalTasks: number;
-  activeTasks: number;
+type DashboardScope = 'global' | 'department' | 'self';
+
+interface DashboardResponse {
+  generatedAt: string;
+  scope: DashboardScope;
+  actor: {
+    userId: number;
+    role: Role;
+    departmentId: number | null;
+    isAnalyst: boolean;
+  };
+  widgets: {
+    tasks: {
+      total: number;
+      inProgress: number;
+      new: number;
+      completed: number;
+      assignedToMe: number;
+      createdByMe: number;
+    };
+    edm: {
+      documentsTotal: number;
+      documentsInRoute: number;
+      documentsDraft: number;
+      documentsArchived: number;
+      myUnreadAlerts: number;
+      myApprovals: number;
+      overdueStages: number;
+    };
+    admin?: {
+      totalUsers: number;
+      activeUsers: number;
+      totalDepartments: number;
+      activeFiles: number;
+      routeActiveTotal: number;
+    };
+    department?: {
+      departmentUsers: number;
+      departmentFiles: number;
+    };
+    analytics?: {
+      totalDisasters: number;
+      activeDisasters: number;
+      criticalDisasters: number;
+      monitoringDisasters: number;
+    };
+  };
 }
-
-interface Disaster {
-  id: number;
-  title: string;
-  severity: string;
-  status: string;
-  location: string;
-  createdAt: string;
-}
-
-interface Task {
-  id: number;
-  title: string;
-  status: string;
-}
-
-const severityColor: Record<string, string> = {
-  low: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  medium: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  high: 'bg-orange-500/15 text-orange-700 dark:text-orange-400',
-  critical: 'bg-red-500/15 text-red-700 dark:text-red-400',
-};
-
-const statusColor: Record<string, string> = {
-  active: 'bg-red-500/15 text-red-700 dark:text-red-400',
-  monitoring: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  resolved: 'bg-green-500/15 text-green-700 dark:text-green-400',
-};
-
-const TASK_COLORS = ['#3b82f6', '#f59e0b', '#22c55e'];
 
 export default function DashboardPage() {
-  const { accessToken } = useAuth();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [disasters, setDisasters] = useState<Disaster[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const { accessToken, user } = useAuth();
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      return;
+    }
 
-    const fetchData = async () => {
+    const fetchDashboard = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const [statsRes, disastersRes, tasksRes] = await Promise.all([
-          api.get('/reports/stats'),
-          api.get<ListResponse<Disaster> | Disaster[]>('/disasters'),
-          api.get<ListResponse<Task> | Task[]>('/task'),
-        ]);
-        setStats(statsRes.data);
-        setDisasters(extractListItems(disastersRes.data).slice(0, 5));
-        setTasks(extractListItems(tasksRes.data));
+        const response = await api.get<DashboardResponse>('/reports/my-dashboard');
+        setDashboard(response.data);
       } catch (err) {
-        console.error('Failed to load dashboard data', err);
+        console.error('Failed to load role dashboard', err);
+        setError('Не удалось загрузить дашборд. Проверьте доступ и повторите.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    void fetchDashboard();
   }, [accessToken]);
 
-  const taskChartData = [
-    { name: 'Новые', value: tasks.filter((t) => t.status === 'new').length },
-    { name: 'В работе', value: tasks.filter((t) => t.status === 'in_progress').length },
-    { name: 'Завершены', value: tasks.filter((t) => t.status === 'completed').length },
-  ];
+  const headerTitle = useMemo(() => {
+    const role = dashboard?.actor.role ?? user?.role;
+    if (role === Role.Admin) {
+      return 'Админовский дашборд';
+    }
+    if (role === Role.Manager) {
+      return 'Дашборд руководителя отдела';
+    }
+    return dashboard?.actor.isAnalyst ? 'Дашборд аналитика' : 'Рабочий дашборд сотрудника';
+  }, [dashboard?.actor.isAnalyst, dashboard?.actor.role, user?.role]);
 
-  const disasterChartData = [
-    { name: 'Активные', count: stats?.activeDisasters ?? 0 },
-    { name: 'Всего', count: stats?.totalDisasters ?? 0 },
-  ];
+  const scopeLabel = useMemo(() => {
+    if (!dashboard) {
+      return '';
+    }
+    if (dashboard.scope === 'global') {
+      return 'Глобальный контур';
+    }
+    if (dashboard.scope === 'department') {
+      return 'Контур департамента';
+    }
+    return 'Личный контур';
+  }, [dashboard]);
 
   if (loading) {
     return (
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <Card key={i}>
               <CardHeader className="pb-2">
                 <Skeleton className="h-4 w-24" />
@@ -125,186 +135,257 @@ export default function DashboardPage() {
             </Card>
           ))}
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardContent>
-              <Skeleton className="h-48" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent>
-              <Skeleton className="h-48" />
-            </CardContent>
-          </Card>
-        </div>
       </div>
+    );
+  }
+
+  if (error || !dashboard) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Дашборд</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-red-600">{error ?? 'Данные недоступны'}</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Stats Cards */}
+      <Card>
+        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <CardTitle>{headerTitle}</CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">{scopeLabel}</Badge>
+            {dashboard.actor.isAnalyst ? <Badge variant="outline">Analyst</Badge> : null}
+          </div>
+        </CardHeader>
+        <CardContent className="text-xs text-muted-foreground">
+          Обновлено: {new Date(dashboard.generatedAt).toLocaleString()}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Всего ЧС</CardTitle>
-            <AlertTriangleIcon className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm">Мои задачи</CardTitle>
+            <ClipboardListIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalDisasters ?? 0}</div>
+            <div className="text-2xl font-bold">{dashboard.widgets.tasks.assignedToMe}</div>
             <p className="text-xs text-muted-foreground">
-              Активных: {stats?.activeDisasters ?? 0}
+              В работе: {dashboard.widgets.tasks.inProgress}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Активные инциденты</CardTitle>
+            <CardTitle className="text-sm">Документы в маршруте</CardTitle>
+            <FileIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboard.widgets.edm.documentsInRoute}</div>
+            <p className="text-xs text-muted-foreground">
+              Черновики: {dashboard.widgets.edm.documentsDraft}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm">Мои согласования</CardTitle>
             <ActivityIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeDisasters ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Требуют внимания</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Пользователи</CardTitle>
-            <UsersIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalUsers ?? 0}</div>
+            <div className="text-2xl font-bold">{dashboard.widgets.edm.myApprovals}</div>
             <p className="text-xs text-muted-foreground">
-              Отделов: {stats?.totalDepartments ?? 0}
+              Непрочитанные алерты: {dashboard.widgets.edm.myUnreadAlerts}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Задачи</CardTitle>
-            <ListTodoIcon className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm">Просрочки</CardTitle>
+            <AlertTriangleIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalTasks ?? 0}</div>
-            <p className="text-xs text-muted-foreground">
-              В работе: {stats?.activeTasks ?? 0}
-            </p>
+            <div className="text-2xl font-bold">{dashboard.widgets.edm.overdueStages}</div>
+            <p className="text-xs text-muted-foreground">Этапы с превышенным сроком</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Статистика ЧС</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={disasterChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Задачи по статусу</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={taskChartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
-                  {taskChartData.map((_, index) => (
-                    <Cell key={index} fill={TASK_COLORS[index]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+      {dashboard.widgets.department ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Сотрудники департамента</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.department.departmentUsers}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Файлы департамента</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.department.departmentFiles}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
-      {/* Recent Disasters & Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Последние ЧС</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {disasters.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Нет зарегистрированных ЧС</p>
-            ) : (
-              <div className="space-y-3">
-                {disasters.map((d) => (
-                  <div
-                    key={d.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{d.title}</p>
-                      <p className="text-xs text-muted-foreground">{d.location}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={severityColor[d.severity]} variant="outline">
-                        {d.severity}
-                      </Badge>
-                      <Badge className={statusColor[d.status]} variant="outline">
-                        {d.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Быстрые действия</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+      {dashboard.widgets.admin ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Пользователи</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.admin.totalUsers}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Активные пользователи</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.admin.activeUsers}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Департаменты</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.admin.totalDepartments}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Активные файлы</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.admin.activeFiles}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Активные маршруты</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.admin.routeActiveTotal}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {dashboard.widgets.analytics ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">ЧС всего</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.analytics.totalDisasters}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">ЧС активные</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.analytics.activeDisasters}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Критические ЧС</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.analytics.criticalDisasters}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Мониторинг</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">
+              {dashboard.widgets.analytics.monitoringDisasters}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Быстрые действия</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+          <Button asChild className="w-full justify-start" variant="outline">
+            <Link href="/dashboard/documentation">
+              <FileIcon className="mr-2 h-4 w-4" />
+              СЭД документы
+            </Link>
+          </Button>
+          <Button asChild className="w-full justify-start" variant="outline">
+            <Link href="/dashboard/tasks">
+              <ClipboardListIcon className="mr-2 h-4 w-4" />
+              Задачи
+            </Link>
+          </Button>
+          <Button asChild className="w-full justify-start" variant="outline">
+            <Link href="/dashboard/files">
+              <Building2Icon className="mr-2 h-4 w-4" />
+              Файлы
+            </Link>
+          </Button>
+          <Button asChild className="w-full justify-start" variant="outline">
+            <Link href="/dashboard/analytic">
+              <ActivityIcon className="mr-2 h-4 w-4" />
+              Аналитика
+            </Link>
+          </Button>
+
+          {dashboard.actor.role === Role.Manager || dashboard.actor.role === Role.Admin ? (
             <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/tasks">
-                <ClipboardListIcon className="mr-2 h-4 w-4" />
-                Задачи
+              <Link href="/dashboard/users">
+                <UsersIcon className="mr-2 h-4 w-4" />
+                Работники
               </Link>
             </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/documentation">
-                <BuildingIcon className="mr-2 h-4 w-4" />
-                Документы
-              </Link>
-            </Button>
+          ) : null}
+
+          {dashboard.actor.isAnalyst ? (
             <Button asChild className="w-full justify-start" variant="outline">
               <Link href="/dashboard/gis">
-                <ActivityIcon className="mr-2 h-4 w-4" />
+                <AlertTriangleIcon className="mr-2 h-4 w-4" />
                 Карта ЧС
               </Link>
             </Button>
+          ) : null}
+
+          {dashboard.actor.role === Role.Admin ? (
             <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/analytic">
-                <AlertTriangleIcon className="mr-2 h-4 w-4" />
-                Аналитика
+              <Link href="/dashboard/access">
+                <ShieldCheckIcon className="mr-2 h-4 w-4" />
+                Доступы и роли
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+          ) : null}
+
+          {dashboard.actor.role === Role.Admin ? (
+            <Button asChild className="w-full justify-start" variant="outline">
+              <Link href="/dashboard/audit-logs">
+                <ShieldCheckIcon className="mr-2 h-4 w-4" />
+                Audit Logs
+              </Link>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }

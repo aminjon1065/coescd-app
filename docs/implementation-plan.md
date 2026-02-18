@@ -18,6 +18,18 @@ Out of scope for this plan:
 - Full microservice split.
 - Multi-region deployment and disaster-recovery architecture.
 
+## Architecture Baseline (v1)
+
+This implementation plan is grounded in the following architecture artifacts:
+- `docs/architecture/context-map.md`
+- `docs/architecture/permission-model.md`
+- `docs/architecture/domain-workflows.md`
+- `docs/architecture/data-model-v1.md`
+- `docs/architecture/adr/ADR-001-modular-monolith.md`
+- `docs/architecture/edm-functional-spec-v1.md`
+- `docs/architecture/edm-schema-v1.md`
+- `docs/architecture/edm-api-contract-v1.md`
+
 ## Release Strategy
 
 Rollout waves:
@@ -171,4 +183,3 @@ Core is considered ready when all are true:
 3. Database migrations fully represent active schema.
 4. Monitoring, alerting, backup, and restore are operational.
 5. Admin can manage user lifecycle at 200+ scale through supported UI/API flows.
-

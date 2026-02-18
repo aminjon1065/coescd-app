@@ -27,7 +27,7 @@ export class FileAttachmentsService {
   ) {}
 
   async listResourceFiles(params: {
-    resourceType: Extract<FileLinkResourceType, 'document' | 'task'>;
+    resourceType: Extract<FileLinkResourceType, 'document' | 'edm_document' | 'task'>;
     resourceId: number;
     actor: ActiveUserData;
   }): Promise<FileEntity[]> {
@@ -56,7 +56,7 @@ export class FileAttachmentsService {
   }
 
   async linkResourceFile(params: {
-    resourceType: Extract<FileLinkResourceType, 'document' | 'task'>;
+    resourceType: Extract<FileLinkResourceType, 'document' | 'edm_document' | 'task'>;
     resourceId: number;
     file: FileEntity;
     actor: ActiveUserData;
@@ -108,7 +108,7 @@ export class FileAttachmentsService {
   }
 
   async unlinkResourceFile(params: {
-    resourceType: Extract<FileLinkResourceType, 'document' | 'task'>;
+    resourceType: Extract<FileLinkResourceType, 'document' | 'edm_document' | 'task'>;
     resourceId: number;
     file: FileEntity;
     actor: ActiveUserData;
