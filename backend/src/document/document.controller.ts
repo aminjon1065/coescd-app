@@ -13,12 +13,17 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
+import { Permission } from '../iam/authorization/permission.type';
+import { Policies } from '../iam/authorization/decorators/policies.decorator';
+import { DocumentScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
 
 @Controller('documents')
 export class DocumentController {
   constructor(private readonly documentService: DocumentService) {}
 
   @Post()
+  @Permissions(Permission.DOCUMENTS_CREATE)
   create(
     @Body() dto: CreateDocumentDto,
     @ActiveUser() user: ActiveUserData,
@@ -27,25 +32,38 @@ export class DocumentController {
   }
 
   @Get()
+  @Permissions(Permission.DOCUMENTS_READ)
+  @Policies(new DocumentScopePolicy())
   findAll(
+    @ActiveUser() user: ActiveUserData,
     @Query('type') type?: string,
     @Query('status') status?: string,
   ) {
-    return this.documentService.findAll(type, status);
+    return this.documentService.findAll(user, type, status);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.documentService.findOne(+id);
+  @Permissions(Permission.DOCUMENTS_READ)
+  @Policies(new DocumentScopePolicy())
+  findOne(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.documentService.findOne(+id, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateDocumentDto) {
-    return this.documentService.update(+id, dto);
+  @Permissions(Permission.DOCUMENTS_UPDATE)
+  @Policies(new DocumentScopePolicy())
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateDocumentDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.documentService.update(+id, dto, user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.documentService.remove(+id);
+  @Permissions(Permission.DOCUMENTS_DELETE)
+  @Policies(new DocumentScopePolicy())
+  remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.documentService.remove(+id, user);
   }
 }

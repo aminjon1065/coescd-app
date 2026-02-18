@@ -15,7 +15,9 @@ export class InValidatedRefreshTokenError extends Error {}
 export class RefreshTokenIdsStorage
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
-  private redisClient: Redis;
+  private redisClient?: Redis;
+  private readonly fallbackStore = new Map<string, string>();
+  private useInMemoryStore = false;
 
   constructor(
     private readonly configService: ConfigService,
@@ -24,6 +26,11 @@ export class RefreshTokenIdsStorage
   ) {}
 
   onApplicationBootstrap() {
+    this.useInMemoryStore =
+      this.configService.get<string>('REDIS_DISABLED', 'false') === 'true';
+    if (this.useInMemoryStore) {
+      return;
+    }
     this.redisClient = new Redis({
       host: this.configService.get<string>('REDIS_HOST', 'localhost'),
       port: Number(this.configService.get<string>('REDIS_PORT', '6379')),
@@ -32,16 +39,27 @@ export class RefreshTokenIdsStorage
   }
 
   onApplicationShutdown(signal?: string) {
-    return this.redisClient.quit();
+    if (this.redisClient) {
+      return this.redisClient.quit();
+    }
+    return Promise.resolve();
   }
 
   async insert(userId: number, tokenId: string): Promise<void> {
+    const key = this.getKey(userId);
+    if (this.useInMemoryStore) {
+      this.fallbackStore.set(key, tokenId);
+      return;
+    }
     const ttl = this.jwtConfiguration.refreshTokenTtl;
-    await this.redisClient.set(this.getKey(userId), tokenId, 'EX', ttl);
+    await this.redisClient?.set(key, tokenId, 'EX', ttl);
   }
 
   async validate(userId: number, tokenId: string): Promise<boolean> {
-    const storeId = await this.redisClient.get(this.getKey(userId));
+    const key = this.getKey(userId);
+    const storeId = this.useInMemoryStore
+      ? this.fallbackStore.get(key)
+      : await this.redisClient?.get(key);
     if (storeId !== tokenId) {
       throw new InValidatedRefreshTokenError();
     }
@@ -49,7 +67,12 @@ export class RefreshTokenIdsStorage
   }
 
   async invalidate(userId: number): Promise<void> {
-    await this.redisClient.del(this.getKey(userId));
+    const key = this.getKey(userId);
+    if (this.useInMemoryStore) {
+      this.fallbackStore.delete(key);
+      return;
+    }
+    await this.redisClient?.del(key);
   }
 
   private getKey(userId: number): string {

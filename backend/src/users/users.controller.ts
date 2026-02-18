@@ -18,6 +18,8 @@ import { Policies } from '../iam/authorization/decorators/policies.decorator';
 import { FrameworkContributorPolicy } from '../iam/authorization/policies/framework-contributor.policy';
 import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { Role } from './enums/role.enum';
+import { UserScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
+import { UpdateUserPermissionsDto } from './dto/update-user-permissions.dto';
 
 @Controller('users')
 export class UsersController {
@@ -34,23 +36,44 @@ export class UsersController {
   }
 
   @Get()
+  @Permissions(Permission.USERS_READ)
+  @Policies(new UserScopePolicy())
   findAll(@ActiveUser() user: ActiveUserData) {
-    console.log(user);
-    return this.usersService.findAll();
+    return this.usersService.findAll(user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  @Permissions(Permission.USERS_READ)
+  @Policies(new UserScopePolicy())
+  findOne(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.usersService.findOne(+id, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
+  @Permissions(Permission.USERS_UPDATE)
+  @Policies(new UserScopePolicy())
+  update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.usersService.update(+id, updateUserDto, user);
+  }
+
+  @Patch(':id/permissions')
+  @Roles(Role.Admin)
+  @Permissions(Permission.USERS_UPDATE)
+  updateCustomPermissions(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserPermissionsDto,
+  ) {
+    return this.usersService.updateCustomPermissions(+id, dto.permissions);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @Permissions(Permission.USERS_DELETE)
+  @Policies(new UserScopePolicy())
+  remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.usersService.remove(+id, user);
   }
 }

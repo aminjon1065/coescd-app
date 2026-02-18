@@ -33,7 +33,7 @@ export class PoliciesGuard implements CanActivate {
           const policyHandler = this.policyHandlersStorage.get(
             policy.constructor as Type,
           );
-          return policyHandler?.handle(policy, user);
+          return policyHandler?.handle(policy, user, context);
         }),
       ).catch((err) => {
         throw new ForbiddenException(err.message);

@@ -1,5 +1,5 @@
 import { Policy } from './interfaces/policy.interface';
-import { Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import { PolicyHandler } from './interfaces/policy-handler.interface';
 import { PolicyHandlersStorage } from './policy-handlers.storage';
@@ -19,6 +19,7 @@ export class FrameworkContributorPolicyHandler
   async handle(
     policy: FrameworkContributorPolicy,
     user: ActiveUserData,
+    context: ExecutionContext,
   ): Promise<void> {
     const isContributor = user.email.endsWith('@gmail.com');
     if (!isContributor) {

@@ -6,5 +6,6 @@ export interface ActiveUserData {
   email: string;
   name: string;
   role: Role;
+  departmentId?: number | null;
   permissions: PermissionType[];
 }

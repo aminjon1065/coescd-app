@@ -17,10 +17,19 @@ import { FrameworkContributorPolicyHandler } from './authorization/policies/fram
 import { PoliciesGuard } from './authorization/guards/policies.guard';
 import { RolesGuard } from './authorization/guards/roles.guard';
 import { PermissionsGuard } from './authorization/guards/permission.guard';
+import { Document } from '../document/entities/document.entity';
+import { Task } from '../task/entities/task.entity';
+import {
+  DocumentScopePolicyHandler,
+  TaskScopePolicyHandler,
+  UserScopePolicyHandler,
+} from './authorization/policies/resource-scope.policy';
+import { IamSeedService } from './seeds/iam-seed.service';
+import { ScopeService } from './authorization/scope.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Document, Task]),
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),
   ],
@@ -35,6 +44,11 @@ import { PermissionsGuard } from './authorization/guards/permission.guard';
     AuthenticationService,
     PolicyHandlersStorage,
     FrameworkContributorPolicyHandler,
+    UserScopePolicyHandler,
+    DocumentScopePolicyHandler,
+    TaskScopePolicyHandler,
+    IamSeedService,
+    ScopeService,
   ],
   controllers: [AuthenticationController],
 })

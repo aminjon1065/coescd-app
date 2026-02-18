@@ -70,3 +70,35 @@ Effective permissions are computed as:
 `effective = role_permissions U user.custom_permissions`
 
 This allows keeping a stable role baseline and adding targeted per-user exceptions without creating extra roles.
+
+## Admin API For Custom Permissions
+
+- `PATCH /api/users/:id/permissions`
+- Access: `admin` + `users.update`
+- Body:
+  - `permissions: Permission[]`
+
+## Seeded Users
+
+Run CLI seeding with:
+
+`npm run seed:iam`
+
+Seeding can be disabled with `IAM_SEED_ENABLED=false`.
+
+Default users:
+- `admin@coescd.local` (`admin123`) role `admin`
+- `manager@coescd.local` (`manager123`) role `manager`
+- `operator@coescd.local` (`operator123`) role `regular`
+
+## ABAC Scope Rules (Initial)
+
+- Admin: full access.
+- Manager:
+  - Users: only users in same department.
+  - Documents: own documents or department documents.
+  - Tasks: own tasks or tasks where creator/receiver is in same department.
+- Regular:
+  - Users: only self.
+  - Documents: only where sender/receiver is self.
+  - Tasks: only where creator/receiver is self.

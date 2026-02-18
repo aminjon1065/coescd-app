@@ -5,12 +5,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { HashingService } from '../iam/hashing/hashing.service';
+import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import { Role } from './enums/role.enum';
+import { PermissionType } from '../iam/authorization/permission.type';
+import { ScopeService } from '../iam/authorization/scope.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     private readonly hashingService: HashingService,
+    private readonly scopeService: ScopeService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -21,8 +26,34 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  findAll() {
+  async findAll(actor: ActiveUserData) {
+    if (actor.role === Role.Admin) {
+      return this.userRepository.find({
+        relations: {
+          department: {
+            parent: true,
+            chief: true,
+          },
+        },
+      });
+    }
+
+    if (actor.role === Role.Manager && actor.departmentId) {
+      return this.userRepository.find({
+        where: {
+          department: { id: actor.departmentId },
+        },
+        relations: {
+          department: {
+            parent: true,
+            chief: true,
+          },
+        },
+      });
+    }
+
     return this.userRepository.find({
+      where: { id: actor.sub },
       relations: {
         department: {
           parent: true,
@@ -32,8 +63,8 @@ export class UsersService {
     });
   }
 
-  async findOne(id: number) {
-    return this.userRepository.findOne({
+  async findOne(id: number, actor: ActiveUserData) {
+    const user = await this.userRepository.findOne({
       where: { id },
       relations: {
         department: {
@@ -42,18 +73,46 @@ export class UsersService {
         },
       },
     });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    this.scopeService.assertUserScope(actor, user);
+    return user;
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async update(id: number, updateUserDto: UpdateUserDto, actor: ActiveUserData) {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: { department: true },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    this.scopeService.assertUserScope(actor, user);
+
     await this.userRepository.update(id, updateUserDto);
-    return this.findOne(id);
+    return this.findOne(id, actor);
   }
 
-  async remove(id: number) {
+  async remove(id: number, actor: ActiveUserData) {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: { department: true },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    this.scopeService.assertUserScope(actor, user);
+    return this.userRepository.remove(user);
+  }
+
+  async updateCustomPermissions(id: number, permissions: PermissionType[]) {
     const user = await this.userRepository.findOneBy({ id });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
-    return this.userRepository.remove(user);
+    user.permissions = permissions;
+    return this.userRepository.save(user);
   }
+
 }

@@ -6,6 +6,9 @@ import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import { Role } from '../users/enums/role.enum';
+import { ScopeService } from '../iam/authorization/scope.service';
 
 @Injectable()
 export class DocumentService {
@@ -16,6 +19,7 @@ export class DocumentService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Department)
     private readonly departmentRepo: Repository<Department>,
+    private readonly scopeService: ScopeService,
   ) {}
 
   async create(dto: CreateDocumentDto, senderId: number): Promise<Document> {
@@ -47,30 +51,65 @@ export class DocumentService {
     return this.documentRepo.save(doc);
   }
 
-  async findAll(type?: string, status?: string): Promise<Document[]> {
-    const where: Record<string, string> = {};
-    if (type) where.type = type;
-    if (status) where.status = status;
+  async findAll(
+    actor: ActiveUserData,
+    type?: string,
+    status?: string,
+  ): Promise<Document[]> {
+    const qb = this.documentRepo
+      .createQueryBuilder('document')
+      .leftJoinAndSelect('document.sender', 'sender')
+      .leftJoinAndSelect('sender.department', 'senderDepartment')
+      .leftJoinAndSelect('document.receiver', 'receiver')
+      .leftJoinAndSelect('receiver.department', 'receiverDepartment')
+      .leftJoinAndSelect('document.department', 'department')
+      .orderBy('document.created_at', 'DESC');
 
-    return this.documentRepo.find({
-      where,
-      relations: ['sender', 'receiver', 'department'],
-      order: { createdAt: 'DESC' },
+    if (type) {
+      qb.andWhere('document.type = :type', { type });
+    }
+    if (status) {
+      qb.andWhere('document.status = :status', { status });
+    }
+
+    this.scopeService.applyDocumentScope(qb, actor, {
+      senderAlias: 'sender',
+      receiverAlias: 'receiver',
+      departmentAlias: 'department',
     });
+
+    return qb.getMany();
   }
 
-  async findOne(id: number): Promise<Document> {
+  async findOne(id: number, actor: ActiveUserData): Promise<Document> {
     const doc = await this.documentRepo.findOne({
       where: { id },
-      relations: ['sender', 'receiver', 'department'],
+      relations: {
+        sender: { department: true },
+        receiver: { department: true },
+        department: true,
+      },
     });
     if (!doc) throw new NotFoundException('Document not found');
+    this.scopeService.assertDocumentScope(actor, doc);
     return doc;
   }
 
-  async update(id: number, dto: UpdateDocumentDto): Promise<Document> {
-    const doc = await this.documentRepo.findOneBy({ id });
+  async update(
+    id: number,
+    dto: UpdateDocumentDto,
+    actor: ActiveUserData,
+  ): Promise<Document> {
+    const doc = await this.documentRepo.findOne({
+      where: { id },
+      relations: {
+        sender: { department: true },
+        receiver: { department: true },
+        department: true,
+      },
+    });
     if (!doc) throw new NotFoundException('Document not found');
+    this.scopeService.assertDocumentScope(actor, doc);
 
     if (dto.receiverId) {
       const receiver = await this.userRepo.findOneBy({ id: dto.receiverId });
@@ -94,8 +133,17 @@ export class DocumentService {
     return this.documentRepo.save(doc);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.documentRepo.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Document not found');
+  async remove(id: number, actor: ActiveUserData): Promise<void> {
+    const doc = await this.documentRepo.findOne({
+      where: { id },
+      relations: {
+        sender: true,
+        receiver: true,
+        department: true,
+      },
+    });
+    if (!doc) throw new NotFoundException('Document not found');
+    this.scopeService.assertDocumentScope(actor, doc);
+    await this.documentRepo.remove(doc);
   }
 }
