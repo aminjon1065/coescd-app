@@ -32,6 +32,8 @@ export class User {
   position: string;
   @Column({ default: false })
   isVerified: boolean;
+  @Column({ default: true })
+  isActive: boolean;
   @Column({ enum: Role, default: Role.Regular })
   role: Role;
   @Column({ enum: Permission, default: [], type: 'json' })

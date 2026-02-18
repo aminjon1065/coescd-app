@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   UnauthorizedException,
@@ -69,6 +70,9 @@ export class AuthenticationService {
     if (!user) {
       throw new UnauthorizedException('User does not exist');
     }
+    if (!user.isActive) {
+      throw new ForbiddenException('User is disabled');
+    }
     const isEqual = await this.hashingService.compare(
       signInDto.password,
       user.password,
@@ -127,6 +131,9 @@ export class AuthenticationService {
           },
         },
       });
+      if (!user.isActive) {
+        throw new ForbiddenException('User is disabled');
+      }
       const isValid = await this.refreshTokenIdsStorage.validate(
         user.id,
         refreshTokenId,
@@ -145,7 +152,7 @@ export class AuthenticationService {
     }
   }
 
-  async revokeRefreshToken(token: string): Promise<void> {
+  async revokeRefreshToken(token: string): Promise<number | null> {
     try {
       const { sub, refreshTokenId } = await this.jwtService.verifyAsync<
         Pick<ActiveUserData, 'sub'> & { refreshTokenId: string }
@@ -156,8 +163,10 @@ export class AuthenticationService {
       });
       await this.refreshTokenIdsStorage.validate(sub, refreshTokenId);
       await this.refreshTokenIdsStorage.invalidate(sub);
+      return sub;
     } catch {
       // No-op: invalid token should not leak details
+      return null;
     }
   }
 
@@ -172,6 +181,34 @@ export class AuthenticationService {
       },
     });
     return this.toSafeUser(user);
+  }
+
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new UnauthorizedException('User does not exist');
+    }
+    if (!user.isActive) {
+      throw new ForbiddenException('User is disabled');
+    }
+    const isEqual = await this.hashingService.compare(
+      currentPassword,
+      user.password,
+    );
+    if (!isEqual) {
+      throw new UnauthorizedException('Current password is invalid');
+    }
+    user.password = await this.hashingService.hash(newPassword);
+    await this.userRepository.save(user);
+    await this.refreshTokenIdsStorage.invalidate(user.id);
+  }
+
+  async logoutAllDevices(userId: number): Promise<void> {
+    await this.refreshTokenIdsStorage.invalidate(userId);
   }
 
   private toSafeUser(user: User): SafeUserDto {

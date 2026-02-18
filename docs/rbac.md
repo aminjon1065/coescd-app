@@ -78,6 +78,12 @@ This allows keeping a stable role baseline and adding targeted per-user exceptio
 - Body:
   - `permissions: Permission[]`
 
+Additional user lifecycle API:
+- `PATCH /api/users/:id/active`
+- Access: `admin` + `users.update`
+- Body:
+  - `isActive: boolean`
+
 ## Seeded Users
 
 Run CLI seeding with:
@@ -102,3 +108,27 @@ Default users:
   - Users: only self.
   - Documents: only where sender/receiver is self.
   - Tasks: only where creator/receiver is self.
+
+## Auth Hardening
+
+- CSRF double-submit protection:
+  - Server sets `csrfToken` cookie.
+  - Client sends `x-csrf-token` header for:
+    - `POST /api/authentication/refresh-tokens`
+    - `POST /api/authentication/logout`
+- Sign-in lockout:
+  - Failed attempts are tracked per `email + ip`.
+  - Lockout and attempt windows are configured via env vars.
+- Refresh endpoint rate limit:
+  - Attempts tracked per `ip`.
+- Auth audit log:
+  - Stored in `auth_audit_logs` table.
+  - Records `sign-in`, `refresh`, `logout` with success/failure metadata.
+
+Session lifecycle endpoints:
+- `POST /api/authentication/change-password`
+  - Requires bearer token.
+  - Revokes refresh sessions for the user.
+- `POST /api/authentication/logout-all-devices`
+  - Requires bearer token.
+  - Revokes all refresh sessions for the user.

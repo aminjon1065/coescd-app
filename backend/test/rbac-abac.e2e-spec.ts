@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import * as request from 'supertest';
 import * as bcrypt from 'bcrypt';
 import { newDb } from 'pg-mem';
+import * as cookieParser from 'cookie-parser';
 import { IamModule } from '../src/iam/iam.module';
 import { UsersModule } from '../src/users/users.module';
 import { DocumentModule } from '../src/document/document.module';
@@ -27,8 +28,6 @@ db.public.registerFunction({
   implementation: () => '14.0',
 });
 
-jest.mock('pg', () => db.adapters.createPg());
-
 describe('RBAC + ABAC (e2e)', () => {
   let app: INestApplication;
   let userRepo: Repository<User>;
@@ -40,6 +39,7 @@ describe('RBAC + ABAC (e2e)', () => {
   let managerDept1: User;
   let regularDept1: User;
   let regularDept2: User;
+  let lockoutUser: User;
   let taskDept2: Task;
   let documentDept2: Document;
 
@@ -53,22 +53,30 @@ describe('RBAC + ABAC (e2e)', () => {
     process.env.COOKIE_SAMESITE = 'lax';
     process.env.REDIS_DISABLED = 'true';
     process.env.IAM_SEED_ENABLED = 'false';
+    process.env.AUTH_SIGNIN_MAX_ATTEMPTS = '3';
+    process.env.AUTH_SIGNIN_WINDOW_SECONDS = '300';
+    process.env.AUTH_SIGNIN_LOCKOUT_SECONDS = '900';
+    process.env.AUTH_REFRESH_MAX_ATTEMPTS = '2';
+    process.env.AUTH_REFRESH_WINDOW_SECONDS = '60';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
         }),
-        TypeOrmModule.forRoot({
-          type: 'postgres',
-          host: 'localhost',
-          port: 5432,
-          username: 'test',
-          password: 'test',
-          database: 'test',
-          synchronize: true,
-          autoLoadEntities: true,
-          entities: [User, Department, Task, Document],
+        TypeOrmModule.forRootAsync({
+          useFactory: () => ({
+            type: 'postgres',
+            synchronize: true,
+            autoLoadEntities: true,
+            entities: [User, Department, Task, Document],
+          }),
+          dataSourceFactory: async (options) => {
+            const dataSource = db.adapters.createTypeormDataSource(
+              options as any,
+            );
+            return dataSource.initialize();
+          },
         }),
         IamModule,
         UsersModule,
@@ -78,6 +86,7 @@ describe('RBAC + ABAC (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(cookieParser());
     await app.init();
 
     userRepo = moduleFixture.get<Repository<User>>(getRepositoryToken(User));
@@ -154,6 +163,16 @@ describe('RBAC + ABAC (e2e)', () => {
         department: dept2,
       }),
     );
+    lockoutUser = await userRepo.save(
+      userRepo.create({
+        email: 'lockout@test.local',
+        password: regularPassword,
+        name: 'Lockout User',
+        role: Role.Regular,
+        permissions: [],
+        department: dept1,
+      }),
+    );
 
     await taskRepo.save(
       taskRepo.create({
@@ -202,6 +221,51 @@ describe('RBAC + ABAC (e2e)', () => {
       .send({ email, password })
       .expect(200);
     return response.body.accessToken as string;
+  }
+
+  function getCookieValue(setCookie: string[], name: string): string | null {
+    const target = setCookie.find((cookie) => cookie.startsWith(`${name}=`));
+    if (!target) {
+      return null;
+    }
+    return target.split(';')[0].split('=')[1] ?? null;
+  }
+
+  function normalizeSetCookieHeader(
+    setCookieHeader: string | string[] | undefined,
+  ): string[] {
+    if (!setCookieHeader) {
+      return [];
+    }
+    return Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+  }
+
+  function toCookieHeader(setCookie: string[]): string {
+    return setCookie.map((cookie) => cookie.split(';')[0]).join('; ');
+  }
+
+  async function signInWithSession(
+    email: string,
+    password: string,
+    ip?: string,
+  ): Promise<{ accessToken: string; csrfToken: string; cookieHeader: string }> {
+    let req = request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .send({ email, password });
+    if (ip) {
+      req = req.set('x-forwarded-for', ip);
+    }
+    const response = await req.expect(200);
+    const setCookie = normalizeSetCookieHeader(response.headers['set-cookie']);
+    const csrfToken = getCookieValue(setCookie, 'csrfToken');
+    if (!csrfToken) {
+      throw new Error('csrfToken cookie missing');
+    }
+    return {
+      accessToken: response.body.accessToken as string,
+      csrfToken,
+      cookieHeader: toCookieHeader(setCookie),
+    };
   }
 
   it('regular cannot update custom permissions', async () => {
@@ -306,5 +370,195 @@ describe('RBAC + ABAC (e2e)', () => {
       .get(`/task/${taskDept2.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
+  });
+
+  it('change-password revokes refresh sessions and old password', async () => {
+    const ip = '40.40.40.40';
+    const session = await signInWithSession(
+      'regular1@test.local',
+      'operator123',
+      ip,
+    );
+
+    await request(app.getHttpServer())
+      .post('/authentication/change-password')
+      .set('Authorization', `Bearer ${session.accessToken}`)
+      .send({
+        currentPassword: 'operator123',
+        newPassword: 'operator456',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', session.csrfToken)
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .send({ email: 'regular1@test.local', password: 'operator123' })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .send({ email: 'regular1@test.local', password: 'operator456' })
+      .expect(200);
+  });
+
+  it('logout-all-devices revokes refresh token', async () => {
+    const ip = '41.41.41.41';
+    const session = await signInWithSession('admin@test.local', 'admin123', ip);
+
+    await request(app.getHttpServer())
+      .post('/authentication/logout-all-devices')
+      .set('Authorization', `Bearer ${session.accessToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', session.csrfToken)
+      .expect(401);
+  });
+
+  it('disabled user cannot sign in and loses API access', async () => {
+    const regularSession = await signInWithSession(
+      'regular2@test.local',
+      'operator123',
+      '42.42.42.42',
+    );
+    const adminToken = await signIn('admin@test.local', 'admin123');
+
+    await request(app.getHttpServer())
+      .patch(`/users/${regularDept2.id}/active`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .send({ email: 'regular2@test.local', password: 'operator123' })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/task')
+      .set('Authorization', `Bearer ${regularSession.accessToken}`)
+      .expect(401);
+  });
+
+  it('rejects refresh without valid csrf token', async () => {
+    const ip = '30.30.30.30';
+    const session = await signInWithSession('admin@test.local', 'admin123', ip);
+
+    await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', 'invalid-token')
+      .expect(403);
+  });
+
+  it('allows refresh with valid csrf token', async () => {
+    const ip = '31.31.31.31';
+    const session = await signInWithSession('admin@test.local', 'admin123', ip);
+
+    await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', session.csrfToken)
+      .expect(200);
+  });
+
+  it('rejects logout without csrf and allows with csrf', async () => {
+    const session = await signInWithSession('admin@test.local', 'admin123');
+
+    await request(app.getHttpServer())
+      .post('/authentication/logout')
+      .set('Cookie', session.cookieHeader)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/authentication/logout')
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', session.csrfToken)
+      .expect(201);
+  });
+
+  it('locks sign-in after configured failed attempts', async () => {
+    const ip = '10.10.10.10';
+
+    await request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .set('x-forwarded-for', ip)
+      .send({ email: lockoutUser.email, password: 'wrong-password' })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .set('x-forwarded-for', ip)
+      .send({ email: lockoutUser.email, password: 'wrong-password' })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .set('x-forwarded-for', ip)
+      .send({ email: lockoutUser.email, password: 'wrong-password' })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/authentication/sign-in')
+      .set('x-forwarded-for', ip)
+      .send({ email: lockoutUser.email, password: 'operator123' })
+      .expect(429);
+  });
+
+  it('rate-limits refresh attempts per ip', async () => {
+    const ip = '20.20.20.20';
+    let session = await signInWithSession('admin@test.local', 'admin123', ip);
+
+    let refreshResponse = await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', session.csrfToken)
+      .expect(200);
+
+    let setCookie = normalizeSetCookieHeader(refreshResponse.headers['set-cookie']);
+    session = {
+      ...session,
+      csrfToken: getCookieValue(setCookie, 'csrfToken') ?? session.csrfToken,
+      cookieHeader: toCookieHeader(setCookie),
+    };
+
+    refreshResponse = await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', session.csrfToken)
+      .expect(200);
+
+    setCookie = normalizeSetCookieHeader(refreshResponse.headers['set-cookie']);
+    session = {
+      ...session,
+      csrfToken: getCookieValue(setCookie, 'csrfToken') ?? session.csrfToken,
+      cookieHeader: toCookieHeader(setCookie),
+    };
+
+    await request(app.getHttpServer())
+      .post('/authentication/refresh-tokens')
+      .set('x-forwarded-for', ip)
+      .set('Cookie', session.cookieHeader)
+      .set('x-csrf-token', session.csrfToken)
+      .expect(429);
   });
 });

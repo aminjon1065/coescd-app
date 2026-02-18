@@ -18,7 +18,12 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed:iam": "ts-node -r tsconfig-paths/register src/scripts/seed-iam.ts"
+    "seed:iam": "ts-node -r tsconfig-paths/register src/scripts/seed-iam.ts",
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts",
+    "migration:run": "npm run typeorm -- migration:run",
+    "migration:revert": "npm run typeorm -- migration:revert",
+    "migration:generate": "npm run typeorm -- migration:generate src/database/migrations/AutoMigration",
+    "migration:create": "npm run typeorm -- migration:create src/database/migrations/NewMigration"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -61,7 +66,6 @@
     "pg-mem": "^3.0.13",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
-    "sql.js": "^1.14.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",

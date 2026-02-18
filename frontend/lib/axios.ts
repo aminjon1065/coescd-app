@@ -2,6 +2,16 @@ import axios from 'axios';
 import { isBrowser } from '@/utils/isBrowser';
 
 let accessToken: string | null = null;
+
+const getCookie = (name: string): string | null => {
+  if (!isBrowser()) {
+    return null;
+  }
+  const match = document.cookie
+    .split('; ')
+    .find((part) => part.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.split('=')[1]) : null;
+};
 // функция для обновления токена
 const refreshToken = async () => {
   try {
@@ -28,6 +38,17 @@ api.interceptors.request.use(
   (config) => {
     if (accessToken && config.headers) {
       config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    if (config.headers && config.url) {
+      const needsCsrf =
+        config.url.includes('/authentication/refresh-tokens') ||
+        config.url.includes('/authentication/logout');
+      if (needsCsrf) {
+        const csrfToken = getCookie('csrfToken');
+        if (csrfToken) {
+          config.headers['x-csrf-token'] = csrfToken;
+        }
+      }
     }
     return config;
   },

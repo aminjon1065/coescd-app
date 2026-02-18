@@ -26,10 +26,13 @@ import {
 } from './authorization/policies/resource-scope.policy';
 import { IamSeedService } from './seeds/iam-seed.service';
 import { ScopeService } from './authorization/scope.service';
+import { AuthRateLimitService } from './authentication/auth-rate-limit.service';
+import { AuthAuditService } from './authentication/auth-audit.service';
+import { AuthAuditLog } from './authentication/entities/auth-audit-log.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Document, Task]),
+    TypeOrmModule.forFeature([User, Document, Task, AuthAuditLog]),
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),
   ],
@@ -49,7 +52,10 @@ import { ScopeService } from './authorization/scope.service';
     TaskScopePolicyHandler,
     IamSeedService,
     ScopeService,
+    AuthRateLimitService,
+    AuthAuditService,
   ],
+  exports: [RefreshTokenIdsStorage],
   controllers: [AuthenticationController],
 })
 export class IamModule {}

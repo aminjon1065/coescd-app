@@ -9,6 +9,7 @@ import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Role } from './enums/role.enum';
 import { PermissionType } from '../iam/authorization/permission.type';
 import { ScopeService } from '../iam/authorization/scope.service';
+import { RefreshTokenIdsStorage } from '../iam/authentication/refresh-token-ids.storage/refresh-token-ids.storage';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +17,7 @@ export class UsersService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     private readonly hashingService: HashingService,
     private readonly scopeService: ScopeService,
+    private readonly refreshTokenIdsStorage: RefreshTokenIdsStorage,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -113,6 +115,19 @@ export class UsersService {
     }
     user.permissions = permissions;
     return this.userRepository.save(user);
+  }
+
+  async setActive(id: number, isActive: boolean) {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    user.isActive = isActive;
+    const updated = await this.userRepository.save(user);
+    if (!isActive) {
+      await this.refreshTokenIdsStorage.invalidate(id);
+    }
+    return updated;
   }
 
 }

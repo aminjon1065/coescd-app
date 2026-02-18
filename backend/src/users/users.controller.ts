@@ -20,6 +20,7 @@ import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { Role } from './enums/role.enum';
 import { UserScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
 import { UpdateUserPermissionsDto } from './dto/update-user-permissions.dto';
+import { SetUserActiveDto } from './dto/set-user-active.dto';
 
 @Controller('users')
 export class UsersController {
@@ -75,5 +76,12 @@ export class UsersController {
   @Policies(new UserScopePolicy())
   remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
     return this.usersService.remove(+id, user);
+  }
+
+  @Patch(':id/active')
+  @Roles(Role.Admin)
+  @Permissions(Permission.USERS_UPDATE)
+  setActive(@Param('id') id: string, @Body() dto: SetUserActiveDto) {
+    return this.usersService.setActive(+id, dto.isActive);
   }
 }

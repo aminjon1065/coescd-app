@@ -6,6 +6,7 @@ export class SafeUserDto {
   id: number;
   name: string;
   email: string;
+  isActive: boolean;
   role: Role;
   permissions: PermissionType[];
   department?: Department;
