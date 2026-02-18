@@ -19,6 +19,10 @@ Run from `backend`:
 - `src/database/migrations/20260218170000-AuthHardeningSchema.ts`
   - adds `user.isActive`
   - creates `auth_audit_logs`
+- `src/database/migrations/20260218183000-FilesModuleSchema.ts`
+  - creates `files`
+  - creates `file_links`
+  - creates `file_access_audit`
 
 ## Production rollout
 

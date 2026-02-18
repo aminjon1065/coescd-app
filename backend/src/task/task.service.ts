@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task } from './entities/task.entity';
@@ -8,6 +12,9 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Permission } from '../iam/authorization/permission.type';
 import { ScopeService } from '../iam/authorization/scope.service';
+import { FileLinkEntity } from '../files/entities/file-link.entity';
+import { FileEntity } from '../files/entities/file.entity';
+import { FileAttachmentsService } from '../files/file-attachments.service';
 
 @Injectable()
 export class TaskService {
@@ -17,6 +24,7 @@ export class TaskService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly scopeService: ScopeService,
+    private readonly fileAttachmentsService: FileAttachmentsService,
   ) {}
 
   async create(dto: CreateTaskDto, creatorId: number): Promise<Task> {
@@ -105,5 +113,54 @@ export class TaskService {
     if (!task) throw new NotFoundException('Task not found');
     this.scopeService.assertTaskScope(actor, task);
     await this.taskRepo.remove(task);
+  }
+
+  async findTaskFiles(taskId: number, actor: ActiveUserData): Promise<FileEntity[]> {
+    await this.findOne(taskId, actor);
+    return this.fileAttachmentsService.listResourceFiles({
+      resourceType: 'task',
+      resourceId: taskId,
+      actor,
+    });
+  }
+
+  async linkFile(
+    taskId: number,
+    fileId: number,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ): Promise<FileLinkEntity> {
+    const [task, file] = await Promise.all([
+      this.findOne(taskId, actor),
+      this.fileAttachmentsService.findAttachableFile(fileId),
+    ]);
+    this.scopeService.assertTaskFileLinkScope(actor, task, file);
+    return this.fileAttachmentsService.linkResourceFile({
+      resourceType: 'task',
+      resourceId: taskId,
+      file,
+      actor,
+      requestMeta,
+    });
+  }
+
+  async unlinkFile(
+    taskId: number,
+    fileId: number,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ): Promise<{ unlinked: true }> {
+    const [task, file] = await Promise.all([
+      this.findOne(taskId, actor),
+      this.fileAttachmentsService.findAttachableFile(fileId),
+    ]);
+    this.scopeService.assertTaskFileLinkScope(actor, task, file);
+    return this.fileAttachmentsService.unlinkResourceFile({
+      resourceType: 'task',
+      resourceId: taskId,
+      file,
+      actor,
+      requestMeta,
+    });
   }
 }

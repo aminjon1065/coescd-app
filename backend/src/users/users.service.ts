@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,20 +14,38 @@ import { Role } from './enums/role.enum';
 import { PermissionType } from '../iam/authorization/permission.type';
 import { ScopeService } from '../iam/authorization/scope.service';
 import { RefreshTokenIdsStorage } from '../iam/authentication/refresh-token-ids.storage/refresh-token-ids.storage';
+import { Department } from '../department/entities/department.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
+    @InjectRepository(Department)
+    private readonly departmentRepository: Repository<Department>,
     private readonly hashingService: HashingService,
     private readonly scopeService: ScopeService,
     private readonly refreshTokenIdsStorage: RefreshTokenIdsStorage,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
+    const department = createUserDto.departmentId
+      ? await this.departmentRepository.findOneBy({ id: createUserDto.departmentId })
+      : null;
+
+    if (createUserDto.departmentId && !department) {
+      throw new NotFoundException(
+        `Department with id ${createUserDto.departmentId} not found`,
+      );
+    }
+
     const user = this.userRepository.create({
-      ...createUserDto,
+      email: createUserDto.email,
+      name: createUserDto.name,
+      avatar: createUserDto.avatar ?? null,
+      position: createUserDto.position ?? null,
+      role: createUserDto.role ?? Role.Regular,
       password: await this.hashingService.hash(createUserDto.password),
+      department: department ?? null,
     });
     return this.userRepository.save(user);
   }
@@ -92,7 +114,41 @@ export class UsersService {
     }
     this.scopeService.assertUserScope(actor, user);
 
-    await this.userRepository.update(id, updateUserDto);
+    if (
+      (updateUserDto.role !== undefined || updateUserDto.departmentId !== undefined) &&
+      actor.role !== Role.Admin
+    ) {
+      throw new ForbiddenException('Only admin can update role or department');
+    }
+
+    if (updateUserDto.email !== undefined) {
+      user.email = updateUserDto.email;
+    }
+    if (updateUserDto.name !== undefined) {
+      user.name = updateUserDto.name;
+    }
+    if (updateUserDto.avatar !== undefined) {
+      user.avatar = updateUserDto.avatar;
+    }
+    if (updateUserDto.position !== undefined) {
+      user.position = updateUserDto.position;
+    }
+    if (updateUserDto.role !== undefined) {
+      user.role = updateUserDto.role;
+    }
+    if (updateUserDto.departmentId !== undefined) {
+      const department = await this.departmentRepository.findOneBy({
+        id: updateUserDto.departmentId,
+      });
+      if (!department) {
+        throw new NotFoundException(
+          `Department with id ${updateUserDto.departmentId} not found`,
+        );
+      }
+      user.department = department;
+    }
+
+    await this.userRepository.save(user);
     return this.findOne(id, actor);
   }
 

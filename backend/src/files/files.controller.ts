@@ -26,6 +26,7 @@ import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
 import { getFilesRuntimeConfig } from './files.config';
+import { getRequestMeta } from '../common/http/request-meta.util';
 
 function createUploadInterceptorOptions() {
   const config = getFilesRuntimeConfig();
@@ -55,18 +56,6 @@ function createUploadInterceptorOptions() {
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
-  private getRequestIp(request: Request): string | null {
-    const xForwardedFor = request.headers['x-forwarded-for'];
-    if (typeof xForwardedFor === 'string' && xForwardedFor.length > 0) {
-      return xForwardedFor.split(',')[0].trim();
-    }
-    return request.ip ?? null;
-  }
-
-  private getUserAgent(request: Request): string | null {
-    return request.headers['user-agent'] ?? null;
-  }
-
   @Post('upload')
   @Permissions(Permission.FILES_WRITE)
   @UseInterceptors(FileInterceptor('file', createUploadInterceptorOptions()))
@@ -75,10 +64,7 @@ export class FilesController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.filesService.uploadFile(file, actor, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    return this.filesService.uploadFile(file, actor, getRequestMeta(request));
   }
 
   @Post('upload-url')
@@ -88,10 +74,11 @@ export class FilesController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.filesService.createPresignedUpload(dto, actor, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    return this.filesService.createPresignedUpload(
+      dto,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Post('upload-complete')
@@ -101,10 +88,11 @@ export class FilesController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.filesService.completePresignedUpload(dto, actor, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    return this.filesService.completePresignedUpload(
+      dto,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Get()
@@ -130,10 +118,11 @@ export class FilesController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const { file, stream } = await this.filesService.downloadFile(id, actor, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    const { file, stream } = await this.filesService.downloadFile(
+      id,
+      actor,
+      getRequestMeta(request),
+    );
     response.setHeader('Content-Type', file.mimeType);
     response.setHeader(
       'Content-Disposition',
@@ -149,10 +138,11 @@ export class FilesController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.filesService.createPresignedDownload(id, actor, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    return this.filesService.createPresignedDownload(
+      id,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Delete(':id')
@@ -162,10 +152,7 @@ export class FilesController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.filesService.softDelete(id, actor, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    return this.filesService.softDelete(id, actor, getRequestMeta(request));
   }
 
   @Post(':id/link')
@@ -176,9 +163,6 @@ export class FilesController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.filesService.createLink(id, dto, actor, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    return this.filesService.createLink(id, dto, actor, getRequestMeta(request));
   }
 }

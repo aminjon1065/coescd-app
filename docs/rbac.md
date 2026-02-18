@@ -108,6 +108,13 @@ Default users:
   - Users: only self.
   - Documents: only where sender/receiver is self.
   - Tasks: only where creator/receiver is self.
+  - Files: own files only.
+
+Files scope additions:
+- Admin:
+  - Files: full access.
+- Manager:
+  - Files: own files and files in own department.
 
 ## Auth Hardening
 
@@ -132,3 +139,52 @@ Session lifecycle endpoints:
 - `POST /api/authentication/logout-all-devices`
   - Requires bearer token.
   - Revokes all refresh sessions for the user.
+
+## Files Endpoints Access
+
+- `POST /api/files/upload`
+  - permission: `files.write`
+- `POST /api/files/upload-url`
+  - permission: `files.write`
+- `POST /api/files/upload-complete`
+  - permission: `files.write`
+- `GET /api/files`
+  - permission: `files.read`
+  - ABAC scoped list
+- `GET /api/files/:id`
+  - permission: `files.read`
+  - ABAC scoped object access
+- `GET /api/files/:id/download`
+  - permission: `files.read`
+  - ABAC scoped object access
+- `GET /api/files/:id/download-url`
+  - permission: `files.read`
+  - ABAC scoped object access
+- `DELETE /api/files/:id`
+  - permission: `files.delete`
+
+Document/task integrations:
+- `GET /api/documents/:id/files`
+  - permissions: `documents.read` + `files.read`
+- `POST /api/documents/:id/files/:fileId`
+  - permissions: `documents.update` + `files.write`
+- `DELETE /api/documents/:id/files/:fileId`
+  - permissions: `documents.update` + `files.write`
+- `GET /api/task/:id/files`
+  - permissions: `tasks.read` + `files.read`
+- `POST /api/task/:id/files/:fileId`
+  - permissions: `tasks.update` + `files.write`
+- `DELETE /api/task/:id/files/:fileId`
+  - permissions: `tasks.update` + `files.write`
+
+## E2E Coverage (Current)
+
+- `RBAC + ABAC (e2e)` covers:
+  - users/documents/tasks RBAC + ABAC matrix (`admin/manager/regular`)
+  - files permission checks (`files.read/files.write/files.delete` paths)
+  - files ABAC cross-department restrictions
+  - document/files link-list-unlink matrix
+  - task/files link-list-unlink matrix
+  - presigned flow (`upload-url -> upload-complete -> download-url`)
+  - upload limits and MIME whitelist validation
+  - file access audit creation for upload/download/delete

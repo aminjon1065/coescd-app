@@ -7,8 +7,10 @@ import { Department } from '../department/entities/department.entity';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
-import { Role } from '../users/enums/role.enum';
 import { ScopeService } from '../iam/authorization/scope.service';
+import { FileLinkEntity } from '../files/entities/file-link.entity';
+import { FileEntity } from '../files/entities/file.entity';
+import { FileAttachmentsService } from '../files/file-attachments.service';
 
 @Injectable()
 export class DocumentService {
@@ -20,6 +22,7 @@ export class DocumentService {
     @InjectRepository(Department)
     private readonly departmentRepo: Repository<Department>,
     private readonly scopeService: ScopeService,
+    private readonly fileAttachmentsService: FileAttachmentsService,
   ) {}
 
   async create(dto: CreateDocumentDto, senderId: number): Promise<Document> {
@@ -145,5 +148,57 @@ export class DocumentService {
     if (!doc) throw new NotFoundException('Document not found');
     this.scopeService.assertDocumentScope(actor, doc);
     await this.documentRepo.remove(doc);
+  }
+
+  async findDocumentFiles(
+    documentId: number,
+    actor: ActiveUserData,
+  ): Promise<FileEntity[]> {
+    await this.findOne(documentId, actor);
+    return this.fileAttachmentsService.listResourceFiles({
+      resourceType: 'document',
+      resourceId: documentId,
+      actor,
+    });
+  }
+
+  async linkFile(
+    documentId: number,
+    fileId: number,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ): Promise<FileLinkEntity> {
+    const [document, file] = await Promise.all([
+      this.findOne(documentId, actor),
+      this.fileAttachmentsService.findAttachableFile(fileId),
+    ]);
+    this.scopeService.assertDocumentFileLinkScope(actor, document, file);
+    return this.fileAttachmentsService.linkResourceFile({
+      resourceType: 'document',
+      resourceId: documentId,
+      file,
+      actor,
+      requestMeta,
+    });
+  }
+
+  async unlinkFile(
+    documentId: number,
+    fileId: number,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ): Promise<{ unlinked: true }> {
+    const [document, file] = await Promise.all([
+      this.findOne(documentId, actor),
+      this.fileAttachmentsService.findAttachableFile(fileId),
+    ]);
+    this.scopeService.assertDocumentFileLinkScope(actor, document, file);
+    return this.fileAttachmentsService.unlinkResourceFile({
+      resourceType: 'document',
+      resourceId: documentId,
+      file,
+      actor,
+      requestMeta,
+    });
   }
 }

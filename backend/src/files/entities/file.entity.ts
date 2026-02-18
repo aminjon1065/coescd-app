@@ -46,7 +46,7 @@ export class FileEntity {
   @Column({ default: 'active' })
   status: FileStatus;
 
-  @Column({ name: 'deleted_at', nullable: true })
+  @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })

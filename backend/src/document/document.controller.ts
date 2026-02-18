@@ -1,12 +1,14 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Body,
   Patch,
   Param,
-  Delete,
+  ParseIntPipe,
   Query,
+  Req,
 } from '@nestjs/common';
 import { DocumentService } from './document.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
@@ -17,6 +19,8 @@ import { Permissions } from '../iam/authorization/decorators/permissions.decorat
 import { Permission } from '../iam/authorization/permission.type';
 import { Policies } from '../iam/authorization/decorators/policies.decorator';
 import { DocumentScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
+import { Request } from 'express';
+import { getRequestMeta } from '../common/http/request-meta.util';
 
 @Controller('documents')
 export class DocumentController {
@@ -49,6 +53,45 @@ export class DocumentController {
     return this.documentService.findOne(+id, user);
   }
 
+  @Get(':id/files')
+  @Permissions(Permission.DOCUMENTS_READ, Permission.FILES_READ)
+  @Policies(new DocumentScopePolicy())
+  findDocumentFiles(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.documentService.findDocumentFiles(id, user);
+  }
+
+  @Post(':id/files/:fileId')
+  @Permissions(Permission.DOCUMENTS_UPDATE, Permission.FILES_WRITE)
+  @Policies(new DocumentScopePolicy())
+  linkFile(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.documentService.linkFile(id, fileId, user, getRequestMeta(request));
+  }
+
+  @Delete(':id/files/:fileId')
+  @Permissions(Permission.DOCUMENTS_UPDATE, Permission.FILES_WRITE)
+  @Policies(new DocumentScopePolicy())
+  unlinkFile(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.documentService.unlinkFile(
+      id,
+      fileId,
+      user,
+      getRequestMeta(request),
+    );
+  }
+
   @Patch(':id')
   @Permissions(Permission.DOCUMENTS_UPDATE)
   @Policies(new DocumentScopePolicy())
@@ -66,4 +109,5 @@ export class DocumentController {
   remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
     return this.documentService.remove(+id, user);
   }
+
 }

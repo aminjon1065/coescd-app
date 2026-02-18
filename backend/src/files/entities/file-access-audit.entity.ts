@@ -35,16 +35,16 @@ export class FileAccessAuditEntity {
   @Column()
   action: FileAuditAction;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   ip: string | null;
 
-  @Column({ name: 'user_agent', nullable: true })
+  @Column({ name: 'user_agent', type: 'varchar', nullable: true })
   userAgent: string | null;
 
   @Column({ default: false })
   success: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   reason: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

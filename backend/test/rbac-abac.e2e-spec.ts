@@ -17,6 +17,7 @@ import { Department } from '../src/department/entities/department.entity';
 import { Task } from '../src/task/entities/task.entity';
 import { Document } from '../src/document/entities/document.entity';
 import { FileEntity } from '../src/files/entities/file.entity';
+import { FileAccessAuditEntity } from '../src/files/entities/file-access-audit.entity';
 import { Role } from '../src/users/enums/role.enum';
 import { DepartmentEnum } from '../src/department/enums/department.enum';
 import { FilesStorageService } from '../src/files/storage/files-storage.service';
@@ -39,13 +40,16 @@ describe('RBAC + ABAC (e2e)', () => {
   let taskRepo: Repository<Task>;
   let documentRepo: Repository<Document>;
   let fileRepo: Repository<FileEntity>;
+  let fileAuditRepo: Repository<FileAccessAuditEntity>;
 
   let adminUser: User;
   let managerDept1: User;
   let regularDept1: User;
   let regularDept2: User;
   let lockoutUser: User;
+  let taskDept1: Task;
   let taskDept2: Task;
+  let documentDept1: Document;
   let documentDept2: Document;
   let fileDept2: FileEntity;
 
@@ -110,7 +114,8 @@ describe('RBAC + ABAC (e2e)', () => {
     process.env.AUTH_REFRESH_MAX_ATTEMPTS = '2';
     process.env.AUTH_REFRESH_WINDOW_SECONDS = '60';
     process.env.FILES_UPLOAD_MAX_BYTES = '1048576';
-    process.env.FILES_ALLOWED_MIME_TYPES = 'text/plain,application/pdf';
+    process.env.FILES_ALLOWED_MIME_TYPES =
+      'text/plain,application/pdf,application/octet-stream';
     process.env.FILES_PRESIGNED_ENABLED = 'true';
     process.env.FILES_PRESIGNED_UPLOAD_TTL_SECONDS = '120';
     process.env.FILES_PRESIGNED_DOWNLOAD_TTL_SECONDS = '90';
@@ -159,6 +164,9 @@ describe('RBAC + ABAC (e2e)', () => {
     );
     fileRepo = moduleFixture.get<Repository<FileEntity>>(
       getRepositoryToken(FileEntity),
+    );
+    fileAuditRepo = moduleFixture.get<Repository<FileAccessAuditEntity>>(
+      getRepositoryToken(FileAccessAuditEntity),
     );
 
     await seedTestData();
@@ -237,7 +245,7 @@ describe('RBAC + ABAC (e2e)', () => {
       }),
     );
 
-    await taskRepo.save(
+    taskDept1 = await taskRepo.save(
       taskRepo.create({
         title: 'Task dept1',
         description: 'Task for dept1',
@@ -254,7 +262,7 @@ describe('RBAC + ABAC (e2e)', () => {
       }),
     );
 
-    await documentRepo.save(
+    documentDept1 = await documentRepo.save(
       documentRepo.create({
         title: 'Doc dept1',
         description: 'Doc for dept1',
@@ -349,6 +357,39 @@ describe('RBAC + ABAC (e2e)', () => {
       csrfToken,
       cookieHeader: toCookieHeader(setCookie),
     };
+  }
+
+  async function createManagerOwnedFile(managerToken: string): Promise<number> {
+    const uploadUrlResponse = await request(app.getHttpServer())
+      .post('/files/upload-url')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        originalName: 'doc-link-file.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 21,
+      })
+      .expect(201);
+
+    const key: string = uploadUrlResponse.body.key;
+    const payload = Buffer.from('document link payload');
+    objectStore.set(key, {
+      body: payload,
+      mimeType: 'text/plain',
+    });
+
+    const completeResponse = await request(app.getHttpServer())
+      .post('/files/upload-complete')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        key,
+        originalName: 'doc-link-file.txt',
+        mimeType: 'text/plain',
+        sizeBytes: payload.byteLength,
+        checksumSha256: 'd'.repeat(64),
+      })
+      .expect(201);
+
+    return completeResponse.body.id as number;
   }
 
   it('regular cannot update custom permissions', async () => {
@@ -455,29 +496,46 @@ describe('RBAC + ABAC (e2e)', () => {
       .expect(200);
   });
 
-  it('files: manager can upload and regular cannot upload', async () => {
+  it('files: manager can request upload-url and regular cannot', async () => {
     const managerToken = await signIn('manager1@test.local', 'manager123');
     const regularToken = await signIn('regular1@test.local', 'operator123');
 
-    const uploadResponse = await request(app.getHttpServer())
-      .post('/files/upload')
+    const uploadUrlResponse = await request(app.getHttpServer())
+      .post('/files/upload-url')
       .set('Authorization', `Bearer ${managerToken}`)
-      .attach('file', Buffer.from('manager file payload'), {
-        filename: 'manager.txt',
-        contentType: 'text/plain',
+      .send({
+        originalName: 'manager.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 100,
       })
       .expect(201);
 
-    expect(uploadResponse.body.id).toBeDefined();
-    expect(uploadResponse.body.mimeType).toBe('text/plain');
+    expect(uploadUrlResponse.body.key).toBeDefined();
+    expect(uploadUrlResponse.body.uploadUrl).toContain('https://signed.test/upload/');
+
+    await request(app.getHttpServer())
+      .post('/files/upload-url')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .send({
+        originalName: 'regular.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 100,
+      })
+      .expect(403);
+  });
+
+  it('files: upload endpoint enforces permissions and payload validation', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const regularToken = await signIn('regular1@test.local', 'operator123');
+
+    await request(app.getHttpServer())
+      .post('/files/upload')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(400);
 
     await request(app.getHttpServer())
       .post('/files/upload')
       .set('Authorization', `Bearer ${regularToken}`)
-      .attach('file', Buffer.from('regular payload'), {
-        filename: 'regular.txt',
-        contentType: 'text/plain',
-      })
       .expect(403);
   });
 
@@ -548,7 +606,7 @@ describe('RBAC + ABAC (e2e)', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .send({
         originalName: 'bad.bin',
-        mimeType: 'application/octet-stream',
+        mimeType: 'image/gif',
         sizeBytes: 32,
       })
       .expect(400);
@@ -562,6 +620,273 @@ describe('RBAC + ABAC (e2e)', () => {
         sizeBytes: 2_000_000,
       })
       .expect(400);
+  });
+
+  it('documents/files: manager can link, list and unlink same-department file', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const fileId = await createManagerOwnedFile(managerToken);
+
+    await request(app.getHttpServer())
+      .post(`/documents/${documentDept1.id}/files/${fileId}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .set('x-forwarded-for', '61.61.61.61')
+      .set('user-agent', 'e2e-doc-file-link')
+      .expect(201);
+
+    const listAfterLink = await request(app.getHttpServer())
+      .get(`/documents/${documentDept1.id}/files`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(
+      listAfterLink.body.some((file: FileEntity) => file.id === fileId),
+    ).toBe(true);
+
+    await request(app.getHttpServer())
+      .delete(`/documents/${documentDept1.id}/files/${fileId}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .set('x-forwarded-for', '62.62.62.62')
+      .set('user-agent', 'e2e-doc-file-unlink')
+      .expect(200);
+
+    const listAfterUnlink = await request(app.getHttpServer())
+      .get(`/documents/${documentDept1.id}/files`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(
+      listAfterUnlink.body.some((file: FileEntity) => file.id === fileId),
+    ).toBe(false);
+
+    const audits = await fileAuditRepo.find({
+      where: {
+        file: { id: fileId },
+      },
+      relations: {
+        actor: true,
+      },
+    });
+    const linkAudit = audits.find(
+      (item) =>
+        item.action === 'link' &&
+        item.actor?.id === managerDept1.id &&
+        item.reason === `document:${documentDept1.id}`,
+    );
+    const unlinkAudit = audits.find(
+      (item) =>
+        item.action === 'unlink' &&
+        item.actor?.id === managerDept1.id &&
+        item.reason === `document:${documentDept1.id}`,
+    );
+
+    expect(linkAudit).toBeDefined();
+    expect(unlinkAudit).toBeDefined();
+  });
+
+  it('documents/files: regular cannot link files to documents', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const regularToken = await signIn('regular1@test.local', 'operator123');
+    const fileId = await createManagerOwnedFile(managerToken);
+
+    await request(app.getHttpServer())
+      .post(`/documents/${documentDept1.id}/files/${fileId}`)
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+  });
+
+  it('documents/files: manager is blocked cross-department, admin is allowed', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const adminToken = await signIn('admin@test.local', 'admin123');
+
+    await request(app.getHttpServer())
+      .post(`/documents/${documentDept2.id}/files/${fileDept2.id}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post(`/documents/${documentDept2.id}/files/${fileDept2.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(201);
+
+    const adminList = await request(app.getHttpServer())
+      .get(`/documents/${documentDept2.id}/files`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(
+      adminList.body.some((file: FileEntity) => file.id === fileDept2.id),
+    ).toBe(true);
+  });
+
+  it('task/files: manager can link, list and unlink same-department file', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const fileId = await createManagerOwnedFile(managerToken);
+
+    await request(app.getHttpServer())
+      .post(`/task/${taskDept1.id}/files/${fileId}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .set('x-forwarded-for', '71.71.71.71')
+      .set('user-agent', 'e2e-task-file-link')
+      .expect(201);
+
+    const listAfterLink = await request(app.getHttpServer())
+      .get(`/task/${taskDept1.id}/files`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(
+      listAfterLink.body.some((file: FileEntity) => file.id === fileId),
+    ).toBe(true);
+
+    await request(app.getHttpServer())
+      .delete(`/task/${taskDept1.id}/files/${fileId}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .set('x-forwarded-for', '72.72.72.72')
+      .set('user-agent', 'e2e-task-file-unlink')
+      .expect(200);
+
+    const listAfterUnlink = await request(app.getHttpServer())
+      .get(`/task/${taskDept1.id}/files`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(
+      listAfterUnlink.body.some((file: FileEntity) => file.id === fileId),
+    ).toBe(false);
+
+    const audits = await fileAuditRepo.find({
+      where: {
+        file: { id: fileId },
+      },
+      relations: {
+        actor: true,
+      },
+    });
+    const linkAudit = audits.find(
+      (item) =>
+        item.action === 'link' &&
+        item.actor?.id === managerDept1.id &&
+        item.reason === `task:${taskDept1.id}`,
+    );
+    const unlinkAudit = audits.find(
+      (item) =>
+        item.action === 'unlink' &&
+        item.actor?.id === managerDept1.id &&
+        item.reason === `task:${taskDept1.id}`,
+    );
+
+    expect(linkAudit).toBeDefined();
+    expect(unlinkAudit).toBeDefined();
+  });
+
+  it('task/files: regular cannot link files to tasks', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const regularToken = await signIn('regular1@test.local', 'operator123');
+    const fileId = await createManagerOwnedFile(managerToken);
+
+    await request(app.getHttpServer())
+      .post(`/task/${taskDept1.id}/files/${fileId}`)
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+  });
+
+  it('task/files: manager is blocked cross-department, admin is allowed', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const adminToken = await signIn('admin@test.local', 'admin123');
+
+    await request(app.getHttpServer())
+      .post(`/task/${taskDept2.id}/files/${fileDept2.id}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post(`/task/${taskDept2.id}/files/${fileDept2.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(201);
+
+    const adminList = await request(app.getHttpServer())
+      .get(`/task/${taskDept2.id}/files`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(
+      adminList.body.some((file: FileEntity) => file.id === fileDept2.id),
+    ).toBe(true);
+  });
+
+  it('files: creates audit entries for upload, download and delete', async () => {
+    const managerToken = await signIn('manager1@test.local', 'manager123');
+    const adminToken = await signIn('admin@test.local', 'admin123');
+
+    const uploadUrlResponse = await request(app.getHttpServer())
+      .post('/files/upload-url')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .set('x-forwarded-for', '55.55.55.55')
+      .set('user-agent', 'e2e-audit-upload')
+      .send({
+        originalName: 'audit.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 18,
+      })
+      .expect(201);
+
+    const key: string = uploadUrlResponse.body.key;
+    const auditPayload = Buffer.from('audit file content!');
+    objectStore.set(key, {
+      body: auditPayload,
+      mimeType: 'text/plain',
+    });
+
+    const completeResponse = await request(app.getHttpServer())
+      .post('/files/upload-complete')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .set('x-forwarded-for', '55.55.55.55')
+      .set('user-agent', 'e2e-audit-upload')
+      .send({
+        key,
+        originalName: 'audit.txt',
+        mimeType: 'text/plain',
+        sizeBytes: auditPayload.byteLength,
+        checksumSha256: 'c'.repeat(64),
+      })
+      .expect(201);
+
+    const fileId = completeResponse.body.id as number;
+
+    await request(app.getHttpServer())
+      .get(`/files/${fileId}/download`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .set('x-forwarded-for', '56.56.56.56')
+      .set('user-agent', 'e2e-audit-download')
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .delete(`/files/${fileId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-forwarded-for', '57.57.57.57')
+      .set('user-agent', 'e2e-audit-delete')
+      .expect(200);
+
+    const audits = await fileAuditRepo.find({
+      where: {
+        file: { id: fileId },
+      },
+      relations: {
+        actor: true,
+        file: true,
+      },
+    });
+
+    expect(audits.length).toBeGreaterThanOrEqual(3);
+    const uploadAudit = audits.find((item) => item.action === 'upload');
+    const downloadAudit = audits.find((item) => item.action === 'download');
+    const deleteAudit = audits.find((item) => item.action === 'delete');
+
+    expect(uploadAudit).toBeDefined();
+    expect(uploadAudit?.success).toBe(true);
+    expect(uploadAudit?.actor?.id).toBe(managerDept1.id);
+
+    expect(downloadAudit).toBeDefined();
+    expect(downloadAudit?.success).toBe(true);
+    expect(downloadAudit?.actor?.id).toBe(managerDept1.id);
+
+    expect(deleteAudit).toBeDefined();
+    expect(deleteAudit?.success).toBe(true);
+    expect(deleteAudit?.actor?.id).toBe(adminUser.id);
   });
 
   it('change-password revokes refresh sessions and old password', async () => {

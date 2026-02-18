@@ -6,11 +6,24 @@ import { Document } from './entities/document.entity';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
 import { ScopeService } from '../iam/authorization/scope.service';
+import { FileEntity } from '../files/entities/file.entity';
+import { FileLinkEntity } from '../files/entities/file-link.entity';
+import { FileAccessAuditEntity } from '../files/entities/file-access-audit.entity';
+import { FileAttachmentsService } from '../files/file-attachments.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Document, User, Department])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Document,
+      User,
+      Department,
+      FileEntity,
+      FileLinkEntity,
+      FileAccessAuditEntity,
+    ]),
+  ],
   controllers: [DocumentController],
-  providers: [DocumentService, ScopeService],
+  providers: [DocumentService, ScopeService, FileAttachmentsService],
   exports: [TypeOrmModule],
 })
 export class DocumentModule {}

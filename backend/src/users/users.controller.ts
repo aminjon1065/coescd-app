@@ -15,7 +15,6 @@ import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../iam/authorization/permission.type';
 import { Policies } from '../iam/authorization/decorators/policies.decorator';
-import { FrameworkContributorPolicy } from '../iam/authorization/policies/framework-contributor.policy';
 import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { Role } from './enums/role.enum';
 import { UserScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
@@ -28,9 +27,6 @@ export class UsersController {
 
   @Roles(Role.Admin)
   @Permissions(Permission.USERS_CREATE)
-  @Policies(
-    new FrameworkContributorPolicy() /** new MinAgePolicy(18), new OnlyAdminPolicy */,
-  )
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);

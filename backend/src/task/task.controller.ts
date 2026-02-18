@@ -1,11 +1,13 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Body,
   Patch,
   Param,
-  Delete,
+  ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -16,6 +18,8 @@ import { Permissions } from '../iam/authorization/decorators/permissions.decorat
 import { Permission } from '../iam/authorization/permission.type';
 import { Policies } from '../iam/authorization/decorators/policies.decorator';
 import { TaskScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
+import { Request } from 'express';
+import { getRequestMeta } from '../common/http/request-meta.util';
 
 @Controller('task')
 export class TaskController {
@@ -44,6 +48,40 @@ export class TaskController {
     return this.taskService.findOne(+id, user);
   }
 
+  @Get(':id/files')
+  @Permissions(Permission.TASKS_READ, Permission.FILES_READ)
+  @Policies(new TaskScopePolicy())
+  findTaskFiles(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.taskService.findTaskFiles(id, user);
+  }
+
+  @Post(':id/files/:fileId')
+  @Permissions(Permission.TASKS_UPDATE, Permission.FILES_WRITE)
+  @Policies(new TaskScopePolicy())
+  linkFile(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.taskService.linkFile(id, fileId, user, getRequestMeta(request));
+  }
+
+  @Delete(':id/files/:fileId')
+  @Permissions(Permission.TASKS_UPDATE, Permission.FILES_WRITE)
+  @Policies(new TaskScopePolicy())
+  unlinkFile(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.taskService.unlinkFile(id, fileId, user, getRequestMeta(request));
+  }
+
   @Patch(':id')
   @Permissions(Permission.TASKS_UPDATE)
   @Policies(new TaskScopePolicy())
@@ -61,4 +99,5 @@ export class TaskController {
   remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
     return this.taskService.remove(+id, user);
   }
+
 }

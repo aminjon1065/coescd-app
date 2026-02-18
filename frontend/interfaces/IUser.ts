@@ -8,6 +8,7 @@ export interface IUser {
   avatar?: string | null;
   position?: string | null;
   isVerified: boolean;
+  isActive: boolean;
   role: Role;
   permissions: string[];
   department?: IDepartment | null;

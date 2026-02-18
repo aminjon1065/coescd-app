@@ -95,6 +95,24 @@ export class ScopeService {
     throw new ForbiddenException('Forbidden by file scope');
   }
 
+  assertDocumentFileLinkScope(
+    actor: ActiveUserData,
+    document: Document,
+    file: FileEntity,
+  ): void {
+    this.assertDocumentScope(actor, document);
+    this.assertFileScope(actor, file);
+  }
+
+  assertTaskFileLinkScope(
+    actor: ActiveUserData,
+    task: Task,
+    file: FileEntity,
+  ): void {
+    this.assertTaskScope(actor, task);
+    this.assertFileScope(actor, file);
+  }
+
   applyFileScope(
     qb: SelectQueryBuilder<FileEntity>,
     actor: ActiveUserData,

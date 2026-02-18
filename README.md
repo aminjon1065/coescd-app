@@ -17,7 +17,7 @@
 - **Модули API**:
   - `users`, `department`, `task`, `document`, `analytics`, `files`
 - **Качество**:
-  - e2e матрица RBAC+ABAC+auth hardening
+  - e2e матрица RBAC+ABAC+auth hardening + files (presigned flow, limits, audit)
 - **Схема БД**:
   - `synchronize: false`
   - TypeORM migrations + CLI scripts
@@ -25,8 +25,8 @@
 ### 🟡 В процессе
 
 - Полное покрытие миграциями всей текущей схемы (migration coverage audit)
-- Приведение документации модулей к фактической реализации
-- `files` Phase 3: интеграция `file_links` с остальными доменами
+- Полный unit test stabilization (`npm test`) для legacy spec-файлов с корректными DI-моками
+- Операционная финализация production runtime (compose/monitoring/backup runbook)
 
 ### 🔜 Планируется
 
@@ -56,11 +56,19 @@
 
 - CRUD задач
 - RBAC + ABAC (owner/department scope)
+- attachment endpoints:
+  - `GET /api/task/:id/files`
+  - `POST /api/task/:id/files/:fileId`
+  - `DELETE /api/task/:id/files/:fileId`
 
 ### 4. `document`
 
 - CRUD документов (`incoming`, `outgoing`, `internal`)
 - RBAC + ABAC (owner/department scope)
+- attachment endpoints:
+  - `GET /api/documents/:id/files`
+  - `POST /api/documents/:id/files/:fileId`
+  - `DELETE /api/documents/:id/files/:fileId`
 
 ### 5. `analytics`
 
@@ -74,6 +82,26 @@
 - Опциональный presigned URL flow (`/files/upload-url`, `/files/upload-complete`, `/files/:id/download-url`)
 - MIME whitelist + upload size limits через env
 - RBAC + ABAC scope + file access audit
+- e2e покрытие: permission checks, ABAC cross-department, presigned flow, audit trail
+
+---
+
+## ✅ Core Readiness (MVP)
+
+- IAM/Auth hardening: done
+- RBAC + ABAC for users/documents/tasks/files: done
+- Files module MVP + domain integrations (`documents`, `task`): done
+- Core migrations for auth/files: done
+- E2E security/access matrix: done
+
+## ⚠️ Remaining Gaps To Production Core
+
+- Migration coverage audit for all existing schema objects
+- Legacy unit tests stabilization (`npm test`) to green
+- Production ops checklist:
+  - runtime compose baseline
+  - metrics/alerts
+  - backup/restore and incident runbook
 
 ---
 
@@ -121,3 +149,4 @@ npm run migration:revert
 - `docs/rbac.md` — RBAC/ABAC и auth hardening
 - `docs/migrations.md` — процесс миграций
 - `docs/files-module-plan.md` — план и архитектура модуля files
+- `docs/files-api.md` — API contract and examples for files module
