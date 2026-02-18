@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import axios from '@/lib/axios';
+import axios, { setAccessToken as setAxiosAccessToken } from '@/lib/axios';
 import Loading from '@/app/loading';
 
 interface AuthUser {
@@ -53,16 +53,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { user, accessToken } = res.data;
         setUser(user);
         setAccessToken(accessToken);
+        setAxiosAccessToken(accessToken);
         setLoading(false);
       } catch {
         setAccessToken(null);
         setUser(null);
+        setAxiosAccessToken(null);
         setLoading(false);
       }
     };
 
     initialize();
   }, []);
+
+  useEffect(() => {
+    setAxiosAccessToken(accessToken);
+  }, [accessToken]);
 
   useEffect(() => {
     const isPublic = PUBLIC_ROUTES.includes(pathname);
@@ -76,6 +82,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     setAccessToken(null);
     setUser(null);
+    setAxiosAccessToken(null);
+    axios.post('/authentication/logout').catch(() => {});
     router.push('/sign-in');
   };
   if (loading || (!user && !PUBLIC_ROUTES.includes(pathname))) {

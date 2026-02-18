@@ -24,7 +24,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Roles(Role.Admin)
-  @Permissions(Permission.CREATEUSER)
+  @Permissions(Permission.USERS_CREATE)
   @Policies(
     new FrameworkContributorPolicy() /** new MinAgePolicy(18), new OnlyAdminPolicy */,
   )

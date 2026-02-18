@@ -1,7 +1,30 @@
-import { UserPermission } from '../../users/users.remission';
+export enum Permission {
+  USERS_READ = 'users.read',
+  USERS_CREATE = 'users.create',
+  USERS_UPDATE = 'users.update',
+  USERS_DELETE = 'users.delete',
+  DEPARTMENTS_READ = 'departments.read',
+  DEPARTMENTS_CREATE = 'departments.create',
+  DEPARTMENTS_UPDATE = 'departments.update',
+  DEPARTMENTS_DELETE = 'departments.delete',
+  DOCUMENTS_READ = 'documents.read',
+  DOCUMENTS_CREATE = 'documents.create',
+  DOCUMENTS_UPDATE = 'documents.update',
+  DOCUMENTS_DELETE = 'documents.delete',
+  TASKS_READ = 'tasks.read',
+  TASKS_CREATE = 'tasks.create',
+  TASKS_UPDATE = 'tasks.update',
+  TASKS_DELETE = 'tasks.delete',
+  TASKS_ASSIGN = 'tasks.assign',
+  ANALYTICS_READ = 'analytics.read',
+  ANALYTICS_WRITE = 'analytics.write',
+  REPORTS_READ = 'reports.read',
+  REPORTS_GENERATE = 'reports.generate',
+  GIS_READ = 'gis.read',
+  GIS_WRITE = 'gis.write',
+  FILES_READ = 'files.read',
+  FILES_WRITE = 'files.write',
+  FILES_DELETE = 'files.delete',
+}
 
-export const Permission = {
-  ...UserPermission,
-};
-
-export type PermissionType = UserPermission;
+export type PermissionType = `${Permission}`;

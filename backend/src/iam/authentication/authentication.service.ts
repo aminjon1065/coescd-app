@@ -23,6 +23,7 @@ import {
 import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { SafeUserDto } from './dto/safe-user.dto';
+import { resolveUserPermissions } from '../authorization/role-permissions.map';
 
 @Injectable()
 export class AuthenticationService {
@@ -79,6 +80,10 @@ export class AuthenticationService {
   }
 
   async generateTokens(user: User) {
+    const effectivePermissions = resolveUserPermissions(
+      user.role,
+      user.permissions,
+    );
     const refreshTokenId = randomUUID();
     const [accessToken, refreshToken] = await Promise.all([
       this.signToken<Partial<ActiveUserData>>(
@@ -88,7 +93,7 @@ export class AuthenticationService {
           email: user.email,
           name: user.name,
           role: user.role,
-          permissions: user.permissions,
+          permissions: effectivePermissions,
         },
       ),
       this.signToken(user.id, this.jwtConfiguration.refreshTokenTtl, {
@@ -99,7 +104,7 @@ export class AuthenticationService {
     return {
       accessToken,
       refreshToken,
-      user: plainToInstance(SafeUserDto, user),
+      user: this.toSafeUser(user),
     };
   }
 
@@ -114,6 +119,12 @@ export class AuthenticationService {
       });
       const user = await this.userRepository.findOneOrFail({
         where: { id: sub },
+        relations: {
+          department: {
+            parent: true,
+            chief: true,
+          },
+        },
       });
       const isValid = await this.refreshTokenIdsStorage.validate(
         user.id,
@@ -131,6 +142,41 @@ export class AuthenticationService {
       }
       throw new UnauthorizedException('Refresh token failed');
     }
+  }
+
+  async revokeRefreshToken(token: string): Promise<void> {
+    try {
+      const { sub, refreshTokenId } = await this.jwtService.verifyAsync<
+        Pick<ActiveUserData, 'sub'> & { refreshTokenId: string }
+      >(token, {
+        secret: this.jwtConfiguration.secret,
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
+      });
+      await this.refreshTokenIdsStorage.validate(sub, refreshTokenId);
+      await this.refreshTokenIdsStorage.invalidate(sub);
+    } catch {
+      // No-op: invalid token should not leak details
+    }
+  }
+
+  async getUserById(userId: number) {
+    const user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
+      relations: {
+        department: {
+          parent: true,
+          chief: true,
+        },
+      },
+    });
+    return this.toSafeUser(user);
+  }
+
+  private toSafeUser(user: User): SafeUserDto {
+    const safeUser = plainToInstance(SafeUserDto, user);
+    safeUser.permissions = resolveUserPermissions(user.role, user.permissions);
+    return safeUser;
   }
 
   private async signToken<T extends object>(

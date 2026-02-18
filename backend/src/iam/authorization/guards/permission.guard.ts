@@ -5,6 +5,7 @@ import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import { REQUEST_USER_KEY } from '../../iam.constants';
 import { PermissionType } from '../permission.type';
 import { PERMISSION_KEY } from '../decorators/permissions.decorator';
+import { resolveUserPermissions } from '../role-permissions.map';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -22,8 +23,12 @@ export class PermissionsGuard implements CanActivate {
     const user: ActiveUserData = context.switchToHttp().getRequest()[
       REQUEST_USER_KEY
     ];
+    const effectivePermissions = resolveUserPermissions(
+      user.role,
+      user.permissions,
+    );
     return contextPermissions.every((permission) =>
-      user.permissions?.includes(permission),
+      effectivePermissions.includes(permission),
     );
   }
 }
