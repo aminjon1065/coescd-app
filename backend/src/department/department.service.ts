@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Department } from './entities/department.entity';
@@ -21,10 +21,16 @@ export class DepartmentService {
     const parent = dto.parentId
       ? await this.departmentRepository.findOneBy({ id: dto.parentId })
       : null;
+    if (dto.parentId && !parent) {
+      throw new NotFoundException('Parent department not found');
+    }
 
     const chief = dto.chiefId
       ? await this.userRepository.findOneBy({ id: dto.chiefId })
       : null;
+    if (dto.chiefId && !chief) {
+      throw new NotFoundException('Chief user not found');
+    }
 
     const department = new Department();
     department.name = dto.name;
@@ -73,16 +79,37 @@ export class DepartmentService {
       throw new NotFoundException('Department not found');
     }
 
-    if (dto.parentId) {
-      department.parent = await this.departmentRepository.findOneBy({
-        id: dto.parentId,
-      });
+    if (dto.parentId !== undefined) {
+      if (dto.parentId === null) {
+        department.parent = null;
+      } else {
+        if (dto.parentId === id) {
+          throw new BadRequestException(
+            'Department cannot be parent of itself',
+          );
+        }
+        const parent = await this.departmentRepository.findOneBy({
+          id: dto.parentId,
+        });
+        if (!parent) {
+          throw new NotFoundException('Parent department not found');
+        }
+        department.parent = parent;
+      }
     }
 
-    if (dto.chiefId) {
-      department.chief = await this.userRepository.findOneBy({
-        id: dto.chiefId,
-      });
+    if (dto.chiefId !== undefined) {
+      if (dto.chiefId === null) {
+        department.chief = null;
+      } else {
+        const chief = await this.userRepository.findOneBy({
+          id: dto.chiefId,
+        });
+        if (!chief) {
+          throw new NotFoundException('Chief user not found');
+        }
+        department.chief = chief;
+      }
     }
 
     department.name = dto.name ?? department.name;
