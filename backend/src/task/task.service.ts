@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Task } from './entities/task.entity';
 import { User } from '../users/entities/user.entity';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -15,6 +15,8 @@ import { ScopeService } from '../iam/authorization/scope.service';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
 import { FileEntity } from '../files/entities/file.entity';
 import { FileAttachmentsService } from '../files/file-attachments.service';
+import { GetTasksQueryDto } from './dto/get-tasks-query.dto';
+import { PaginatedResponse } from '../common/http/pagination-query.dto';
 
 @Injectable()
 export class TaskService {
@@ -43,14 +45,38 @@ export class TaskService {
     return this.taskRepo.save(task);
   }
 
-  async findAll(actor: ActiveUserData): Promise<Task[]> {
+  async findAll(
+    actor: ActiveUserData,
+    query: GetTasksQueryDto,
+  ): Promise<PaginatedResponse<Task>> {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
+    const offset = (page - 1) * limit;
+    const search = query.q?.toLowerCase();
+
     const qb = this.taskRepo
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.creator', 'creator')
       .leftJoinAndSelect('creator.department', 'creatorDepartment')
       .leftJoinAndSelect('task.receiver', 'receiver')
       .leftJoinAndSelect('receiver.department', 'receiverDepartment')
-      .orderBy('task.created_at', 'DESC');
+      .orderBy('task.createdAt', 'DESC');
+
+    if (query.status) {
+      qb.andWhere('task.status = :status', { status: query.status });
+    }
+
+    if (search) {
+      qb.andWhere(
+        new Brackets((scopeQb) => {
+          scopeQb
+            .where('LOWER(task.title) LIKE :q', { q: `%${search}%` })
+            .orWhere('LOWER(task.description) LIKE :q', {
+              q: `%${search}%`,
+            });
+        }),
+      );
+    }
 
     this.scopeService.applyTaskScope(qb, actor, {
       creatorAlias: 'creator',
@@ -59,7 +85,13 @@ export class TaskService {
       receiverDepartmentAlias: 'receiverDepartment',
     });
 
-    return qb.getMany();
+    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(id: number, actor: ActiveUserData): Promise<Task> {

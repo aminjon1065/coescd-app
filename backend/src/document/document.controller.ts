@@ -21,6 +21,7 @@ import { Policies } from '../iam/authorization/decorators/policies.decorator';
 import { DocumentScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
 import { Request } from 'express';
 import { getRequestMeta } from '../common/http/request-meta.util';
+import { GetDocumentsQueryDto } from './dto/get-documents-query.dto';
 
 @Controller('documents')
 export class DocumentController {
@@ -40,10 +41,9 @@ export class DocumentController {
   @Policies(new DocumentScopePolicy())
   findAll(
     @ActiveUser() user: ActiveUserData,
-    @Query('type') type?: string,
-    @Query('status') status?: string,
+    @Query() query: GetDocumentsQueryDto,
   ) {
-    return this.documentService.findAll(user, type, status);
+    return this.documentService.findAll(user, query);
   }
 
   @Get(':id')

@@ -1,0 +1,5 @@
+email,name,role,department_id,department_name,position,is_active,permissions,password
+jane.doe@example.com,Jane Doe,regular,1,,Operator,true,"tasks.read,documents.read,files.read",
+john.manager@example.com,John Manager,manager,,Operations,Department Manager,true,"users.read,tasks.assign,reports.read",
+sara.admin@example.com,Sara Admin,admin,1,,Platform Admin,true,"users.create,users.update,users.delete,departments.update",TempPass123!
+

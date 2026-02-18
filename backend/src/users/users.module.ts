@@ -9,10 +9,18 @@ import { ScopeService } from '../iam/authorization/scope.service';
 import { IamModule } from '../iam/iam.module';
 import { Department } from '../department/entities/department.entity';
 import { UserChangeAuditLog } from './entities/user-change-audit-log.entity';
+import { UsersBulkImportService } from './bulk-import/users-bulk-import.service';
+import { UsersBulkImportStorage } from './bulk-import/users-bulk-import.storage';
+import { BulkImportOperation } from './entities/bulk-import-operation.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Department, UserChangeAuditLog]),
+    TypeOrmModule.forFeature([
+      User,
+      Department,
+      UserChangeAuditLog,
+      BulkImportOperation,
+    ]),
     IamModule,
   ],
   controllers: [UsersController],
@@ -23,6 +31,8 @@ import { UserChangeAuditLog } from './entities/user-change-audit-log.entity';
       useClass: BcryptService,
     },
     ScopeService,
+    UsersBulkImportStorage,
+    UsersBulkImportService,
   ],
 })
 export class UsersModule {}

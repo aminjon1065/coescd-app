@@ -12,6 +12,7 @@ import { IDocument, DocumentStatus } from '@/interfaces/IDocument';
 import { CreateDocumentDialog } from './create-document-dialog';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { extractListItems, ListResponse } from '@/lib/list-response';
 
 const statusLabel: Record<DocumentStatus, string> = {
   draft: 'Черновик',
@@ -41,8 +42,8 @@ export function DocumentTable({ title, type, defaultDocType }: Props) {
 
   const fetchDocuments = async () => {
     try {
-      const res = await api.get('/documents', { params: { type } });
-      setDocuments(res.data);
+      const res = await api.get<ListResponse<IDocument> | IDocument[]>('/documents', { params: { type } });
+      setDocuments(extractListItems(res.data));
     } catch (err) {
       console.error('Failed to load documents', err);
     } finally {

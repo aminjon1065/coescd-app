@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import api from '@/lib/axios';
 import { IUser } from '@/interfaces/IUser';
+import { extractListItems, ListResponse } from '@/lib/list-response';
 
 interface Props {
   open: boolean;
@@ -36,7 +37,9 @@ export function CreateTaskDialog({ open, onOpenChange, onCreated }: Props) {
 
   useEffect(() => {
     if (open) {
-      api.get('/users').then((res) => setUsers(res.data));
+      api
+        .get<ListResponse<IUser> | IUser[]>('/users')
+        .then((res) => setUsers(extractListItems(res.data)));
     }
   }, [open]);
 

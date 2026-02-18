@@ -3,11 +3,17 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
   Req,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -22,10 +28,18 @@ import { UserScopePolicy } from '../iam/authorization/policies/resource-scope.po
 import { UpdateUserPermissionsDto } from './dto/update-user-permissions.dto';
 import { SetUserActiveDto } from './dto/set-user-active.dto';
 import { Request } from 'express';
+import { GetUsersQueryDto } from './dto/get-users-query.dto';
+import { BulkImportDryRunDto } from './dto/bulk-import-dry-run.dto';
+import { BulkImportApplyDto } from './dto/bulk-import-apply.dto';
+import { UsersBulkImportService } from './bulk-import/users-bulk-import.service';
+import { GetBulkImportOperationsQueryDto } from './dto/get-bulk-import-operations-query.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly usersBulkImportService: UsersBulkImportService,
+  ) {}
 
   private getRequestIp(request: Request): string {
     const xForwardedFor = request.headers['x-forwarded-for'];
@@ -56,8 +70,8 @@ export class UsersController {
   @Get()
   @Permissions(Permission.USERS_READ)
   @Policies(new UserScopePolicy())
-  findAll(@ActiveUser() user: ActiveUserData) {
-    return this.usersService.findAll(user);
+  findAll(@ActiveUser() user: ActiveUserData, @Query() query: GetUsersQueryDto) {
+    return this.usersService.findAll(user, query);
   }
 
   @Get(':id')
@@ -124,5 +138,39 @@ export class UsersController {
       ip: this.getRequestIp(request),
       userAgent: this.getUserAgent(request),
     });
+  }
+
+  @Post('bulk-import/dry-run')
+  @Roles(Role.Admin)
+  @Permissions(Permission.USERS_CREATE, Permission.USERS_UPDATE)
+  @UseInterceptors(FileInterceptor('file'))
+  dryRunBulkImport(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: BulkImportDryRunDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.usersBulkImportService.dryRun(file, dto, user);
+  }
+
+  @Post('bulk-import/apply')
+  @Roles(Role.Admin)
+  @Permissions(Permission.USERS_CREATE, Permission.USERS_UPDATE)
+  @HttpCode(HttpStatus.OK)
+  applyBulkImport(
+    @Body() dto: BulkImportApplyDto,
+    @ActiveUser() user: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.usersBulkImportService.apply(dto, user, {
+      ip: this.getRequestIp(request),
+      userAgent: this.getUserAgent(request),
+    });
+  }
+
+  @Get('bulk-import/operations')
+  @Roles(Role.Admin)
+  @Permissions(Permission.USERS_READ)
+  getBulkImportOperations(@Query() query: GetBulkImportOperationsQueryDto) {
+    return this.usersBulkImportService.getOperations(query);
   }
 }

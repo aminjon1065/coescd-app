@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Disaster } from './entities/disaster.entity';
 import { DisasterType } from '../disasterTypes/entities/disaster-type.entity';
 import { Department } from '../../department/entities/department.entity';
 import { CreateDisasterDto } from './dto/create-disaster.dto';
 import { UpdateDisasterDto } from './dto/update-disaster.dto';
+import { GetDisastersQueryDto } from './dto/get-disasters-query.dto';
+import { PaginatedResponse } from '../../common/http/pagination-query.dto';
 
 @Injectable()
 export class DisastersService {
@@ -46,11 +48,51 @@ export class DisastersService {
     return this.disasterRepo.save(disaster);
   }
 
-  async findAll(): Promise<Disaster[]> {
-    return this.disasterRepo.find({
-      relations: ['type', 'type.category', 'department'],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(query: GetDisastersQueryDto): Promise<PaginatedResponse<Disaster>> {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
+    const offset = (page - 1) * limit;
+    const search = query.q?.toLowerCase();
+
+    const qb = this.disasterRepo
+      .createQueryBuilder('disaster')
+      .leftJoinAndSelect('disaster.type', 'type')
+      .leftJoinAndSelect('type.category', 'category')
+      .leftJoinAndSelect('disaster.department', 'department')
+      .orderBy('disaster.createdAt', 'DESC');
+
+    if (query.status) {
+      qb.andWhere('disaster.status = :status', { status: query.status });
+    }
+    if (query.severity) {
+      qb.andWhere('disaster.severity = :severity', { severity: query.severity });
+    }
+    if (query.departmentId) {
+      qb.andWhere('department.id = :departmentId', {
+        departmentId: query.departmentId,
+      });
+    }
+    if (search) {
+      qb.andWhere(
+        new Brackets((scopeQb) => {
+          scopeQb
+            .where('LOWER(disaster.title) LIKE :q', {
+              q: `%${search}%`,
+            })
+            .orWhere('LOWER(disaster.location) LIKE :q', {
+              q: `%${search}%`,
+            });
+        }),
+      );
+    }
+
+    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(id: number): Promise<Disaster> {

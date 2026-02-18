@@ -28,6 +28,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { extractListItems, ListResponse } from '@/lib/list-response';
 
 interface Stats {
   totalDisasters: number;
@@ -82,12 +83,12 @@ export default function DashboardPage() {
       try {
         const [statsRes, disastersRes, tasksRes] = await Promise.all([
           api.get('/reports/stats'),
-          api.get('/disasters'),
-          api.get('/task'),
+          api.get<ListResponse<Disaster> | Disaster[]>('/disasters'),
+          api.get<ListResponse<Task> | Task[]>('/task'),
         ]);
         setStats(statsRes.data);
-        setDisasters(disastersRes.data.slice(0, 5));
-        setTasks(tasksRes.data);
+        setDisasters(extractListItems(disastersRes.data).slice(0, 5));
+        setTasks(extractListItems(tasksRes.data));
       } catch (err) {
         console.error('Failed to load dashboard data', err);
       } finally {

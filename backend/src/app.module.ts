@@ -10,6 +10,7 @@ import { TaskModule } from './task/task.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { DocumentModule } from './document/document.module';
 import { FilesModule } from './files/files.module';
+import { OpsModule } from './ops/ops.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { FilesModule } from './files/files.module';
     AnalyticsModule,
     DocumentModule,
     FilesModule,
+    OpsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { extractListItems, ListResponse } from '@/lib/list-response';
 
 const NONE_VALUE = '__none__';
 
@@ -73,11 +74,11 @@ export default function DepartmentsAdmin() {
   const loadData = async () => {
     const [departmentsRes, usersRes] = await Promise.all([
       api.get<IDepartment[]>('/department'),
-      api.get<IUser[]>('/users'),
+      api.get<ListResponse<IUser> | IUser[]>('/users'),
     ]);
 
     setDepartments(departmentsRes.data);
-    setUsers(usersRes.data);
+    setUsers(extractListItems(usersRes.data));
     setRowState((prev) => {
       const next = { ...prev };
       for (const department of departmentsRes.data) {

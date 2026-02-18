@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Document } from './entities/document.entity';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
@@ -11,6 +11,8 @@ import { ScopeService } from '../iam/authorization/scope.service';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
 import { FileEntity } from '../files/entities/file.entity';
 import { FileAttachmentsService } from '../files/file-attachments.service';
+import { GetDocumentsQueryDto } from './dto/get-documents-query.dto';
+import { PaginatedResponse } from '../common/http/pagination-query.dto';
 
 @Injectable()
 export class DocumentService {
@@ -56,9 +58,13 @@ export class DocumentService {
 
   async findAll(
     actor: ActiveUserData,
-    type?: string,
-    status?: string,
-  ): Promise<Document[]> {
+    query: GetDocumentsQueryDto,
+  ): Promise<PaginatedResponse<Document>> {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
+    const offset = (page - 1) * limit;
+    const search = query.q?.toLowerCase();
+
     const qb = this.documentRepo
       .createQueryBuilder('document')
       .leftJoinAndSelect('document.sender', 'sender')
@@ -66,13 +72,26 @@ export class DocumentService {
       .leftJoinAndSelect('document.receiver', 'receiver')
       .leftJoinAndSelect('receiver.department', 'receiverDepartment')
       .leftJoinAndSelect('document.department', 'department')
-      .orderBy('document.created_at', 'DESC');
+      .orderBy('document.createdAt', 'DESC');
 
-    if (type) {
-      qb.andWhere('document.type = :type', { type });
+    if (query.type) {
+      qb.andWhere('document.type = :type', { type: query.type });
     }
-    if (status) {
-      qb.andWhere('document.status = :status', { status });
+    if (query.status) {
+      qb.andWhere('document.status = :status', { status: query.status });
+    }
+    if (search) {
+      qb.andWhere(
+        new Brackets((scopeQb) => {
+          scopeQb
+            .where('LOWER(document.title) LIKE :q', {
+              q: `%${search}%`,
+            })
+            .orWhere('LOWER(document.description) LIKE :q', {
+              q: `%${search}%`,
+            });
+        }),
+      );
     }
 
     this.scopeService.applyDocumentScope(qb, actor, {
@@ -81,7 +100,13 @@ export class DocumentService {
       departmentAlias: 'department',
     });
 
-    return qb.getMany();
+    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(id: number, actor: ActiveUserData): Promise<Document> {

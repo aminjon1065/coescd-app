@@ -6,10 +6,12 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { DisastersService } from './disasters.service';
 import { CreateDisasterDto } from './dto/create-disaster.dto';
 import { UpdateDisasterDto } from './dto/update-disaster.dto';
+import { GetDisastersQueryDto } from './dto/get-disasters-query.dto';
 
 @Controller('disasters')
 export class DisastersController {
@@ -21,8 +23,8 @@ export class DisastersController {
   }
 
   @Get()
-  findAll() {
-    return this.disastersService.findAll();
+  findAll(@Query() query: GetDisastersQueryDto) {
+    return this.disastersService.findAll(query);
   }
 
   @Get(':id')

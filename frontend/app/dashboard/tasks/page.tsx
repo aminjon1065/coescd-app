@@ -13,6 +13,7 @@ import { ITask, TaskStatus } from '@/interfaces/ITask';
 import { CreateTaskDialog } from './components/create-task-dialog';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { extractListItems, ListResponse } from '@/lib/list-response';
 
 const statusLabel: Record<TaskStatus, string> = {
   new: 'Новая',
@@ -34,8 +35,8 @@ export default function TasksPage() {
 
   const fetchTasks = async () => {
     try {
-      const res = await api.get('/task');
-      setTasks(res.data);
+      const res = await api.get<ListResponse<ITask> | ITask[]>('/task');
+      setTasks(extractListItems(res.data));
     } catch (err) {
       console.error('Failed to load tasks', err);
     } finally {

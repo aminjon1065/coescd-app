@@ -15,6 +15,12 @@ export class GetAuditLogsQueryDto {
   @Min(1)
   @Max(200)
   limit?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  page?: number;
 }
 
 export type AuditLogSource = AuditSource;

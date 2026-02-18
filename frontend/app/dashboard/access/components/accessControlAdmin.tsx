@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { extractListItems, ListResponse } from '@/lib/list-response';
 
 const ROLES: Role[] = [Role.Admin, Role.Manager, Role.Regular];
 
@@ -78,13 +79,14 @@ export default function AccessControlAdmin() {
 
   const loadData = async () => {
     const [usersRes, matrixRes] = await Promise.all([
-      api.get<IUser[]>('/users'),
+      api.get<ListResponse<IUser> | IUser[]>('/users'),
       api.get<AuthorizationMatrixResponse>('/iam/authorization/matrix'),
     ]);
-    setUsers(usersRes.data);
+    const usersPayload = extractListItems(usersRes.data);
+    setUsers(usersPayload);
     setMatrix(matrixRes.data);
 
-    const firstUser = usersRes.data[0];
+    const firstUser = usersPayload[0];
     if (firstUser) {
       setSelectedUserId(String(firstUser.id));
       setCustomPermissions(

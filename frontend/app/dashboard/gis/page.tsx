@@ -10,6 +10,7 @@ import { SearchIcon } from 'lucide-react';
 import api from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { IDisaster } from '@/interfaces/IDisaster';
+import { extractListItems, ListResponse } from '@/lib/list-response';
 
 const DisasterMap = dynamic(
   () => import('./components/map-container'),
@@ -46,8 +47,8 @@ export default function GisPage() {
   useEffect(() => {
     if (!accessToken) return;
     api
-      .get('/disasters')
-      .then((res) => setDisasters(res.data))
+      .get<ListResponse<IDisaster> | IDisaster[]>('/disasters')
+      .then((res) => setDisasters(extractListItems(res.data)))
       .catch((err) => console.error('Failed to load disasters', err))
       .finally(() => setLoading(false));
   }, [accessToken]);

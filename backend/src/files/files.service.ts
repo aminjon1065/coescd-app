@@ -208,7 +208,7 @@ export class FilesService {
       .leftJoinAndSelect('file.owner', 'owner')
       .leftJoinAndSelect('file.department', 'department')
       .where('file.status != :deletedStatus', { deletedStatus: 'deleted' })
-      .orderBy('file.created_at', 'DESC');
+      .orderBy('file.createdAt', 'DESC');
     this.scopeService.applyFileScope(qb, actor, {
       ownerAlias: 'owner',
       departmentAlias: 'department',

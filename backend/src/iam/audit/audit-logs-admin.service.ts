@@ -33,7 +33,10 @@ export class AuditLogsAdminService {
   ) {}
 
   async getLogs(query: GetAuditLogsQueryDto) {
+    const page = query.page ?? 1;
     const limit = query.limit ?? 100;
+    const offset = (page - 1) * limit;
+    const fetchLimit = page * limit;
     const source = query.source;
 
     const [authLogs, userLogs, fileLogs] = await Promise.all([
@@ -41,7 +44,7 @@ export class AuditLogsAdminService {
         ? Promise.resolve([] as AuthAuditLog[])
         : this.authAuditRepository.find({
             order: { createdAt: 'DESC' },
-            take: limit,
+            take: fetchLimit,
           }),
       source && source !== 'user'
         ? Promise.resolve([] as UserChangeAuditLog[])
@@ -51,7 +54,7 @@ export class AuditLogsAdminService {
               targetUser: true,
             },
             order: { createdAt: 'DESC' },
-            take: limit,
+            take: fetchLimit,
           }),
       source && source !== 'file'
         ? Promise.resolve([] as FileAccessAuditEntity[])
@@ -61,7 +64,7 @@ export class AuditLogsAdminService {
               file: true,
             },
             order: { createdAt: 'DESC' },
-            take: limit,
+            take: fetchLimit,
           }),
     ]);
 
@@ -139,10 +142,12 @@ export class AuditLogsAdminService {
       })),
     ]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, limit);
+      .slice(offset, offset + limit);
 
     return {
-      total: combined.length,
+      total: authLogs.length + userLogs.length + fileLogs.length,
+      page,
+      limit,
       items: combined.map((item) => ({
         ...item,
         createdAt: item.createdAt.toISOString(),

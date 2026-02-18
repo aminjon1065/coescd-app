@@ -5,15 +5,11 @@ export class InitialSchemaBootstrap20260218160000
 {
   name = 'InitialSchemaBootstrap20260218160000';
 
-  public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasUserTable = await queryRunner.hasTable('user');
-    if (hasUserTable) {
-      return;
-    }
-
-    // One-time bootstrap for empty databases: materialize the baseline schema
-    // from current entities, then follow-up incremental migrations apply safely.
-    await queryRunner.connection.synchronize(false);
+  public async up(): Promise<void> {
+    // Legacy compatibility migration. Intentionally no-op.
+    // Explicit baseline schema is now provided by:
+    // `20260218165000-CoreDomainExplicitBaseline`.
+    // Implicit synchronize-based bootstrap is deprecated for production safety.
   }
 
   public async down(): Promise<void> {

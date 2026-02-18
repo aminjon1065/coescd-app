@@ -155,5 +155,9 @@ npm run migration:revert
 - `docs/architecture.md` — целевая архитектура
 - `docs/rbac.md` — RBAC/ABAC и auth hardening
 - `docs/migrations.md` — процесс миграций
+- `docs/implementation-plan.md` — phased plan to production (`1 admin -> 200+ users`)
+- `docs/migration-coverage-audit-2026-02-18.md` — текущий аудит покрытия миграциями
+- `docs/phase-1-core-hardening-backlog.md` — тикеты и порядок работ на Phase 1
+- `docs/bulk-user-import-spec.md` — technical spec for CSV onboarding (`dry-run + apply`)
 - `docs/files-module-plan.md` — план и архитектура модуля files
 - `docs/files-api.md` — API contract and examples for files module

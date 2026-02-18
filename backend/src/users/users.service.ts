@@ -6,7 +6,7 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { HashingService } from '../iam/hashing/hashing.service';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
@@ -19,6 +19,8 @@ import {
   UserChangeAuditAction,
   UserChangeAuditLog,
 } from './entities/user-change-audit-log.entity';
+import { GetUsersQueryDto } from './dto/get-users-query.dto';
+import { PaginatedResponse } from '../common/http/pagination-query.dto';
 
 @Injectable()
 export class UsersService {
@@ -73,41 +75,76 @@ export class UsersService {
     return created;
   }
 
-  async findAll(actor: ActiveUserData) {
-    if (actor.role === Role.Admin) {
-      return this.userRepository.find({
-        relations: {
-          department: {
-            parent: true,
-            chief: true,
-          },
-        },
-      });
-    }
+  async findAll(
+    actor: ActiveUserData,
+    query: GetUsersQueryDto,
+  ): Promise<PaginatedResponse<User>> {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
+    const offset = (page - 1) * limit;
+    const isActiveFilter =
+      query.isActive === true || query.isActive === 'true'
+        ? true
+        : query.isActive === false || query.isActive === 'false'
+          ? false
+          : undefined;
+    const departmentId = query.departmentId
+      ? Number(query.departmentId)
+      : undefined;
+    const search = query.q?.toLowerCase();
+
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.department', 'department')
+      .leftJoinAndSelect('department.parent', 'departmentParent')
+      .leftJoinAndSelect('department.chief', 'departmentChief')
+      .orderBy('user.createdAt', 'DESC');
 
     if (actor.role === Role.Manager && actor.departmentId) {
-      return this.userRepository.find({
-        where: {
-          department: { id: actor.departmentId },
-        },
-        relations: {
-          department: {
-            parent: true,
-            chief: true,
-          },
-        },
+      qb.andWhere('department.id = :departmentId', {
+        departmentId: actor.departmentId,
       });
     }
 
-    return this.userRepository.find({
-      where: { id: actor.sub },
-      relations: {
-        department: {
-          parent: true,
-          chief: true,
-        },
-      },
-    });
+    if (actor.role === Role.Regular) {
+      qb.andWhere('user.id = :userId', { userId: actor.sub });
+    }
+
+    if (query.role) {
+      qb.andWhere('user.role = :role', { role: query.role });
+    }
+
+    if (isActiveFilter !== undefined) {
+      qb.andWhere('user.isActive = :isActive', { isActive: isActiveFilter });
+    }
+
+    if (departmentId) {
+      qb.andWhere('department.id = :filterDepartmentId', {
+        filterDepartmentId: departmentId,
+      });
+    }
+
+    if (search) {
+      qb.andWhere(
+        new Brackets((scopeQb) => {
+          scopeQb
+            .where('LOWER(user.email) LIKE :q', {
+              q: `%${search}%`,
+            })
+            .orWhere('LOWER(user.name) LIKE :q', {
+              q: `%${search}%`,
+            });
+        }),
+      );
+    }
+
+    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(id: number, actor: ActiveUserData) {

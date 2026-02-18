@@ -18,6 +18,7 @@ import { Task } from '../src/task/entities/task.entity';
 import { Document } from '../src/document/entities/document.entity';
 import { FileEntity } from '../src/files/entities/file.entity';
 import { FileAccessAuditEntity } from '../src/files/entities/file-access-audit.entity';
+import { UserChangeAuditLog } from '../src/users/entities/user-change-audit-log.entity';
 import { Role } from '../src/users/enums/role.enum';
 import { DepartmentEnum } from '../src/department/enums/department.enum';
 import { FilesStorageService } from '../src/files/storage/files-storage.service';
@@ -41,6 +42,7 @@ describe('RBAC + ABAC (e2e)', () => {
   let documentRepo: Repository<Document>;
   let fileRepo: Repository<FileEntity>;
   let fileAuditRepo: Repository<FileAccessAuditEntity>;
+  let userChangeAuditRepo: Repository<UserChangeAuditLog>;
 
   let adminUser: User;
   let managerDept1: User;
@@ -130,7 +132,14 @@ describe('RBAC + ABAC (e2e)', () => {
             type: 'postgres',
             synchronize: true,
             autoLoadEntities: true,
-            entities: [User, Department, Task, Document, FileEntity],
+            entities: [
+              User,
+              Department,
+              Task,
+              Document,
+              FileEntity,
+              UserChangeAuditLog,
+            ],
           }),
           dataSourceFactory: async (options) => {
             const dataSource = db.adapters.createTypeormDataSource(
@@ -167,6 +176,9 @@ describe('RBAC + ABAC (e2e)', () => {
     );
     fileAuditRepo = moduleFixture.get<Repository<FileAccessAuditEntity>>(
       getRepositoryToken(FileAccessAuditEntity),
+    );
+    userChangeAuditRepo = moduleFixture.get<Repository<UserChangeAuditLog>>(
+      getRepositoryToken(UserChangeAuditLog),
     );
 
     await seedTestData();
@@ -314,6 +326,20 @@ describe('RBAC + ABAC (e2e)', () => {
     return response.body.accessToken as string;
   }
 
+  function getListItems<T>(payload: unknown): T[] {
+    if (Array.isArray(payload)) {
+      return payload as T[];
+    }
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      Array.isArray((payload as { items?: unknown[] }).items)
+    ) {
+      return (payload as { items: T[] }).items;
+    }
+    return [];
+  }
+
   function getCookieValue(setCookie: string[], name: string): string | null {
     const target = setCookie.find((cookie) => cookie.startsWith(`${name}=`));
     if (!target) {
@@ -444,23 +470,110 @@ describe('RBAC + ABAC (e2e)', () => {
       .get('/users')
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
-    expect(usersRes.body.some((u: User) => u.id === regularDept2.id)).toBe(
-      false,
-    );
+    expect(
+      getListItems<User>(usersRes.body).some((u: User) => u.id === regularDept2.id),
+    ).toBe(false);
 
     const documentsRes = await request(app.getHttpServer())
       .get('/documents')
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
     expect(
-      documentsRes.body.some((d: Document) => d.id === documentDept2.id),
+      getListItems<Document>(documentsRes.body).some(
+        (d: Document) => d.id === documentDept2.id,
+      ),
     ).toBe(false);
 
     const tasksRes = await request(app.getHttpServer())
       .get('/task')
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
-    expect(tasksRes.body.some((t: Task) => t.id === taskDept2.id)).toBe(false);
+    expect(
+      getListItems<Task>(tasksRes.body).some((t: Task) => t.id === taskDept2.id),
+    ).toBe(false);
+  });
+
+  it('users bulk import: dry-run and apply are idempotent', async () => {
+    const adminToken = await signIn('admin@test.local', 'admin123');
+    const csv = [
+      'email,name,role,password,position,department_name,is_active,permissions',
+      'bulk.new@test.local,Bulk New,regular,bulkpass123,Operator,Dept 1,true,users.read',
+      'lockout@test.local,Lockout User Updated,regular,,Field Operator,Dept 1,true,"documents.read,tasks.read"',
+    ].join('\n');
+
+    const dryRunResponse = await request(app.getHttpServer())
+      .post('/users/bulk-import/dry-run')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .field('mode', 'upsert')
+      .field('allowRoleUpdate', 'true')
+      .field('allowPermissionUpdate', 'true')
+      .attach('file', Buffer.from(csv, 'utf8'), {
+        filename: 'users-import.csv',
+        contentType: 'text/csv',
+      })
+      .expect(201);
+
+    expect(dryRunResponse.body.sessionId).toBeDefined();
+    expect(dryRunResponse.body.summary.invalidRows).toBe(0);
+    expect(dryRunResponse.body.summary.toCreate).toBe(1);
+    expect(dryRunResponse.body.summary.toUpdate).toBeGreaterThanOrEqual(1);
+
+    const idempotencyKey = `idem-${Date.now()}`;
+    const applyPayload = {
+      sessionId: dryRunResponse.body.sessionId as string,
+      idempotencyKey,
+      confirm: true,
+    };
+
+    const applyResponse = await request(app.getHttpServer())
+      .post('/users/bulk-import/apply')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(applyPayload)
+      .expect(200);
+
+    const applyReplayResponse = await request(app.getHttpServer())
+      .post('/users/bulk-import/apply')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(applyPayload)
+      .expect(200);
+
+    expect(applyReplayResponse.body.operationId).toBe(applyResponse.body.operationId);
+    expect(applyReplayResponse.body.summary).toEqual(applyResponse.body.summary);
+
+    const createdUser = await userRepo.findOne({
+      where: { email: 'bulk.new@test.local' },
+      relations: { department: true },
+    });
+    expect(createdUser).toBeDefined();
+    expect(createdUser?.department?.name).toBe('Dept 1');
+
+    const updatedUser = await userRepo.findOne({
+      where: { email: 'lockout@test.local' },
+      relations: { department: true },
+    });
+    expect(updatedUser?.name).toBe('Lockout User Updated');
+    expect(updatedUser?.role).toBe(Role.Regular);
+
+    const auditLogs = await userChangeAuditRepo.find({
+      where: { reason: 'bulk-import' },
+      relations: { actor: true, targetUser: true },
+    });
+    expect(
+      auditLogs.some(
+        (log) =>
+          log.actor?.id === adminUser.id &&
+          log.action === 'user.create' &&
+          log.targetUser?.email === 'bulk.new@test.local',
+      ),
+    ).toBe(true);
+    expect(
+      auditLogs.some(
+        (log) =>
+          log.actor?.id === adminUser.id &&
+          log.action === 'user.update' &&
+          log.targetUser?.email === 'lockout@test.local',
+      ),
+    ).toBe(true);
   });
 
   it('regular cannot access foreign document and task', async () => {

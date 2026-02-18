@@ -23,13 +23,13 @@ export class User {
   email: string;
   @Column()
   password: string;
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'varchar' })
   @IsOptional()
-  avatar: string;
+  avatar: string | null;
   @Column()
   name: string;
-  @Column({ nullable: true })
-  position: string;
+  @Column({ nullable: true, type: 'varchar' })
+  position: string | null;
   @Column({ default: false })
   isVerified: boolean;
   @Column({ default: true })

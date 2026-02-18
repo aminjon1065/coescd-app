@@ -7,6 +7,7 @@ import {
   Patch,
   Param,
   ParseIntPipe,
+  Query,
   Req,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
@@ -20,6 +21,7 @@ import { Policies } from '../iam/authorization/decorators/policies.decorator';
 import { TaskScopePolicy } from '../iam/authorization/policies/resource-scope.policy';
 import { Request } from 'express';
 import { getRequestMeta } from '../common/http/request-meta.util';
+import { GetTasksQueryDto } from './dto/get-tasks-query.dto';
 
 @Controller('task')
 export class TaskController {
@@ -37,8 +39,11 @@ export class TaskController {
   @Get()
   @Permissions(Permission.TASKS_READ)
   @Policies(new TaskScopePolicy())
-  findAll(@ActiveUser() user: ActiveUserData) {
-    return this.taskService.findAll(user);
+  findAll(
+    @ActiveUser() user: ActiveUserData,
+    @Query() query: GetTasksQueryDto,
+  ) {
+    return this.taskService.findAll(user, query);
   }
 
   @Get(':id')
