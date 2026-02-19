@@ -11,6 +11,7 @@ import api from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { IDisaster } from '@/interfaces/IDisaster';
 import { extractListItems, ListResponse } from '@/lib/list-response';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 
 const DisasterMap = dynamic(
   () => import('./components/map-container'),
@@ -38,20 +39,32 @@ const statusLabel: Record<string, string> = {
 };
 
 export default function GisPage() {
-  const { accessToken } = useAuth();
+  return (
+    <ProtectedRouteGate
+      policyKey="dashboard.gis"
+      deniedDescription="Карта ЧС доступна пользователям с правами GIS/Analytics."
+    >
+      <GisContent />
+    </ProtectedRouteGate>
+  );
+}
+
+function GisContent() {
+  const { accessToken, user } = useAuth();
   const [disasters, setDisasters] = useState<IDisaster[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<IDisaster | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || !user) return;
+
     api
       .get<ListResponse<IDisaster> | IDisaster[]>('/disasters')
       .then((res) => setDisasters(extractListItems(res.data)))
       .catch((err) => console.error('Failed to load disasters', err))
       .finally(() => setLoading(false));
-  }, [accessToken]);
+  }, [accessToken, user]);
 
   const filtered = disasters.filter(
     (d) =>

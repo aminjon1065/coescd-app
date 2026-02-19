@@ -10,7 +10,13 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-const edmDocumentTypes = ['incoming', 'outgoing', 'internal', 'order', 'resolution'] as const;
+const edmDocumentTypes = [
+  'incoming',
+  'outgoing',
+  'internal',
+  'order',
+  'resolution',
+] as const;
 const edmDocumentStatuses = [
   'draft',
   'in_route',

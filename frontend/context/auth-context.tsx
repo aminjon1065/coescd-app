@@ -6,6 +6,7 @@ import axios, { setAccessToken as setAxiosAccessToken } from '@/lib/axios';
 import Loading from '@/app/loading';
 import { Role } from '@/enums/RoleEnum';
 import { IDepartment } from '@/interfaces/IDepartment';
+import { getRoleDashboardPath } from '@/features/authz/roles';
 
 interface AuthUser {
   id?: number;
@@ -44,19 +45,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
   const PUBLIC_ROUTES = ['/sign-in', '/forgot-password'];
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
   useEffect(() => {
     const initialize = async () => {
-      if (pathname === '/sign-in') {
-        setLoading(false);
-        return;
-      }
       try {
         const res = await axios.post('/authentication/refresh-tokens', {}, { withCredentials: true });
         const { user, accessToken } = res.data;
         setUser(user);
         setAccessToken(accessToken);
         setAxiosAccessToken(accessToken);
+        if (isPublicRoute) {
+          router.replace(getRoleDashboardPath(user.role));
+        }
         setLoading(false);
       } catch {
         setAccessToken(null);
@@ -67,20 +68,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     initialize();
-  }, []);
+  }, [isPublicRoute, router]);
 
   useEffect(() => {
     setAxiosAccessToken(accessToken);
   }, [accessToken]);
 
   useEffect(() => {
-    const isPublic = PUBLIC_ROUTES.includes(pathname);
-
     // если мы не в процессе загрузки, и пользователь неавторизован — редирект
-    if (!loading && !user && !isPublic) {
+    if (!loading && !user && !isPublicRoute) {
       router.replace('/sign-in');
     }
-  }, [loading, user, pathname, router, PUBLIC_ROUTES]);
+  }, [isPublicRoute, loading, router, user]);
 
   const logout = () => {
     setAccessToken(null);
@@ -89,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     axios.post('/authentication/logout').catch(() => {});
     router.push('/sign-in');
   };
-  if (loading || (!user && !PUBLIC_ROUTES.includes(pathname))) {
+  if (loading || (!user && !isPublicRoute)) {
     return <Loading />;
   }
 

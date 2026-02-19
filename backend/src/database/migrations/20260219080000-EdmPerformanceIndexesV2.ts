@@ -77,7 +77,12 @@ export class EdmPerformanceIndexesV220260219080000
       'edm_route_stages',
       new TableIndex({
         name: 'IDX_EDM_STAGE_ASSIGNEE_DEPT_STATE_DUE_AT',
-        columnNames: ['assignee_department_id', 'assignee_type', 'state', 'due_at'],
+        columnNames: [
+          'assignee_department_id',
+          'assignee_type',
+          'state',
+          'due_at',
+        ],
       }),
     );
 
@@ -126,20 +131,76 @@ export class EdmPerformanceIndexesV220260219080000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await this.dropIndexIfExists(queryRunner, 'edm_document_templates', 'IDX_EDM_DOCUMENT_TEMPLATE_ACTIVE_UPDATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_route_templates', 'IDX_EDM_ROUTE_TEMPLATE_ACTIVE_UPDATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_registration_journal', 'IDX_EDM_REG_JOURNAL_TYPE_STATUS_REGISTERED_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_alerts', 'IDX_EDM_ALERT_RECIPIENT_KIND_STATUS_CREATED');
-    await this.dropIndexIfExists(queryRunner, 'edm_alerts', 'IDX_EDM_ALERT_RECIPIENT_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_route_stages', 'IDX_EDM_STAGE_ASSIGNEE_DEPT_STATE_DUE_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_route_stages', 'IDX_EDM_STAGE_ASSIGNEE_USER_STATE_DUE_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_route_stages', 'IDX_EDM_STAGE_STATE_DUE_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_document_routes', 'IDX_EDM_ROUTE_DOCUMENT_VERSION');
-    await this.dropIndexIfExists(queryRunner, 'edm_document_routes', 'IDX_EDM_ROUTE_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_documents', 'IDX_EDM_DOC_CURRENT_ROUTE_ID');
-    await this.dropIndexIfExists(queryRunner, 'edm_documents', 'IDX_EDM_DOC_TYPE_STATUS_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_documents', 'IDX_EDM_DOC_DEPT_STATUS_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'edm_documents', 'IDX_EDM_DOC_DELETED_CREATED_AT');
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_document_templates',
+      'IDX_EDM_DOCUMENT_TEMPLATE_ACTIVE_UPDATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_route_templates',
+      'IDX_EDM_ROUTE_TEMPLATE_ACTIVE_UPDATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_registration_journal',
+      'IDX_EDM_REG_JOURNAL_TYPE_STATUS_REGISTERED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_alerts',
+      'IDX_EDM_ALERT_RECIPIENT_KIND_STATUS_CREATED',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_alerts',
+      'IDX_EDM_ALERT_RECIPIENT_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_route_stages',
+      'IDX_EDM_STAGE_ASSIGNEE_DEPT_STATE_DUE_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_route_stages',
+      'IDX_EDM_STAGE_ASSIGNEE_USER_STATE_DUE_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_route_stages',
+      'IDX_EDM_STAGE_STATE_DUE_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_document_routes',
+      'IDX_EDM_ROUTE_DOCUMENT_VERSION',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_document_routes',
+      'IDX_EDM_ROUTE_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_documents',
+      'IDX_EDM_DOC_CURRENT_ROUTE_ID',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_documents',
+      'IDX_EDM_DOC_TYPE_STATUS_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_documents',
+      'IDX_EDM_DOC_DEPT_STATUS_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'edm_documents',
+      'IDX_EDM_DOC_DELETED_CREATED_AT',
+    );
   }
 
   private async createIndexIfMissing(
@@ -154,7 +215,9 @@ export class EdmPerformanceIndexesV220260219080000
     if (!table) {
       return;
     }
-    const exists = table.indices.some((tableIndex) => tableIndex.name === index.name);
+    const exists = table.indices.some(
+      (tableIndex) => tableIndex.name === index.name,
+    );
     if (!exists) {
       await queryRunner.createIndex(tableName, index);
     }

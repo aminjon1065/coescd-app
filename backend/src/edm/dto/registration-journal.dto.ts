@@ -1,11 +1,5 @@
 import { Transform } from 'class-transformer';
-import {
-  IsIn,
-  IsInt,
-  IsISO8601,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsIn, IsInt, IsISO8601, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../common/http/pagination-query.dto';
 
 const registrationStatuses = ['registered', 'cancelled'] as const;

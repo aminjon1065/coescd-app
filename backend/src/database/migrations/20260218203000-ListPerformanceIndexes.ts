@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner, TableIndex } from 'typeorm';
 
-export class ListPerformanceIndexes20260218203000 implements MigrationInterface {
+export class ListPerformanceIndexes20260218203000
+  implements MigrationInterface
+{
   name = 'ListPerformanceIndexes20260218203000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -17,7 +19,10 @@ export class ListPerformanceIndexes20260218203000 implements MigrationInterface 
     await this.createIndexIfMissing(
       queryRunner,
       'user',
-      new TableIndex({ name: 'IDX_USER_CREATED_AT', columnNames: ['created_at'] }),
+      new TableIndex({
+        name: 'IDX_USER_CREATED_AT',
+        columnNames: ['created_at'],
+      }),
     );
 
     await this.createIndexIfMissing(
@@ -28,17 +33,26 @@ export class ListPerformanceIndexes20260218203000 implements MigrationInterface 
     await this.createIndexIfMissing(
       queryRunner,
       'tasks',
-      new TableIndex({ name: 'IDX_TASKS_CREATOR_ID', columnNames: ['creator_id'] }),
+      new TableIndex({
+        name: 'IDX_TASKS_CREATOR_ID',
+        columnNames: ['creator_id'],
+      }),
     );
     await this.createIndexIfMissing(
       queryRunner,
       'tasks',
-      new TableIndex({ name: 'IDX_TASKS_RECEIVER_ID', columnNames: ['receiver_id'] }),
+      new TableIndex({
+        name: 'IDX_TASKS_RECEIVER_ID',
+        columnNames: ['receiver_id'],
+      }),
     );
     await this.createIndexIfMissing(
       queryRunner,
       'tasks',
-      new TableIndex({ name: 'IDX_TASKS_CREATED_AT', columnNames: ['created_at'] }),
+      new TableIndex({
+        name: 'IDX_TASKS_CREATED_AT',
+        columnNames: ['created_at'],
+      }),
     );
 
     await this.createIndexIfMissing(
@@ -159,21 +173,81 @@ export class ListPerformanceIndexes20260218203000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await this.dropIndexIfExists(queryRunner, 'file_access_audit', 'IDX_FILE_ACCESS_AUDIT_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'user_change_audit_logs', 'IDX_USER_CHANGE_AUDIT_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'auth_audit_logs', 'IDX_AUTH_AUDIT_LOGS_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'auth_audit_logs', 'IDX_AUTH_AUDIT_LOGS_ACTION');
-    await this.dropIndexIfExists(queryRunner, 'auth_audit_logs', 'IDX_AUTH_AUDIT_LOGS_USER_ID');
-    await this.dropIndexIfExists(queryRunner, 'disasters', 'IDX_DISASTERS_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'disasters', 'IDX_DISASTERS_DEPARTMENT_ID');
-    await this.dropIndexIfExists(queryRunner, 'disasters', 'IDX_DISASTERS_SEVERITY');
-    await this.dropIndexIfExists(queryRunner, 'disasters', 'IDX_DISASTERS_STATUS');
-    await this.dropIndexIfExists(queryRunner, 'documents', 'IDX_DOCUMENTS_CREATED_AT');
-    await this.dropIndexIfExists(queryRunner, 'documents', 'IDX_DOCUMENTS_DEPARTMENT_ID');
-    await this.dropIndexIfExists(queryRunner, 'documents', 'IDX_DOCUMENTS_RECEIVER_ID');
-    await this.dropIndexIfExists(queryRunner, 'documents', 'IDX_DOCUMENTS_SENDER_ID');
-    await this.dropIndexIfExists(queryRunner, 'documents', 'IDX_DOCUMENTS_STATUS');
-    await this.dropIndexIfExists(queryRunner, 'documents', 'IDX_DOCUMENTS_TYPE');
+    await this.dropIndexIfExists(
+      queryRunner,
+      'file_access_audit',
+      'IDX_FILE_ACCESS_AUDIT_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'user_change_audit_logs',
+      'IDX_USER_CHANGE_AUDIT_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'auth_audit_logs',
+      'IDX_AUTH_AUDIT_LOGS_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'auth_audit_logs',
+      'IDX_AUTH_AUDIT_LOGS_ACTION',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'auth_audit_logs',
+      'IDX_AUTH_AUDIT_LOGS_USER_ID',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'disasters',
+      'IDX_DISASTERS_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'disasters',
+      'IDX_DISASTERS_DEPARTMENT_ID',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'disasters',
+      'IDX_DISASTERS_SEVERITY',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'disasters',
+      'IDX_DISASTERS_STATUS',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'documents',
+      'IDX_DOCUMENTS_CREATED_AT',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'documents',
+      'IDX_DOCUMENTS_DEPARTMENT_ID',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'documents',
+      'IDX_DOCUMENTS_RECEIVER_ID',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'documents',
+      'IDX_DOCUMENTS_SENDER_ID',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'documents',
+      'IDX_DOCUMENTS_STATUS',
+    );
+    await this.dropIndexIfExists(
+      queryRunner,
+      'documents',
+      'IDX_DOCUMENTS_TYPE',
+    );
     await this.dropIndexIfExists(queryRunner, 'tasks', 'IDX_TASKS_CREATED_AT');
     await this.dropIndexIfExists(queryRunner, 'tasks', 'IDX_TASKS_RECEIVER_ID');
     await this.dropIndexIfExists(queryRunner, 'tasks', 'IDX_TASKS_CREATOR_ID');
@@ -195,7 +269,9 @@ export class ListPerformanceIndexes20260218203000 implements MigrationInterface 
     if (!table) {
       return;
     }
-    const exists = table.indices.some((tableIndex) => tableIndex.name === index.name);
+    const exists = table.indices.some(
+      (tableIndex) => tableIndex.name === index.name,
+    );
     if (!exists) {
       await queryRunner.createIndex(tableName, index);
     }
@@ -219,4 +295,3 @@ export class ListPerformanceIndexes20260218203000 implements MigrationInterface 
     }
   }
 }
-

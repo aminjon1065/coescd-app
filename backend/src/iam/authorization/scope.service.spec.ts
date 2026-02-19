@@ -76,6 +76,8 @@ describe('ScopeService', () => {
       department: { id: 2 },
     } as FileEntity;
 
-    expect(() => service.assertTaskFileLinkScope(actor, task, file)).not.toThrow();
+    expect(() =>
+      service.assertTaskFileLinkScope(actor, task, file),
+    ).not.toThrow();
   });
 });

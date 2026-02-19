@@ -13,4 +13,3 @@ export class GetTasksQueryDto extends PaginationQueryDto {
   @IsString()
   q?: string;
 }
-

@@ -9,6 +9,8 @@ describe('RefreshTokenIdsStorage', () => {
       refreshTokenTtl: 60,
     } as never;
 
-    expect(new RefreshTokenIdsStorage(configService, jwtConfiguration)).toBeDefined();
+    expect(
+      new RefreshTokenIdsStorage(configService, jwtConfiguration),
+    ).toBeDefined();
   });
 });

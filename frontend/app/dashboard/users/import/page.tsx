@@ -1,19 +1,19 @@
 'use client';
 
-import React from 'react';
-import Head from 'next/head';
-import ProtectedContent from '@/ProtectedContent';
+import { RouteTitleHead } from '@/features/navigation/RouteTitleHead';
 import BulkImportAdmin from './components/bulkImportAdmin';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 
 export default function Page() {
   return (
     <>
-      <Head>
-        <title>Users Bulk Import</title>
-      </Head>
-      <ProtectedContent>
+      <RouteTitleHead routeKey="dashboard.users.import" />
+      <ProtectedRouteGate
+        policyKey="dashboard.users.import"
+        deniedDescription="Массовый импорт пользователей доступен только администратору."
+      >
         <BulkImportAdmin />
-      </ProtectedContent>
+      </ProtectedRouteGate>
     </>
   );
 }

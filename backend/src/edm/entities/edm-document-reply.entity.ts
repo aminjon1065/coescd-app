@@ -40,4 +40,3 @@ export class EdmDocumentReply {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-

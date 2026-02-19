@@ -2,7 +2,13 @@ import { IsIn, IsInt, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationQueryDto } from '../../common/http/pagination-query.dto';
 
-const edmDocumentTypes = ['incoming', 'outgoing', 'internal', 'order', 'resolution'] as const;
+const edmDocumentTypes = [
+  'incoming',
+  'outgoing',
+  'internal',
+  'order',
+  'resolution',
+] as const;
 const edmDocumentStatuses = [
   'draft',
   'in_route',

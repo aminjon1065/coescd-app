@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from '@/lib/auth';
 import { useAuth } from '@/context/auth-context';
 import { LoginForm } from '@/components/login-form';
+import { getRoleDashboardPath } from '@/features/authz/roles';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAccessToken, setUser } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -21,10 +23,11 @@ export default function LoginPage() {
     setError(null);
     try {
       const { accessToken, user } = await signIn(email, password);
-      console.log(user);
       setAccessToken(accessToken);
-      setUser(user); // 👈 вот это нужно!
-      router.push('/dashboard');
+      setUser(user);
+      const nextPath = searchParams.get('next');
+      const isSafeNext = Boolean(nextPath && nextPath.startsWith('/'));
+      router.replace(isSafeNext ? nextPath : getRoleDashboardPath(user.role));
     } catch {
       setError('Неверный email или пароль');
     } finally {

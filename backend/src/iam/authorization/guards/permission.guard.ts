@@ -26,10 +26,11 @@ export class PermissionsGuard implements CanActivate {
     const user: ActiveUserData = context.switchToHttp().getRequest()[
       REQUEST_USER_KEY
     ];
-    const effectivePermissions = this.rolePermissionsService.resolveUserPermissions(
-      user.role,
-      user.permissions,
-    );
+    const effectivePermissions =
+      this.rolePermissionsService.resolveUserPermissions(
+        user.role,
+        user.permissions,
+      );
     return contextPermissions.every((permission) =>
       effectivePermissions.includes(permission),
     );

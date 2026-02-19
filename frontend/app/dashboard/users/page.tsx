@@ -1,19 +1,19 @@
 'use client';
 
-import React from 'react';
 import UsersTable from './components/usersTable';
-import Head from 'next/head';
-import ProtectedContent from '@/ProtectedContent';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
+import { RouteTitleHead } from '@/features/navigation/RouteTitleHead';
 
 export default function Page() {
   return (
     <>
-      <Head>
-        <title>Users</title>
-      </Head>
-      <ProtectedContent>
+      <RouteTitleHead routeKey="dashboard.users" />
+      <ProtectedRouteGate
+        policyKey="dashboard.users"
+        deniedDescription="Раздел сотрудников доступен руководителю или администратору."
+      >
         <UsersTable />
-      </ProtectedContent>
+      </ProtectedRouteGate>
     </>
   );
 }

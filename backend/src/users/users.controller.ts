@@ -70,7 +70,10 @@ export class UsersController {
   @Get()
   @Permissions(Permission.USERS_READ)
   @Policies(new UserScopePolicy())
-  findAll(@ActiveUser() user: ActiveUserData, @Query() query: GetUsersQueryDto) {
+  findAll(
+    @ActiveUser() user: ActiveUserData,
+    @Query() query: GetUsersQueryDto,
+  ) {
     return this.usersService.findAll(user, query);
   }
 
@@ -105,10 +108,15 @@ export class UsersController {
     @ActiveUser() user: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.usersService.updateCustomPermissions(+id, dto.permissions, user, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request),
-    });
+    return this.usersService.updateCustomPermissions(
+      +id,
+      dto.permissions,
+      user,
+      {
+        ip: this.getRequestIp(request),
+        userAgent: this.getUserAgent(request),
+      },
+    );
   }
 
   @Delete(':id')

@@ -17,6 +17,7 @@ import { ModeToggle } from '@/components/toggle-theme';
 import { data, sideBarRoutes } from '@/data/routes/sideBarRoutes';
 import { useAuth } from '@/context/auth-context';
 import { useMemo } from 'react';
+import { can } from '@/features/authz/can';
 
 // This is sample data.
 
@@ -25,20 +26,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const visibleRoutes = useMemo(
     () =>
       sideBarRoutes.filter((route) => {
-        if (route.allowedRoles && (!user || !route.allowedRoles.includes(user.role))) {
-          return false;
-        }
-        if (
-          route.requiredAnyPermissions &&
-          route.requiredAnyPermissions.length > 0 &&
-          (!user?.permissions ||
-            !route.requiredAnyPermissions.some((permission) =>
-              user.permissions.includes(permission),
-            ))
-        ) {
-          return false;
-        }
-        return true;
+        return can(user, {
+          roles: route.roles,
+          anyPermissions: route.requiredAnyPermissions,
+          allPermissions: route.requiredAllPermissions,
+        });
       }),
     [user],
   );

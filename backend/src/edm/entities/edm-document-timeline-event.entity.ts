@@ -53,7 +53,10 @@ export class EdmDocumentTimelineEvent {
   @JoinColumn({ name: 'responsible_user_id' })
   responsibleUser: User | null;
 
-  @ManyToOne(() => EdmDocumentTimelineEvent, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => EdmDocumentTimelineEvent, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'parent_event_id' })
   parentEvent: EdmDocumentTimelineEvent | null;
 
@@ -69,4 +72,3 @@ export class EdmDocumentTimelineEvent {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-

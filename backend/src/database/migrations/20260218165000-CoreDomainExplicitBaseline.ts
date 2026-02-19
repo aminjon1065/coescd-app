@@ -106,7 +106,9 @@ export class CoreDomainExplicitBaseline20260218165000
     );
   }
 
-  private async createDepartmentsTable(queryRunner: QueryRunner): Promise<void> {
+  private async createDepartmentsTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     if (await queryRunner.hasTable('departments')) {
       return;
     }
@@ -170,7 +172,10 @@ export class CoreDomainExplicitBaseline20260218165000
     ]);
 
     await queryRunner.createIndices('departments', [
-      new TableIndex({ name: 'IDX_DEPARTMENTS_PARENT_ID', columnNames: ['parent_id'] }),
+      new TableIndex({
+        name: 'IDX_DEPARTMENTS_PARENT_ID',
+        columnNames: ['parent_id'],
+      }),
       new TableIndex({ name: 'IDX_DEPARTMENTS_TYPE', columnNames: ['type'] }),
     ]);
   }
@@ -182,9 +187,14 @@ export class CoreDomainExplicitBaseline20260218165000
       return;
     }
 
-    const hasDepartmentColumn = await queryRunner.hasColumn('user', 'department_id');
+    const hasDepartmentColumn = await queryRunner.hasColumn(
+      'user',
+      'department_id',
+    );
     if (!hasDepartmentColumn) {
-      await queryRunner.query('ALTER TABLE "user" ADD COLUMN "department_id" int');
+      await queryRunner.query(
+        'ALTER TABLE "user" ADD COLUMN "department_id" int',
+      );
     }
 
     const userTable = await queryRunner.getTable('user');
@@ -294,9 +304,18 @@ export class CoreDomainExplicitBaseline20260218165000
 
     await queryRunner.createIndices('tasks', [
       new TableIndex({ name: 'IDX_TASKS_STATUS', columnNames: ['status'] }),
-      new TableIndex({ name: 'IDX_TASKS_CREATOR_ID', columnNames: ['creator_id'] }),
-      new TableIndex({ name: 'IDX_TASKS_RECEIVER_ID', columnNames: ['receiver_id'] }),
-      new TableIndex({ name: 'IDX_TASKS_CREATED_AT', columnNames: ['created_at'] }),
+      new TableIndex({
+        name: 'IDX_TASKS_CREATOR_ID',
+        columnNames: ['creator_id'],
+      }),
+      new TableIndex({
+        name: 'IDX_TASKS_RECEIVER_ID',
+        columnNames: ['receiver_id'],
+      }),
+      new TableIndex({
+        name: 'IDX_TASKS_CREATED_AT',
+        columnNames: ['created_at'],
+      }),
     ]);
   }
 
@@ -435,7 +454,9 @@ export class CoreDomainExplicitBaseline20260218165000
     );
   }
 
-  private async createDisasterTypesTable(queryRunner: QueryRunner): Promise<void> {
+  private async createDisasterTypesTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     if (await queryRunner.hasTable('disaster_types')) {
       return;
     }
@@ -579,7 +600,10 @@ export class CoreDomainExplicitBaseline20260218165000
 
     await queryRunner.createIndices('disasters', [
       new TableIndex({ name: 'IDX_DISASTERS_STATUS', columnNames: ['status'] }),
-      new TableIndex({ name: 'IDX_DISASTERS_SEVERITY', columnNames: ['severity'] }),
+      new TableIndex({
+        name: 'IDX_DISASTERS_SEVERITY',
+        columnNames: ['severity'],
+      }),
       new TableIndex({
         name: 'IDX_DISASTERS_DEPARTMENT_ID',
         columnNames: ['department_id'],
@@ -591,4 +615,3 @@ export class CoreDomainExplicitBaseline20260218165000
     ]);
   }
 }
-

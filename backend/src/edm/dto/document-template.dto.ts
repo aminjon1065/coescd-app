@@ -11,7 +11,13 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-const documentTypes = ['incoming', 'outgoing', 'internal', 'order', 'resolution'] as const;
+const documentTypes = [
+  'incoming',
+  'outgoing',
+  'internal',
+  'order',
+  'resolution',
+] as const;
 const scopeTypes = ['department', 'global'] as const;
 const fieldKeys = [
   'title',

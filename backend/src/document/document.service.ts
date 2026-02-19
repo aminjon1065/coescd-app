@@ -48,7 +48,9 @@ export class DocumentService {
     }
 
     if (dto.departmentId) {
-      const dept = await this.departmentRepo.findOneBy({ id: dto.departmentId });
+      const dept = await this.departmentRepo.findOneBy({
+        id: dto.departmentId,
+      });
       if (!dept) throw new NotFoundException('Department not found');
       doc.department = dept;
     }
@@ -146,7 +148,9 @@ export class DocumentService {
     }
 
     if (dto.departmentId) {
-      const dept = await this.departmentRepo.findOneBy({ id: dto.departmentId });
+      const dept = await this.departmentRepo.findOneBy({
+        id: dto.departmentId,
+      });
       if (!dept) throw new NotFoundException('Department not found');
       doc.department = dept;
     }

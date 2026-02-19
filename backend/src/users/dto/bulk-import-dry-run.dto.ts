@@ -19,4 +19,3 @@ export class BulkImportDryRunDto {
   @IsBoolean()
   allowPermissionUpdate?: boolean;
 }
-

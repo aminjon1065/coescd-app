@@ -11,6 +11,7 @@ import api from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { ITask, TaskStatus } from '@/interfaces/ITask';
 import { format } from 'date-fns';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 
 const statusLabel: Record<TaskStatus, string> = {
   new: 'Новая',
@@ -37,6 +38,17 @@ const nextStatusLabel: Record<TaskStatus, string> = {
 };
 
 export default function TaskDetailPage() {
+  return (
+    <ProtectedRouteGate
+      policyKey="dashboard.tasks.detail"
+      deniedDescription="Карточка задачи доступна пользователям с правом чтения задач."
+    >
+      <TaskDetailContent />
+    </ProtectedRouteGate>
+  );
+}
+
+function TaskDetailContent() {
   const { id } = useParams();
   const router = useRouter();
   const { accessToken } = useAuth();

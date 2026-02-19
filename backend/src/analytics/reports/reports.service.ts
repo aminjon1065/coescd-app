@@ -38,15 +38,21 @@ export class ReportsService {
   ) {}
 
   async getStats() {
-    const [totalDisasters, activeDisasters, totalUsers, totalDepartments, totalTasks, activeTasks] =
-      await Promise.all([
-        this.disasterRepo.count(),
-        this.disasterRepo.count({ where: { status: 'active' } }),
-        this.userRepo.count(),
-        this.departmentRepo.count(),
-        this.taskRepo.count(),
-        this.taskRepo.count({ where: { status: 'in_progress' } }),
-      ]);
+    const [
+      totalDisasters,
+      activeDisasters,
+      totalUsers,
+      totalDepartments,
+      totalTasks,
+      activeTasks,
+    ] = await Promise.all([
+      this.disasterRepo.count(),
+      this.disasterRepo.count({ where: { status: 'active' } }),
+      this.userRepo.count(),
+      this.departmentRepo.count(),
+      this.taskRepo.count(),
+      this.taskRepo.count({ where: { status: 'in_progress' } }),
+    ]);
 
     return {
       totalDisasters,
@@ -65,11 +71,7 @@ export class ReportsService {
       actor.permissions.includes(Permission.ANALYTICS_WRITE) ||
       actor.permissions.includes(Permission.GIS_WRITE);
 
-    const scope = isAdmin
-      ? 'global'
-      : isDepartmentHead
-        ? 'department'
-        : 'self';
+    const scope = isAdmin ? 'global' : isDepartmentHead ? 'department' : 'self';
     const departmentId = actor.departmentId ?? null;
     const now = new Date();
 
@@ -104,47 +106,71 @@ export class ReportsService {
       edmDocBaseQb.andWhere('creator.id = :actorId', { actorId: actor.sub });
     }
 
-    const [taskTotal, taskInProgress, taskNew, taskCompleted] = await Promise.all([
-      taskBaseQb.clone().getCount(),
-      taskBaseQb.clone().andWhere('task.status = :status', { status: 'in_progress' }).getCount(),
-      taskBaseQb.clone().andWhere('task.status = :status', { status: 'new' }).getCount(),
-      taskBaseQb.clone().andWhere('task.status = :status', { status: 'completed' }).getCount(),
-    ]);
-
-    const [myAssignedTasks, myCreatedTasks, unreadAlerts, myApprovals] = await Promise.all([
-      this.taskRepo
-        .createQueryBuilder('task')
-        .leftJoin('task.receiver', 'receiver')
-        .where('receiver.id = :actorId', { actorId: actor.sub })
-        .getCount(),
-      this.taskRepo
-        .createQueryBuilder('task')
-        .leftJoin('task.creator', 'creator')
-        .where('creator.id = :actorId', { actorId: actor.sub })
-        .getCount(),
-      this.edmAlertRepo
-        .createQueryBuilder('alert')
-        .leftJoin('alert.recipientUser', 'recipientUser')
-        .where('recipientUser.id = :actorId', { actorId: actor.sub })
-        .andWhere('alert.status = :status', { status: 'unread' })
-        .getCount(),
-      this.edmRouteStageRepo
-        .createQueryBuilder('stage')
-        .leftJoin('stage.route', 'route')
-        .leftJoin('stage.assigneeUser', 'assigneeUser')
-        .where('stage.state = :stageState', { stageState: 'in_progress' })
-        .andWhere('route.state = :routeState', { routeState: 'active' })
-        .andWhere('assigneeUser.id = :actorId', { actorId: actor.sub })
-        .getCount(),
-    ]);
-
-    const [documentsTotal, documentsInRoute, documentsDraft, documentsArchived] =
+    const [taskTotal, taskInProgress, taskNew, taskCompleted] =
       await Promise.all([
-        edmDocBaseQb.clone().getCount(),
-        edmDocBaseQb.clone().andWhere('document.status = :status', { status: 'in_route' }).getCount(),
-        edmDocBaseQb.clone().andWhere('document.status = :status', { status: 'draft' }).getCount(),
-        edmDocBaseQb.clone().andWhere('document.status = :status', { status: 'archived' }).getCount(),
+        taskBaseQb.clone().getCount(),
+        taskBaseQb
+          .clone()
+          .andWhere('task.status = :status', { status: 'in_progress' })
+          .getCount(),
+        taskBaseQb
+          .clone()
+          .andWhere('task.status = :status', { status: 'new' })
+          .getCount(),
+        taskBaseQb
+          .clone()
+          .andWhere('task.status = :status', { status: 'completed' })
+          .getCount(),
       ]);
+
+    const [myAssignedTasks, myCreatedTasks, unreadAlerts, myApprovals] =
+      await Promise.all([
+        this.taskRepo
+          .createQueryBuilder('task')
+          .leftJoin('task.receiver', 'receiver')
+          .where('receiver.id = :actorId', { actorId: actor.sub })
+          .getCount(),
+        this.taskRepo
+          .createQueryBuilder('task')
+          .leftJoin('task.creator', 'creator')
+          .where('creator.id = :actorId', { actorId: actor.sub })
+          .getCount(),
+        this.edmAlertRepo
+          .createQueryBuilder('alert')
+          .leftJoin('alert.recipientUser', 'recipientUser')
+          .where('recipientUser.id = :actorId', { actorId: actor.sub })
+          .andWhere('alert.status = :status', { status: 'unread' })
+          .getCount(),
+        this.edmRouteStageRepo
+          .createQueryBuilder('stage')
+          .leftJoin('stage.route', 'route')
+          .leftJoin('stage.assigneeUser', 'assigneeUser')
+          .where('stage.state = :stageState', { stageState: 'in_progress' })
+          .andWhere('route.state = :routeState', { routeState: 'active' })
+          .andWhere('assigneeUser.id = :actorId', { actorId: actor.sub })
+          .getCount(),
+      ]);
+
+    const [
+      documentsTotal,
+      documentsInRoute,
+      documentsDraft,
+      documentsArchived,
+    ] = await Promise.all([
+      edmDocBaseQb.clone().getCount(),
+      edmDocBaseQb
+        .clone()
+        .andWhere('document.status = :status', { status: 'in_route' })
+        .getCount(),
+      edmDocBaseQb
+        .clone()
+        .andWhere('document.status = :status', { status: 'draft' })
+        .getCount(),
+      edmDocBaseQb
+        .clone()
+        .andWhere('document.status = :status', { status: 'archived' })
+        .getCount(),
+    ]);
 
     const overdueStagesBaseQb = this.edmRouteStageRepo
       .createQueryBuilder('stage')
@@ -152,15 +178,21 @@ export class ReportsService {
       .leftJoin('route.document', 'document')
       .leftJoin('document.department', 'department')
       .leftJoin('document.creator', 'creator')
-      .where('stage.state IN (:...states)', { states: ['pending', 'in_progress'] })
+      .where('stage.state IN (:...states)', {
+        states: ['pending', 'in_progress'],
+      })
       .andWhere('stage.dueAt IS NOT NULL')
       .andWhere('stage.dueAt < :now', { now });
 
     if (isDepartmentHead && departmentId) {
-      overdueStagesBaseQb.andWhere('department.id = :departmentId', { departmentId });
+      overdueStagesBaseQb.andWhere('department.id = :departmentId', {
+        departmentId,
+      });
     }
     if (!isAdmin && !isDepartmentHead) {
-      overdueStagesBaseQb.andWhere('creator.id = :actorId', { actorId: actor.sub });
+      overdueStagesBaseQb.andWhere('creator.id = :actorId', {
+        actorId: actor.sub,
+      });
     }
 
     const overdueStages = await overdueStagesBaseQb.getCount();
@@ -206,20 +238,25 @@ export class ReportsService {
     };
 
     if (isAdmin) {
-      const [totalUsers, activeUsers, totalDepartments, activeFiles, routeActiveTotal] =
-        await Promise.all([
-          this.userRepo.count(),
-          this.userRepo.count({ where: { isActive: true } }),
-          this.departmentRepo.count(),
-          this.fileRepo
-            .createQueryBuilder('file')
-            .where('file.status = :status', { status: 'active' })
-            .getCount(),
-          this.edmRouteRepo
-            .createQueryBuilder('route')
-            .where('route.state = :state', { state: 'active' })
-            .getCount(),
-        ]);
+      const [
+        totalUsers,
+        activeUsers,
+        totalDepartments,
+        activeFiles,
+        routeActiveTotal,
+      ] = await Promise.all([
+        this.userRepo.count(),
+        this.userRepo.count({ where: { isActive: true } }),
+        this.departmentRepo.count(),
+        this.fileRepo
+          .createQueryBuilder('file')
+          .where('file.status = :status', { status: 'active' })
+          .getCount(),
+        this.edmRouteRepo
+          .createQueryBuilder('route')
+          .where('route.state = :state', { state: 'active' })
+          .getCount(),
+      ]);
 
       result.widgets.admin = {
         totalUsers,
@@ -256,22 +293,31 @@ export class ReportsService {
         .createQueryBuilder('disaster')
         .leftJoin('disaster.department', 'department');
       if (!isAdmin && departmentId) {
-        disasterBaseQb.andWhere('department.id = :departmentId', { departmentId });
+        disasterBaseQb.andWhere('department.id = :departmentId', {
+          departmentId,
+        });
       }
 
-      const [totalDisasters, activeDisasters, criticalDisasters, monitoringDisasters] =
-        await Promise.all([
-          disasterBaseQb.clone().getCount(),
-          disasterBaseQb.clone().andWhere('disaster.status = :status', { status: 'active' }).getCount(),
-          disasterBaseQb
-            .clone()
-            .andWhere('disaster.severity = :severity', { severity: 'critical' })
-            .getCount(),
-          disasterBaseQb
-            .clone()
-            .andWhere('disaster.status = :status', { status: 'monitoring' })
-            .getCount(),
-        ]);
+      const [
+        totalDisasters,
+        activeDisasters,
+        criticalDisasters,
+        monitoringDisasters,
+      ] = await Promise.all([
+        disasterBaseQb.clone().getCount(),
+        disasterBaseQb
+          .clone()
+          .andWhere('disaster.status = :status', { status: 'active' })
+          .getCount(),
+        disasterBaseQb
+          .clone()
+          .andWhere('disaster.severity = :severity', { severity: 'critical' })
+          .getCount(),
+        disasterBaseQb
+          .clone()
+          .andWhere('disaster.status = :status', { status: 'monitoring' })
+          .getCount(),
+      ]);
 
       result.widgets.analytics = {
         totalDisasters,

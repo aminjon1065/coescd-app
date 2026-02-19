@@ -1,35 +1,13 @@
 import {
   AudioWaveform,
-  BookOpen,
   Command,
   CompassIcon,
-  FileChartColumnIcon,
-  FolderOpenIcon,
   Frame,
-  ListTodoIcon,
-  Map,
-  MapPinnedIcon,
-  PieChart,
-  UsersRoundIcon,
-  Building2Icon,
-  ShieldCheckIcon,
-  ClipboardListIcon,
+  Map, PieChart,
 } from 'lucide-react';
-import { LucideIcon } from 'lucide-react';
-import { Role } from '@/enums/RoleEnum';
+import { navItems, type NavItem } from '@/features/navigation/nav.config';
 
-export type SidebarRoute = {
-  title: string;
-  url: string;
-  icon?: LucideIcon;
-  isActive?: boolean;
-  allowedRoles?: Role[];
-  requiredAnyPermissions?: string[];
-  items?: {
-    title: string;
-    url: string;
-  }[];
-};
+export type SidebarRoute = NavItem;
 
 export const data = {
   user: {
@@ -73,74 +51,4 @@ export const data = {
   ],
 };
 
-export const sideBarRoutes: SidebarRoute[] = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: PieChart,
-  },
-  {
-    title: 'Analytics',
-    url: '/dashboard/analytic',
-    icon: FileChartColumnIcon,
-  },
-  {
-    title: 'Tasks',
-    url: '/dashboard/tasks',
-    icon: ListTodoIcon,
-  },
-  {
-    title: 'Documentation',
-    url: '/dashboard/documentation',
-    icon: BookOpen,
-    items: [
-      {
-        title: 'Incoming',
-        url: '/dashboard/documentation',
-      },
-      {
-        title: 'Outgoing',
-        url: '/dashboard/documentation/sent',
-      },
-      {
-        title: 'Internal',
-        url: '/dashboard/documentation/internal',
-      },
-    ],
-  },
-  {
-    title: 'Files',
-    url: '/dashboard/files',
-    icon: FolderOpenIcon,
-  },
-  {
-    title: 'GIS',
-    url: '/dashboard/gis',
-    icon: MapPinnedIcon,
-    requiredAnyPermissions: ['gis.write', 'analytics.write'],
-  },
-  {
-    title: 'Staff',
-    url: '/dashboard/users',
-    icon: UsersRoundIcon,
-    allowedRoles: [Role.Admin, Role.Manager],
-  },
-  {
-    title: 'Access Control',
-    url: '/dashboard/access',
-    icon: ShieldCheckIcon,
-    allowedRoles: [Role.Admin],
-  },
-  {
-    title: 'Departments',
-    url: '/dashboard/departments',
-    icon: Building2Icon,
-    allowedRoles: [Role.Admin],
-  },
-  {
-    title: 'Audit Logs',
-    url: '/dashboard/audit-logs',
-    icon: ClipboardListIcon,
-    allowedRoles: [Role.Admin],
-  },
-];
+export const sideBarRoutes: SidebarRoute[] = navItems;

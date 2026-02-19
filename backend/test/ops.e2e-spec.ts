@@ -76,7 +76,9 @@ describe('Ops (e2e)', () => {
             ],
           }),
           dataSourceFactory: async (options) => {
-            const dataSource = db.adapters.createTypeormDataSource(options as any);
+            const dataSource = db.adapters.createTypeormDataSource(
+              options as any,
+            );
             return dataSource.initialize();
           },
         }),

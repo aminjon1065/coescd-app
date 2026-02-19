@@ -63,7 +63,10 @@ describe('RBAC + ABAC (e2e)', () => {
       body: Buffer;
       mimeType: string;
     }) => {
-      objectStore.set(params.key, { body: params.body, mimeType: params.mimeType });
+      objectStore.set(params.key, {
+        body: params.body,
+        mimeType: params.mimeType,
+      });
     },
     getObjectStream: async (key: string) => {
       const stored = objectStore.get(key);
@@ -471,7 +474,9 @@ describe('RBAC + ABAC (e2e)', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
     expect(
-      getListItems<User>(usersRes.body).some((u: User) => u.id === regularDept2.id),
+      getListItems<User>(usersRes.body).some(
+        (u: User) => u.id === regularDept2.id,
+      ),
     ).toBe(false);
 
     const documentsRes = await request(app.getHttpServer())
@@ -489,7 +494,9 @@ describe('RBAC + ABAC (e2e)', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
     expect(
-      getListItems<Task>(tasksRes.body).some((t: Task) => t.id === taskDept2.id),
+      getListItems<Task>(tasksRes.body).some(
+        (t: Task) => t.id === taskDept2.id,
+      ),
     ).toBe(false);
   });
 
@@ -537,8 +544,12 @@ describe('RBAC + ABAC (e2e)', () => {
       .send(applyPayload)
       .expect(200);
 
-    expect(applyReplayResponse.body.operationId).toBe(applyResponse.body.operationId);
-    expect(applyReplayResponse.body.summary).toEqual(applyResponse.body.summary);
+    expect(applyReplayResponse.body.operationId).toBe(
+      applyResponse.body.operationId,
+    );
+    expect(applyReplayResponse.body.summary).toEqual(
+      applyResponse.body.summary,
+    );
 
     const createdUser = await userRepo.findOne({
       where: { email: 'bulk.new@test.local' },
@@ -644,7 +655,9 @@ describe('RBAC + ABAC (e2e)', () => {
       .expect(201);
 
     expect(uploadUrlResponse.body.key).toBeDefined();
-    expect(uploadUrlResponse.body.uploadUrl).toContain('https://signed.test/upload/');
+    expect(uploadUrlResponse.body.uploadUrl).toContain(
+      'https://signed.test/upload/',
+    );
 
     await request(app.getHttpServer())
       .post('/files/upload-url')
@@ -700,7 +713,9 @@ describe('RBAC + ABAC (e2e)', () => {
       })
       .expect(201);
 
-    expect(uploadUrlResponse.body.uploadUrl).toContain('https://signed.test/upload/');
+    expect(uploadUrlResponse.body.uploadUrl).toContain(
+      'https://signed.test/upload/',
+    );
     const key: string = uploadUrlResponse.body.key;
     objectStore.set(key, {
       body: Buffer.from('direct upload data'),
@@ -1183,7 +1198,9 @@ describe('RBAC + ABAC (e2e)', () => {
       .set('x-csrf-token', session.csrfToken)
       .expect(200);
 
-    let setCookie = normalizeSetCookieHeader(refreshResponse.headers['set-cookie']);
+    let setCookie = normalizeSetCookieHeader(
+      refreshResponse.headers['set-cookie'],
+    );
     session = {
       ...session,
       csrfToken: getCookieValue(setCookie, 'csrfToken') ?? session.csrfToken,

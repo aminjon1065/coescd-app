@@ -183,7 +183,11 @@ export class AuthenticationController {
       } = await this.authService.refreshTokens(refreshToken);
       const csrfToken = randomBytes(24).toString('hex');
 
-      res.cookie('refreshToken', newRefreshToken, this.getRefreshCookieOptions());
+      res.cookie(
+        'refreshToken',
+        newRefreshToken,
+        this.getRefreshCookieOptions(),
+      );
       res.cookie('csrfToken', csrfToken, this.getCsrfCookieOptions());
 
       await this.authAuditService.log({

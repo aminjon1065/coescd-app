@@ -84,7 +84,12 @@ export class TaskController {
     @ActiveUser() user: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.taskService.unlinkFile(id, fileId, user, getRequestMeta(request));
+    return this.taskService.unlinkFile(
+      id,
+      fileId,
+      user,
+      getRequestMeta(request),
+    );
   }
 
   @Patch(':id')
@@ -104,5 +109,4 @@ export class TaskController {
   remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
     return this.taskService.remove(+id, user);
   }
-
 }

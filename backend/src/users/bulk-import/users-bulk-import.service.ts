@@ -9,7 +9,10 @@ import { randomUUID } from 'crypto';
 import { Brackets, Repository } from 'typeorm';
 import { Department } from '../../department/entities/department.entity';
 import { HashingService } from '../../iam/hashing/hashing.service';
-import { Permission, PermissionType } from '../../iam/authorization/permission.type';
+import {
+  Permission,
+  PermissionType,
+} from '../../iam/authorization/permission.type';
 import { ActiveUserData } from '../../iam/interfaces/activate-user-data.interface';
 import { UserChangeAuditLog } from '../entities/user-change-audit-log.entity';
 import { User } from '../entities/user.entity';
@@ -103,7 +106,9 @@ export class UsersBulkImportService {
     const requiredHeaders = ['email', 'name', 'role'];
     for (const requiredHeader of requiredHeaders) {
       if (!headers.includes(requiredHeader)) {
-        throw new BadRequestException(`Missing required column: ${requiredHeader}`);
+        throw new BadRequestException(
+          `Missing required column: ${requiredHeader}`,
+        );
       }
     }
 
@@ -135,7 +140,9 @@ export class UsersBulkImportService {
       const password = (record.password ?? '').trim() || null;
 
       if (!email || !this.isEmail(email)) {
-        rowErrors.push(this.err(rowNumber, 'email', 'invalid_email', 'Invalid email format'));
+        rowErrors.push(
+          this.err(rowNumber, 'email', 'invalid_email', 'Invalid email format'),
+        );
       } else if (emailSeen.has(email)) {
         rowErrors.push(
           this.err(
@@ -150,11 +157,15 @@ export class UsersBulkImportService {
       }
 
       if (!name) {
-        rowErrors.push(this.err(rowNumber, 'name', 'invalid_name', 'Name is required'));
+        rowErrors.push(
+          this.err(rowNumber, 'name', 'invalid_name', 'Name is required'),
+        );
       }
 
       if (!Object.values(Role).includes(role)) {
-        rowErrors.push(this.err(rowNumber, 'role', 'invalid_role', 'Role is invalid'));
+        rowErrors.push(
+          this.err(rowNumber, 'role', 'invalid_role', 'Role is invalid'),
+        );
       }
 
       const existing = userIndex.get(email);
@@ -188,7 +199,14 @@ export class UsersBulkImportService {
 
       const department = this.resolveDepartment(record, departments);
       if (department.error) {
-        rowErrors.push(this.err(rowNumber, department.field, 'department_not_found', department.error));
+        rowErrors.push(
+          this.err(
+            rowNumber,
+            department.field,
+            'department_not_found',
+            department.error,
+          ),
+        );
       }
 
       const permissions: PermissionType[] = [];
@@ -242,7 +260,12 @@ export class UsersBulkImportService {
       });
     }
 
-    const summary = this.buildSummary(dataLines.length, rows, errors, userIndex);
+    const summary = this.buildSummary(
+      dataLines.length,
+      rows,
+      errors,
+      userIndex,
+    );
     const sessionId = randomUUID();
     const session: BulkImportSession = {
       id: sessionId,
@@ -314,10 +337,15 @@ export class UsersBulkImportService {
       throw new BadRequestException('Preview session expired');
     }
     if (session.summary.invalidRows > 0) {
-      throw new BadRequestException('Cannot apply: dry-run contains invalid rows');
+      throw new BadRequestException(
+        'Cannot apply: dry-run contains invalid rows',
+      );
     }
 
-    const cached = await this.storage.getIdempotency(actor.sub, dto.idempotencyKey);
+    const cached = await this.storage.getIdempotency(
+      actor.sub,
+      dto.idempotencyKey,
+    );
     if (cached) {
       return {
         operationId: cached.operationId,
@@ -347,7 +375,7 @@ export class UsersBulkImportService {
       try {
         const existing = userIndex.get(row.email);
         const department = row.departmentId
-          ? departmentIndex.get(row.departmentId) ?? null
+          ? (departmentIndex.get(row.departmentId) ?? null)
           : null;
 
         if (!existing) {
@@ -503,16 +531,16 @@ export class UsersBulkImportService {
           new Brackets((scopeQb) => {
             scopeQb
               .where('LOWER(op.operation_id) LIKE :q', { q: `%${search}%` })
-              .orWhere('LOWER(COALESCE(op.session_id, \'\')) LIKE :q', {
+              .orWhere("LOWER(COALESCE(op.session_id, '')) LIKE :q", {
                 q: `%${search}%`,
               })
-              .orWhere('LOWER(COALESCE(op.idempotency_key, \'\')) LIKE :q', {
+              .orWhere("LOWER(COALESCE(op.idempotency_key, '')) LIKE :q", {
                 q: `%${search}%`,
               })
-              .orWhere('LOWER(COALESCE(actor.email, \'\')) LIKE :q', {
+              .orWhere("LOWER(COALESCE(actor.email, '')) LIKE :q", {
                 q: `%${search}%`,
               })
-              .orWhere('LOWER(COALESCE(actor.name, \'\')) LIKE :q', {
+              .orWhere("LOWER(COALESCE(actor.name, '')) LIKE :q", {
                 q: `%${search}%`,
               });
           }),
@@ -673,18 +701,27 @@ export class UsersBulkImportService {
     return new Map(users.map((user) => [user.email.toLowerCase(), user]));
   }
 
-  private resolveDepartment(record: Record<string, string>, departments: Department[]) {
+  private resolveDepartment(
+    record: Record<string, string>,
+    departments: Department[],
+  ) {
     const byId = (record.department_id ?? '').trim();
     const byName = (record.department_name ?? '').trim();
 
     if (byId) {
       const id = Number(byId);
       if (!Number.isFinite(id) || id <= 0) {
-        return { field: 'department_id', error: 'department_id must be positive integer' };
+        return {
+          field: 'department_id',
+          error: 'department_id must be positive integer',
+        };
       }
       const department = departments.find((item) => item.id === id);
       if (!department) {
-        return { field: 'department_id', error: `Department with id ${id} not found` };
+        return {
+          field: 'department_id',
+          error: `Department with id ${id} not found`,
+        };
       }
       return { value: department };
     }
@@ -694,7 +731,10 @@ export class UsersBulkImportService {
         (item) => item.name.toLowerCase() === byName.toLowerCase(),
       );
       if (!department) {
-        return { field: 'department_name', error: `Department '${byName}' not found` };
+        return {
+          field: 'department_name',
+          error: `Department '${byName}' not found`,
+        };
       }
       return { value: department };
     }
@@ -702,7 +742,10 @@ export class UsersBulkImportService {
     return { value: null as Department | null };
   }
 
-  private toRecord(headers: string[], values: string[]): Record<string, string> {
+  private toRecord(
+    headers: string[],
+    values: string[],
+  ): Record<string, string> {
     const record: Record<string, string> = {};
     headers.forEach((header, index) => {
       record[header] = (values[index] ?? '').trim();
@@ -712,7 +755,10 @@ export class UsersBulkImportService {
 
   private parseCsv(content: string): string[][] {
     const lines: string[][] = [];
-    const rows = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const rows = content
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n');
     for (const row of rows) {
       if (!row.trim()) {
         continue;

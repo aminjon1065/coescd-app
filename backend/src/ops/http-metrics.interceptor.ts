@@ -17,14 +17,15 @@ export class HttpMetricsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const started = Date.now();
     const request = context.switchToHttp().getRequest<Request>();
-    const response = context.switchToHttp().getResponse<{ statusCode: number }>();
+    const response = context
+      .switchToHttp()
+      .getResponse<{ statusCode: number }>();
 
     let statusCode = 200;
 
     return next.handle().pipe(
       catchError((error) => {
-        statusCode =
-          error instanceof HttpException ? error.getStatus() : 500;
+        statusCode = error instanceof HttpException ? error.getStatus() : 500;
         return throwError(() => error);
       }),
       finalize(() => {
@@ -51,4 +52,3 @@ export class HttpMetricsInterceptor implements NestInterceptor {
     return url.split('?')[0];
   }
 }
-

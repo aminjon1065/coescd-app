@@ -123,7 +123,7 @@ export class OpsService {
     const parsedTs = lastSuccessAtRaw ? Date.parse(lastSuccessAtRaw) : NaN;
     const hasValidTimestamp = Number.isFinite(parsedTs);
     const ageHours = hasValidTimestamp
-      ? Number((((now - parsedTs) as number) / (1000 * 60 * 60)).toFixed(2))
+      ? Number(((now - parsedTs) / (1000 * 60 * 60)).toFixed(2))
       : null;
     const stale = hasValidTimestamp ? (ageHours ?? 0) > maxAgeHours : true;
     const triggered = required && (!hasValidTimestamp || stale);
@@ -132,7 +132,9 @@ export class OpsService {
       generatedAt: new Date().toISOString(),
       required,
       maxAgeHours,
-      lastSuccessAt: hasValidTimestamp ? new Date(parsedTs).toISOString() : null,
+      lastSuccessAt: hasValidTimestamp
+        ? new Date(parsedTs).toISOString()
+        : null,
       ageHours,
       stale,
       alertTriggered: triggered,

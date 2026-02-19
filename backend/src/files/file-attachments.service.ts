@@ -6,7 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FileEntity } from './entities/file.entity';
-import { FileLinkEntity, FileLinkResourceType } from './entities/file-link.entity';
+import {
+  FileLinkEntity,
+  FileLinkResourceType,
+} from './entities/file-link.entity';
 import { FileAccessAuditEntity } from './entities/file-access-audit.entity';
 import { User } from '../users/entities/user.entity';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
@@ -27,7 +30,10 @@ export class FileAttachmentsService {
   ) {}
 
   async listResourceFiles(params: {
-    resourceType: Extract<FileLinkResourceType, 'document' | 'edm_document' | 'task'>;
+    resourceType: Extract<
+      FileLinkResourceType,
+      'document' | 'edm_document' | 'task'
+    >;
     resourceId: number;
     actor: ActiveUserData;
   }): Promise<FileEntity[]> {
@@ -56,7 +62,10 @@ export class FileAttachmentsService {
   }
 
   async linkResourceFile(params: {
-    resourceType: Extract<FileLinkResourceType, 'document' | 'edm_document' | 'task'>;
+    resourceType: Extract<
+      FileLinkResourceType,
+      'document' | 'edm_document' | 'task'
+    >;
     resourceId: number;
     file: FileEntity;
     actor: ActiveUserData;
@@ -108,7 +117,10 @@ export class FileAttachmentsService {
   }
 
   async unlinkResourceFile(params: {
-    resourceType: Extract<FileLinkResourceType, 'document' | 'edm_document' | 'task'>;
+    resourceType: Extract<
+      FileLinkResourceType,
+      'document' | 'edm_document' | 'task'
+    >;
     resourceId: number;
     file: FileEntity;
     actor: ActiveUserData;

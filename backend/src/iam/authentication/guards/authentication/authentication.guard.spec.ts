@@ -9,7 +9,9 @@ jest.mock('@nestjs/jwt', () => ({
 describe('AuthenticationGuard', () => {
   it('should be defined', () => {
     const reflector = {} as Reflector;
-    const accessTokenGuard = { canActivate: () => true } as unknown as AccessTokenGuard;
+    const accessTokenGuard = {
+      canActivate: () => true,
+    } as unknown as AccessTokenGuard;
 
     expect(new AuthenticationGuard(reflector, accessTokenGuard)).toBeDefined();
   });

@@ -10,7 +10,7 @@ export function getRequestMeta(request: Request): RequestMeta {
   const ip =
     typeof xForwardedFor === 'string' && xForwardedFor.length > 0
       ? xForwardedFor.split(',')[0].trim()
-      : request.ip ?? null;
+      : (request.ip ?? null);
 
   return {
     ip,

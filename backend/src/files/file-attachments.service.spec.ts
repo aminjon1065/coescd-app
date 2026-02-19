@@ -54,7 +54,7 @@ function createService() {
 describe('FileAttachmentsService', () => {
   it('findAttachableFile throws when file does not exist', async () => {
     const { service, fileRepo } = createService();
-    (fileRepo.findOne as jest.Mock).mockResolvedValue(null);
+    fileRepo.findOne.mockResolvedValue(null);
 
     await expect(service.findAttachableFile(404)).rejects.toBeInstanceOf(
       NotFoundException,
@@ -63,7 +63,7 @@ describe('FileAttachmentsService', () => {
 
   it('findAttachableFile throws for deleted file', async () => {
     const { service, fileRepo } = createService();
-    (fileRepo.findOne as jest.Mock).mockResolvedValue({
+    fileRepo.findOne.mockResolvedValue({
       id: 1,
       status: 'deleted',
     });
@@ -78,14 +78,14 @@ describe('FileAttachmentsService', () => {
       createService();
     const actor = makeActor();
 
-    (fileRepo.findOne as jest.Mock).mockResolvedValue({
+    fileRepo.findOne.mockResolvedValue({
       id: 10,
       status: 'active',
     });
-    (userRepo.findOneBy as jest.Mock).mockResolvedValue({ id: actor.sub });
+    userRepo.findOneBy.mockResolvedValue({ id: actor.sub });
 
     const existing = { id: 77 } as FileLinkEntity;
-    (fileLinkRepo.findOne as jest.Mock).mockResolvedValue(existing);
+    fileLinkRepo.findOne.mockResolvedValue(existing);
 
     const result = await service.linkResourceFile({
       resourceType: 'document',
@@ -106,11 +106,11 @@ describe('FileAttachmentsService', () => {
     const actor = makeActor();
 
     const file = { id: 10, status: 'active' } as FileEntity;
-    (fileRepo.findOne as jest.Mock).mockResolvedValue(file);
-    (fileRepo.findOneBy as jest.Mock).mockResolvedValue(file);
-    (userRepo.findOneBy as jest.Mock).mockResolvedValue({ id: actor.sub });
-    (fileLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
-    (fileLinkRepo.save as jest.Mock).mockResolvedValue({ id: 99 });
+    fileRepo.findOne.mockResolvedValue(file);
+    fileRepo.findOneBy.mockResolvedValue(file);
+    userRepo.findOneBy.mockResolvedValue({ id: actor.sub });
+    fileLinkRepo.findOne.mockResolvedValue(null);
+    fileLinkRepo.save.mockResolvedValue({ id: 99 });
 
     const result = await service.linkResourceFile({
       resourceType: 'task',
@@ -130,8 +130,8 @@ describe('FileAttachmentsService', () => {
     const actor = makeActor();
     const file = { id: 10, status: 'active' } as FileEntity;
 
-    (fileRepo.findOne as jest.Mock).mockResolvedValue(file);
-    (fileLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
+    fileRepo.findOne.mockResolvedValue(file);
+    fileLinkRepo.findOne.mockResolvedValue(null);
 
     await expect(
       service.unlinkResourceFile({
@@ -150,13 +150,13 @@ describe('FileAttachmentsService', () => {
     const actor = makeActor();
     const file = { id: 10, status: 'active' } as FileEntity;
 
-    (fileRepo.findOne as jest.Mock).mockResolvedValue(file);
-    (fileRepo.findOneBy as jest.Mock).mockResolvedValue(file);
-    (fileLinkRepo.findOne as jest.Mock).mockResolvedValue({
+    fileRepo.findOne.mockResolvedValue(file);
+    fileRepo.findOneBy.mockResolvedValue(file);
+    fileLinkRepo.findOne.mockResolvedValue({
       id: 8,
       file,
     } as FileLinkEntity);
-    (userRepo.findOneBy as jest.Mock).mockResolvedValue({ id: actor.sub });
+    userRepo.findOneBy.mockResolvedValue({ id: actor.sub });
 
     const result = await service.unlinkResourceFile({
       resourceType: 'task',

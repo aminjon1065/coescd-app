@@ -12,4 +12,3 @@ export class BulkImportApplyDto {
   @IsBoolean()
   confirm: boolean;
 }
-

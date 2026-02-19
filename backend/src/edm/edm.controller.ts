@@ -221,7 +221,10 @@ export class EdmController {
 
   @Get('alerts/my')
   @Permissions(Permission.DOCUMENTS_ALERTS_READ)
-  listMyAlerts(@ActiveUser() actor: ActiveUserData, @Query() query: GetAlertsQueryDto) {
+  listMyAlerts(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetAlertsQueryDto,
+  ) {
     return this.edmService.listMyAlerts(actor, query);
   }
 
@@ -274,7 +277,10 @@ export class EdmController {
 
   @Get('reports/sla')
   @Permissions(Permission.REPORTS_READ)
-  getSlaReport(@ActiveUser() actor: ActiveUserData, @Query() query: EdmReportsQueryDto) {
+  getSlaReport(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: EdmReportsQueryDto,
+  ) {
     return this.edmService.getSlaReport(actor, query);
   }
 
@@ -394,7 +400,10 @@ export class EdmController {
 
   @Post('documents')
   @Permissions(Permission.DOCUMENTS_CREATE)
-  createDraft(@Body() dto: CreateEdmDocumentDto, @ActiveUser() actor: ActiveUserData) {
+  createDraft(
+    @Body() dto: CreateEdmDocumentDto,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
     return this.edmService.createDraft(dto, actor);
   }
 
@@ -449,43 +458,64 @@ export class EdmController {
 
   @Post('documents/:id/archive')
   @Permissions(Permission.DOCUMENTS_ARCHIVE)
-  archive(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
+  archive(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
     return this.edmService.archive(id, actor);
   }
 
   @Get('documents')
   @Permissions(Permission.DOCUMENTS_READ)
-  findAll(@ActiveUser() actor: ActiveUserData, @Query() query: GetEdmDocumentsQueryDto) {
+  findAll(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetEdmDocumentsQueryDto,
+  ) {
     return this.edmService.findAll(actor, query);
   }
 
   @Get('documents/:id')
   @Permissions(Permission.DOCUMENTS_READ)
-  findOne(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
     return this.edmService.findOne(id, actor);
   }
 
   @Get('queues/inbox')
   @Permissions(Permission.DOCUMENTS_READ)
-  inbox(@ActiveUser() actor: ActiveUserData, @Query() query: GetEdmQueueQueryDto) {
+  inbox(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetEdmQueueQueryDto,
+  ) {
     return this.edmService.listQueue('inbox', actor, query);
   }
 
   @Get('queues/outbox')
   @Permissions(Permission.DOCUMENTS_READ)
-  outbox(@ActiveUser() actor: ActiveUserData, @Query() query: GetEdmQueueQueryDto) {
+  outbox(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetEdmQueueQueryDto,
+  ) {
     return this.edmService.listQueue('outbox', actor, query);
   }
 
   @Get('queues/my-approvals')
   @Permissions(Permission.DOCUMENTS_READ)
-  myApprovals(@ActiveUser() actor: ActiveUserData, @Query() query: GetEdmQueueQueryDto) {
+  myApprovals(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetEdmQueueQueryDto,
+  ) {
     return this.edmService.listQueue('my-approvals', actor, query);
   }
 
   @Get('documents/:id/route')
   @Permissions(Permission.DOCUMENTS_READ)
-  findRoute(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
+  findRoute(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
     return this.edmService.findRoute(id, actor);
   }
 
@@ -579,7 +609,12 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.forwardDocument(id, dto, actor, getRequestMeta(request));
+    return this.edmService.forwardDocument(
+      id,
+      dto,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Post('documents/:id/responsible')
@@ -590,7 +625,12 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.assignResponsible(id, dto, actor, getRequestMeta(request));
+    return this.edmService.assignResponsible(
+      id,
+      dto,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Post('documents/:id/replies')
@@ -606,13 +646,19 @@ export class EdmController {
 
   @Get('documents/:id/replies')
   @Permissions(Permission.DOCUMENTS_READ)
-  listReplies(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
+  listReplies(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
     return this.edmService.listReplies(id, actor);
   }
 
   @Get('documents/:id/files')
   @Permissions(Permission.DOCUMENTS_READ, Permission.FILES_READ)
-  findFiles(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
+  findFiles(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
     return this.edmService.findFiles(id, actor);
   }
 
@@ -635,6 +681,11 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.unlinkFile(id, fileId, actor, getRequestMeta(request));
+    return this.edmService.unlinkFile(
+      id,
+      fileId,
+      actor,
+      getRequestMeta(request),
+    );
   }
 }

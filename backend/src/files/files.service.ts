@@ -62,7 +62,10 @@ export class FilesService {
       .update(file.buffer)
       .digest('hex');
 
-    const key = this.buildStorageKey(owner.department?.id ?? null, file.originalname);
+    const key = this.buildStorageKey(
+      owner.department?.id ?? null,
+      file.originalname,
+    );
     await this.filesStorageService.uploadObject({
       key,
       body: file.buffer,
@@ -115,7 +118,10 @@ export class FilesService {
       throw new NotFoundException('Owner not found');
     }
 
-    const key = this.buildStorageKey(owner.department?.id ?? null, dto.originalName);
+    const key = this.buildStorageKey(
+      owner.department?.id ?? null,
+      dto.originalName,
+    );
     const uploadUrl = await this.filesStorageService.getPresignedUploadUrl({
       key,
       mimeType: dto.mimeType,
@@ -153,9 +159,13 @@ export class FilesService {
       throw new NotFoundException('Owner not found');
     }
 
-    const existing = await this.fileRepository.findOneBy({ storageKey: dto.key });
+    const existing = await this.fileRepository.findOneBy({
+      storageKey: dto.key,
+    });
     if (existing) {
-      throw new BadRequestException('File metadata already exists for this key');
+      throw new BadRequestException(
+        'File metadata already exists for this key',
+      );
     }
 
     let metadata: { contentLength: number | null; contentType: string | null };
@@ -241,7 +251,9 @@ export class FilesService {
       throw new NotFoundException('File is deleted');
     }
     try {
-      const stream = await this.filesStorageService.getObjectStream(file.storageKey);
+      const stream = await this.filesStorageService.getObjectStream(
+        file.storageKey,
+      );
       await this.logAudit({
         file,
         actorId: actor.sub,

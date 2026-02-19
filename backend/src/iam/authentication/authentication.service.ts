@@ -85,10 +85,11 @@ export class AuthenticationService {
   }
 
   async generateTokens(user: User) {
-    const effectivePermissions = this.rolePermissionsService.resolveUserPermissions(
-      user.role,
-      user.permissions,
-    );
+    const effectivePermissions =
+      this.rolePermissionsService.resolveUserPermissions(
+        user.role,
+        user.permissions,
+      );
     const refreshTokenId = randomUUID();
     const [accessToken, refreshToken] = await Promise.all([
       this.signToken<Partial<ActiveUserData>>(

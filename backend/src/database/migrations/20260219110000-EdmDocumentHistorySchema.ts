@@ -7,7 +7,9 @@ import {
   TableIndex,
 } from 'typeorm';
 
-export class EdmDocumentHistorySchema20260219110000 implements MigrationInterface {
+export class EdmDocumentHistorySchema20260219110000
+  implements MigrationInterface
+{
   name = 'EdmDocumentHistorySchema20260219110000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -83,8 +85,7 @@ export class EdmDocumentHistorySchema20260219110000 implements MigrationInterfac
         'edm_document_timeline_events',
         new TableCheck({
           name: 'CHK_EDM_TIMELINE_EVENT_TYPE',
-          expression:
-            `"event_type" IN ('created','forwarded','responsible_assigned','responsible_reassigned','reply_sent','route_action','override','archived')`,
+          expression: `"event_type" IN ('created','forwarded','responsible_assigned','responsible_reassigned','reply_sent','route_action','override','archived')`,
         }),
       );
 
@@ -176,4 +177,3 @@ export class EdmDocumentHistorySchema20260219110000 implements MigrationInterfac
     }
   }
 }
-

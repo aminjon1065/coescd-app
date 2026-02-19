@@ -103,7 +103,9 @@ describe('Reports My Dashboard (e2e)', () => {
             ],
           }),
           dataSourceFactory: async (options) => {
-            const dataSource = db.adapters.createTypeormDataSource(options as any);
+            const dataSource = db.adapters.createTypeormDataSource(
+              options as any,
+            );
             return dataSource.initialize();
           },
         }),
@@ -123,8 +125,12 @@ describe('Reports My Dashboard (e2e)', () => {
       getRepositoryToken(Department),
     );
     taskRepo = moduleFixture.get<Repository<Task>>(getRepositoryToken(Task));
-    disasterRepo = moduleFixture.get<Repository<Disaster>>(getRepositoryToken(Disaster));
-    fileRepo = moduleFixture.get<Repository<FileEntity>>(getRepositoryToken(FileEntity));
+    disasterRepo = moduleFixture.get<Repository<Disaster>>(
+      getRepositoryToken(Disaster),
+    );
+    fileRepo = moduleFixture.get<Repository<FileEntity>>(
+      getRepositoryToken(FileEntity),
+    );
     edmDocumentRepo = moduleFixture.get<Repository<EdmDocument>>(
       getRepositoryToken(EdmDocument),
     );
@@ -134,7 +140,9 @@ describe('Reports My Dashboard (e2e)', () => {
     edmStageRepo = moduleFixture.get<Repository<EdmRouteStage>>(
       getRepositoryToken(EdmRouteStage),
     );
-    edmAlertRepo = moduleFixture.get<Repository<EdmAlert>>(getRepositoryToken(EdmAlert));
+    edmAlertRepo = moduleFixture.get<Repository<EdmAlert>>(
+      getRepositoryToken(EdmAlert),
+    );
 
     await seedData();
   });
@@ -147,10 +155,16 @@ describe('Reports My Dashboard (e2e)', () => {
 
   async function seedData() {
     dept1 = await departmentRepo.save(
-      departmentRepo.create({ name: 'Reports Dept 1', type: DepartmentEnum.MAIN }),
+      departmentRepo.create({
+        name: 'Reports Dept 1',
+        type: DepartmentEnum.MAIN,
+      }),
     );
     dept2 = await departmentRepo.save(
-      departmentRepo.create({ name: 'Reports Dept 2', type: DepartmentEnum.DIVISION }),
+      departmentRepo.create({
+        name: 'Reports Dept 2',
+        type: DepartmentEnum.DIVISION,
+      }),
     );
 
     adminUser = await userRepo.save(
@@ -354,6 +368,8 @@ describe('Reports My Dashboard (e2e)', () => {
 
     expect(response.body.actor.isAnalyst).toBe(true);
     expect(response.body.widgets.analytics).toBeDefined();
-    expect(response.body.widgets.analytics.criticalDisasters).toBeGreaterThanOrEqual(0);
+    expect(
+      response.body.widgets.analytics.criticalDisasters,
+    ).toBeGreaterThanOrEqual(0);
   });
 });

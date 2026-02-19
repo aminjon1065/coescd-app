@@ -33,6 +33,7 @@ import {
   Cell,
 } from 'recharts';
 import { extractListItems, ListResponse } from '@/lib/list-response';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 
 interface Stats {
   totalDisasters: number;
@@ -118,6 +119,17 @@ const taskStatusLabel: Record<ITask['status'], string> = {
 const taskStatusColors = ['#3b82f6', '#f59e0b', '#22c55e'];
 
 export default function AnalyticPage() {
+  return (
+    <ProtectedRouteGate
+      policyKey="dashboard.analytics"
+      deniedDescription="Раздел аналитики доступен пользователям с правами аналитики/отчетов."
+    >
+      <AnalyticContent />
+    </ProtectedRouteGate>
+  );
+}
+
+function AnalyticContent() {
   const { accessToken } = useAuth();
 
   const [stats, setStats] = useState<Stats | null>(null);

@@ -35,7 +35,10 @@ const toStringArray = ({ value }: { value: unknown }): string[] | undefined => {
     return undefined;
   }
   if (Array.isArray(value)) {
-    return value.map(String).map((item) => item.trim()).filter(Boolean);
+    return value
+      .map(String)
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
   return String(value)
     .split(',')

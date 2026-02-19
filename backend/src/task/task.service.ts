@@ -107,7 +107,11 @@ export class TaskService {
     return task;
   }
 
-  async update(id: number, dto: UpdateTaskDto, actor: ActiveUserData): Promise<Task> {
+  async update(
+    id: number,
+    dto: UpdateTaskDto,
+    actor: ActiveUserData,
+  ): Promise<Task> {
     const task = await this.taskRepo.findOne({
       where: { id },
       relations: {
@@ -147,7 +151,10 @@ export class TaskService {
     await this.taskRepo.remove(task);
   }
 
-  async findTaskFiles(taskId: number, actor: ActiveUserData): Promise<FileEntity[]> {
+  async findTaskFiles(
+    taskId: number,
+    actor: ActiveUserData,
+  ): Promise<FileEntity[]> {
     await this.findOne(taskId, actor);
     return this.fileAttachmentsService.listResourceFiles({
       resourceType: 'task',

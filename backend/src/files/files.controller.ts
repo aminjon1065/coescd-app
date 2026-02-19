@@ -163,6 +163,11 @@ export class FilesController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.filesService.createLink(id, dto, actor, getRequestMeta(request));
+    return this.filesService.createLink(
+      id,
+      dto,
+      actor,
+      getRequestMeta(request),
+    );
   }
 }

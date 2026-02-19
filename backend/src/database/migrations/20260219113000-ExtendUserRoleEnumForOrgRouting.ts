@@ -30,4 +30,3 @@ export class ExtendUserRoleEnumForOrgRouting20260219113000
     // PostgreSQL enum value removal is not supported safely in-place.
   }
 }
-

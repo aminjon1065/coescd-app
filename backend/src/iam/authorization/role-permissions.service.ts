@@ -12,7 +12,10 @@ const ALL_ROLES = Object.values(Role) as Role[];
 @Injectable()
 export class RolePermissionsService implements OnModuleInit {
   private matrix: RolePermissionsMatrix = Object.fromEntries(
-    ALL_ROLES.map((role) => [role, [...(DEFAULT_ROLE_PERMISSIONS[role] ?? [])]]),
+    ALL_ROLES.map((role) => [
+      role,
+      [...(DEFAULT_ROLE_PERMISSIONS[role] ?? [])],
+    ]),
   ) as RolePermissionsMatrix;
 
   constructor(
@@ -24,7 +27,10 @@ export class RolePermissionsService implements OnModuleInit {
     await this.hydrateFromDatabase();
   }
 
-  getMatrix(): { permissions: PermissionType[]; rolePermissions: RolePermissionsMatrix } {
+  getMatrix(): {
+    permissions: PermissionType[];
+    rolePermissions: RolePermissionsMatrix;
+  } {
     return {
       permissions: Object.values(Permission) as PermissionType[],
       rolePermissions: Object.fromEntries(
@@ -41,10 +47,14 @@ export class RolePermissionsService implements OnModuleInit {
     role: Role,
     customPermissions: PermissionType[] = [],
   ): PermissionType[] {
-    return [...new Set([...this.getRolePermissions(role), ...customPermissions])];
+    return [
+      ...new Set([...this.getRolePermissions(role), ...customPermissions]),
+    ];
   }
 
-  async updateMatrix(next: Partial<RolePermissionsMatrix>): Promise<RolePermissionsMatrix> {
+  async updateMatrix(
+    next: Partial<RolePermissionsMatrix>,
+  ): Promise<RolePermissionsMatrix> {
     const sanitized: RolePermissionsMatrix = Object.fromEntries(
       ALL_ROLES.map((role) => [
         role,
@@ -104,7 +114,9 @@ export class RolePermissionsService implements OnModuleInit {
       ALL_ROLES.map((role) => [
         role,
         this.sanitizePermissions(
-          allByRole.get(role)?.permissions ?? DEFAULT_ROLE_PERMISSIONS[role] ?? [],
+          allByRole.get(role)?.permissions ??
+            DEFAULT_ROLE_PERMISSIONS[role] ??
+            [],
         ),
       ]),
     ) as RolePermissionsMatrix;
@@ -114,8 +126,8 @@ export class RolePermissionsService implements OnModuleInit {
     permissions: PermissionType[] | Permission[],
   ): PermissionType[] {
     const allowed = new Set(Object.values(Permission) as PermissionType[]);
-    return [...new Set(permissions)].filter((permission): permission is PermissionType =>
-      allowed.has(permission as PermissionType),
+    return [...new Set(permissions)].filter(
+      (permission): permission is PermissionType => allowed.has(permission),
     );
   }
 }

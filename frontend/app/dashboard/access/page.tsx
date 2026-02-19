@@ -1,18 +1,19 @@
 'use client';
 
-import Head from 'next/head';
-import ProtectedContent from '@/ProtectedContent';
 import AccessControlAdmin from './components/accessControlAdmin';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
+import { RouteTitleHead } from '@/features/navigation/RouteTitleHead';
 
 export default function Page() {
   return (
     <>
-      <Head>
-        <title>Access Control</title>
-      </Head>
-      <ProtectedContent>
+      <RouteTitleHead routeKey="dashboard.access" />
+      <ProtectedRouteGate
+        policyKey="dashboard.access"
+        deniedDescription="Раздел управления доступами доступен только администратору."
+      >
         <AccessControlAdmin />
-      </ProtectedContent>
+      </ProtectedRouteGate>
     </>
   );
 }

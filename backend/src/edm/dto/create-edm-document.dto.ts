@@ -1,7 +1,24 @@
-import { IsIn, IsInt, IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
-const edmDocumentTypes = ['incoming', 'outgoing', 'internal', 'order', 'resolution'] as const;
-const edmConfidentiality = ['public_internal', 'department_confidential', 'restricted'] as const;
+const edmDocumentTypes = [
+  'incoming',
+  'outgoing',
+  'internal',
+  'order',
+  'resolution',
+] as const;
+const edmConfidentiality = [
+  'public_internal',
+  'department_confidential',
+  'restricted',
+] as const;
 
 export class CreateEdmDocumentDto {
   @IsOptional()

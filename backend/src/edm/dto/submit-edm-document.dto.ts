@@ -12,7 +12,11 @@ import { Type } from 'class-transformer';
 
 const stageTypes = ['review', 'sign', 'approve'] as const;
 const assigneeTypes = ['user', 'role', 'department_head'] as const;
-const completionPolicies = ['sequential', 'parallel_all_of', 'parallel_any_of'] as const;
+const completionPolicies = [
+  'sequential',
+  'parallel_all_of',
+  'parallel_any_of',
+] as const;
 
 export class SubmitEdmRouteStageDto {
   @IsInt()

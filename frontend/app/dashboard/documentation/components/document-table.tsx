@@ -3,16 +3,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { PlusIcon, SearchIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, TrashIcon } from 'lucide-react';
+import axios from 'axios';
 import api from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { extractListItems, ListResponse } from '@/lib/list-response';
-import { IEdmDocument, EdmDocumentStatus, EdmDocumentType } from '@/interfaces/IEdmDocument';
+import {
+  IEdmDocument,
+  IEdmSavedFilter,
+  IEdmSavedFilterCriteria,
+  EdmDocumentStatus,
+  EdmDocumentType,
+} from '@/interfaces/IEdmDocument';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -23,6 +32,7 @@ import {
 import { CreateDocumentDialog } from './create-document-dialog';
 
 type EdmDocumentsResponse = ListResponse<IEdmDocument> | IEdmDocument[];
+type EdmSavedFiltersResponse = IEdmSavedFilter[] | ListResponse<IEdmSavedFilter>;
 
 const statusLabel: Record<EdmDocumentStatus, string> = {
   draft: 'Черновик',
@@ -60,9 +70,17 @@ interface Props {
   title: string;
   presetType?: EdmDocumentType;
   defaultDocType?: EdmDocumentType;
+  source?: 'documents' | 'queue';
+  queueType?: 'inbox' | 'outbox' | 'my-approvals';
 }
 
-export function DocumentTable({ title, presetType, defaultDocType }: Props) {
+export function DocumentTable({
+  title,
+  presetType,
+  defaultDocType,
+  source = 'documents',
+  queueType,
+}: Props) {
   const { accessToken } = useAuth();
   const [documents, setDocuments] = useState<IEdmDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,12 +95,57 @@ export function DocumentTable({ title, presetType, defaultDocType }: Props) {
   const [type, setType] = useState<'all' | EdmDocumentType>(presetType ?? 'all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [savedFilters, setSavedFilters] = useState<IEdmSavedFilter[]>([]);
+  const [selectedSavedFilterId, setSelectedSavedFilterId] = useState<string>('all');
+  const [savedFilterName, setSavedFilterName] = useState('');
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [savingFilter, setSavingFilter] = useState(false);
+  const [deletingFilter, setDeletingFilter] = useState(false);
+  const isQueueSource = source === 'queue';
+  const showCreateAction = source === 'documents';
 
   useEffect(() => {
     if (presetType) {
       setType(presetType);
     }
   }, [presetType]);
+
+  const applyCriteria = useCallback(
+    (criteria: IEdmSavedFilterCriteria) => {
+      setQ(criteria.q ?? '');
+      setStatus(criteria.status ?? 'all');
+      if (presetType) {
+        setType(presetType);
+      } else {
+        setType(criteria.type ?? 'all');
+      }
+      setFromDate(criteria.fromDate ? criteria.fromDate.slice(0, 10) : '');
+      setToDate(criteria.toDate ? criteria.toDate.slice(0, 10) : '');
+      setPage(1);
+    },
+    [presetType],
+  );
+
+  const fetchSavedFilters = useCallback(async () => {
+    if (isQueueSource) {
+      return;
+    }
+    try {
+      const response = await api.get<EdmSavedFiltersResponse>('/edm/saved-filters', {
+        params: { scope: 'documents' },
+      });
+      const payload = response.data;
+      const items = payload ? extractListItems(payload) : [];
+      setSavedFilters(items);
+      const defaultFilter = items.find((item) => item.isDefault);
+      if (defaultFilter) {
+        setSelectedSavedFilterId(String(defaultFilter.id));
+        applyCriteria(defaultFilter.criteria ?? {});
+      }
+    } catch (err) {
+      console.error('Failed to load saved EDM filters', err);
+    }
+  }, [applyCriteria, isQueueSource]);
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -94,40 +157,59 @@ export function DocumentTable({ title, presetType, defaultDocType }: Props) {
       };
 
       const resolvedType = presetType ?? (type === 'all' ? undefined : type);
-      if (resolvedType) {
+      if (!isQueueSource && resolvedType) {
         params.type = resolvedType;
       }
-      if (status !== 'all') {
+      if (!isQueueSource && status !== 'all') {
         params.status = status;
       }
       if (q.trim()) {
         params.q = q.trim();
       }
-      if (fromDate) {
+      if (!isQueueSource && fromDate) {
         params.fromDate = new Date(`${fromDate}T00:00:00.000Z`).toISOString();
       }
-      if (toDate) {
+      if (!isQueueSource && toDate) {
         params.toDate = new Date(`${toDate}T23:59:59.999Z`).toISOString();
       }
 
-      const response = await api.get<EdmDocumentsResponse>('/edm/documents', { params });
-      const items = extractListItems(response.data);
+      const endpoint =
+        isQueueSource && queueType ? `/edm/queues/${queueType}` : '/edm/documents';
+      const response = await api.get<EdmDocumentsResponse>(endpoint, { params });
+      const payload = response.data;
+      const items = payload ? extractListItems(payload) : [];
       setDocuments(items);
-      setTotal('total' in (response.data as ListResponse<IEdmDocument>) ? (response.data as ListResponse<IEdmDocument>).total : items.length);
+      setTotal(
+        payload && !Array.isArray(payload) && typeof payload.total === 'number'
+          ? payload.total
+          : items.length,
+      );
     } catch (err) {
-      console.error('Failed to load EDM documents', err);
-      setError('Не удалось загрузить журнал документов. Проверьте доступ или попробуйте позже.');
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 401) {
+          setError('Сессия истекла. Обновите страницу и войдите снова.');
+          return;
+        }
+        if (err.response?.status === 403) {
+          setError('У вас недостаточно прав для просмотра журнала документов.');
+          return;
+        }
+      }
+      setError('Не удалось загрузить журнал документов. Попробуйте позже.');
     } finally {
       setLoading(false);
     }
-  }, [limit, page, presetType, q, status, toDate, fromDate, type]);
+  }, [fromDate, isQueueSource, limit, page, presetType, q, queueType, status, toDate, type]);
 
   useEffect(() => {
     if (!accessToken) {
       return;
     }
     void fetchDocuments();
-  }, [accessToken, fetchDocuments]);
+    if (!isQueueSource) {
+      void fetchSavedFilters();
+    }
+  }, [accessToken, fetchDocuments, fetchSavedFilters, isQueueSource]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / limit)), [limit, total]);
 
@@ -153,6 +235,90 @@ export function DocumentTable({ title, presetType, defaultDocType }: Props) {
     setFromDate('');
     setToDate('');
     setPage(1);
+    setSelectedSavedFilterId('all');
+    setSavedFilterName('');
+    setSaveAsDefault(false);
+  };
+
+  const currentCriteria = useMemo<IEdmSavedFilterCriteria>(
+    () => ({
+      status: status === 'all' ? undefined : status,
+      type: presetType ? presetType : type === 'all' ? undefined : type,
+      q: q.trim() || undefined,
+      fromDate: fromDate ? new Date(`${fromDate}T00:00:00.000Z`).toISOString() : undefined,
+      toDate: toDate ? new Date(`${toDate}T23:59:59.999Z`).toISOString() : undefined,
+    }),
+    [fromDate, presetType, q, status, toDate, type],
+  );
+
+  const saveNewFilter = async () => {
+    if (isQueueSource) {
+      return;
+    }
+    if (!savedFilterName.trim()) {
+      setError('Введите имя фильтра перед сохранением.');
+      return;
+    }
+    setSavingFilter(true);
+    setError(null);
+    try {
+      const response = await api.post<IEdmSavedFilter>('/edm/saved-filters', {
+        name: savedFilterName.trim(),
+        scope: 'documents',
+        isDefault: saveAsDefault,
+        criteria: currentCriteria,
+      });
+      const created = response.data;
+      setSavedFilterName('');
+      setSaveAsDefault(false);
+      setSelectedSavedFilterId(String(created.id));
+      await fetchSavedFilters();
+    } catch (err) {
+      console.error('Failed to save EDM filter', err);
+      setError('Не удалось сохранить фильтр.');
+    } finally {
+      setSavingFilter(false);
+    }
+  };
+
+  const updateSelectedFilter = async () => {
+    if (isQueueSource || selectedSavedFilterId === 'all') {
+      return;
+    }
+    setSavingFilter(true);
+    setError(null);
+    try {
+      await api.patch(`/edm/saved-filters/${selectedSavedFilterId}`, {
+        criteria: currentCriteria,
+        isDefault: saveAsDefault,
+      });
+      await fetchSavedFilters();
+    } catch (err) {
+      console.error('Failed to update EDM filter', err);
+      setError('Не удалось обновить выбранный фильтр.');
+    } finally {
+      setSavingFilter(false);
+    }
+  };
+
+  const deleteSelectedFilter = async () => {
+    if (isQueueSource || selectedSavedFilterId === 'all') {
+      return;
+    }
+    setDeletingFilter(true);
+    setError(null);
+    try {
+      await api.delete(`/edm/saved-filters/${selectedSavedFilterId}`);
+      setSelectedSavedFilterId('all');
+      setSavedFilterName('');
+      setSaveAsDefault(false);
+      await fetchSavedFilters();
+    } catch (err) {
+      console.error('Failed to delete EDM filter', err);
+      setError('Не удалось удалить выбранный фильтр.');
+    } finally {
+      setDeletingFilter(false);
+    }
   };
 
   if (loading && documents.length === 0) {
@@ -202,10 +368,12 @@ export function DocumentTable({ title, presetType, defaultDocType }: Props) {
       <Card>
         <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle>{title}</CardTitle>
-          <Button onClick={() => setDialogOpen(true)} size="sm">
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Новая карточка
-          </Button>
+          {showCreateAction ? (
+            <Button onClick={() => setDialogOpen(true)} size="sm">
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Новая карточка
+            </Button>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
@@ -222,65 +390,150 @@ export function DocumentTable({ title, presetType, defaultDocType }: Props) {
               />
             </div>
 
-            <Select
-              value={status}
-              onValueChange={(value: 'all' | EdmDocumentStatus) => {
-                setStatus(value);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Статус" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все статусы</SelectItem>
-                <SelectItem value="draft">Черновик</SelectItem>
-                <SelectItem value="in_route">На маршруте</SelectItem>
-                <SelectItem value="approved">Утвержден</SelectItem>
-                <SelectItem value="rejected">Отклонен</SelectItem>
-                <SelectItem value="returned_for_revision">На доработке</SelectItem>
-                <SelectItem value="archived">Архив</SelectItem>
-              </SelectContent>
-            </Select>
+            {!isQueueSource ? (
+              <Select
+                value={status}
+                onValueChange={(value: 'all' | EdmDocumentStatus) => {
+                  setStatus(value);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Статус" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все статусы</SelectItem>
+                  <SelectItem value="draft">Черновик</SelectItem>
+                  <SelectItem value="in_route">На маршруте</SelectItem>
+                  <SelectItem value="approved">Утвержден</SelectItem>
+                  <SelectItem value="rejected">Отклонен</SelectItem>
+                  <SelectItem value="returned_for_revision">На доработке</SelectItem>
+                  <SelectItem value="archived">Архив</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : null}
 
-            <Select
-              value={type}
-              onValueChange={(value: 'all' | EdmDocumentType) => {
-                setType(value);
-                setPage(1);
-              }}
-              disabled={Boolean(presetType)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Тип" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все типы</SelectItem>
-                <SelectItem value="incoming">Входящий</SelectItem>
-                <SelectItem value="outgoing">Исходящий</SelectItem>
-                <SelectItem value="internal">Внутренний</SelectItem>
-                <SelectItem value="order">Приказ</SelectItem>
-                <SelectItem value="resolution">Резолюция</SelectItem>
-              </SelectContent>
-            </Select>
+            {!isQueueSource ? (
+              <Select
+                value={type}
+                onValueChange={(value: 'all' | EdmDocumentType) => {
+                  setType(value);
+                  setPage(1);
+                }}
+                disabled={Boolean(presetType)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все типы</SelectItem>
+                  <SelectItem value="incoming">Входящий</SelectItem>
+                  <SelectItem value="outgoing">Исходящий</SelectItem>
+                  <SelectItem value="internal">Внутренний</SelectItem>
+                  <SelectItem value="order">Приказ</SelectItem>
+                  <SelectItem value="resolution">Резолюция</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : null}
 
-            <Input
-              type="date"
-              value={fromDate}
-              onChange={(event) => {
-                setFromDate(event.target.value);
-                setPage(1);
-              }}
-            />
-            <Input
-              type="date"
-              value={toDate}
-              onChange={(event) => {
-                setToDate(event.target.value);
-                setPage(1);
-              }}
-            />
+            {!isQueueSource ? (
+              <Input
+                type="date"
+                value={fromDate}
+                onChange={(event) => {
+                  setFromDate(event.target.value);
+                  setPage(1);
+                }}
+              />
+            ) : null}
+            {!isQueueSource ? (
+              <Input
+                type="date"
+                value={toDate}
+                onChange={(event) => {
+                  setToDate(event.target.value);
+                  setPage(1);
+                }}
+              />
+            ) : null}
           </div>
+
+          {!isQueueSource ? (
+            <div className="grid gap-3 rounded-lg border p-3 md:grid-cols-2 lg:grid-cols-6">
+              <Select
+                value={selectedSavedFilterId}
+                onValueChange={(value) => {
+                  setSelectedSavedFilterId(value);
+                  if (value === 'all') {
+                    setSavedFilterName('');
+                    setSaveAsDefault(false);
+                    return;
+                  }
+                  const selected = savedFilters.find((item) => String(item.id) === value);
+                  if (!selected) {
+                    return;
+                  }
+                  setSavedFilterName(selected.name);
+                  setSaveAsDefault(selected.isDefault);
+                  applyCriteria(selected.criteria ?? {});
+                }}
+              >
+                <SelectTrigger className="lg:col-span-2">
+                  <SelectValue placeholder="Сохранённые фильтры" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Без сохранённого фильтра</SelectItem>
+                  {savedFilters.map((filter) => (
+                    <SelectItem key={filter.id} value={String(filter.id)}>
+                      {filter.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Input
+                className="lg:col-span-2"
+                placeholder="Название фильтра"
+                value={savedFilterName}
+                onChange={(event) => setSavedFilterName(event.target.value)}
+              />
+
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={saveAsDefault}
+                  onCheckedChange={(checked) => setSaveAsDefault(Boolean(checked))}
+                />
+                <Label>По умолчанию</Label>
+              </label>
+
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={saveNewFilter} disabled={savingFilter || deletingFilter}>
+                  {savingFilter ? 'Сохранение...' : 'Сохранить новый'}
+                </Button>
+                {selectedSavedFilterId !== 'all' ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={updateSelectedFilter}
+                      disabled={savingFilter || deletingFilter}
+                    >
+                      {savingFilter ? 'Обновление...' : 'Обновить'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={deleteSelectedFilter}
+                      disabled={savingFilter || deletingFilter}
+                    >
+                      <TrashIcon className="mr-1 h-4 w-4" />
+                      {deletingFilter ? 'Удаление...' : 'Удалить'}
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">Всего записей: {total}</p>
@@ -380,12 +633,14 @@ export function DocumentTable({ title, presetType, defaultDocType }: Props) {
         </CardContent>
       </Card>
 
-      <CreateDocumentDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onCreated={fetchDocuments}
-        defaultType={defaultDocType}
-      />
+      {showCreateAction ? (
+        <CreateDocumentDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onCreated={fetchDocuments}
+          defaultType={defaultDocType}
+        />
+      ) : null}
     </>
   );
 }

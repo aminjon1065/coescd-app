@@ -187,9 +187,10 @@ export class EdmService {
       filter.name = dto.name;
     }
     if (dto.criteria !== undefined) {
-      filter.criteria = this.normalizeDocumentsCriteria(
-        dto.criteria,
-      ) as Record<string, unknown>;
+      filter.criteria = this.normalizeDocumentsCriteria(dto.criteria) as Record<
+        string,
+        unknown
+      >;
     }
     if (dto.isDefault !== undefined) {
       if (dto.isDefault) {
@@ -204,7 +205,10 @@ export class EdmService {
     return this.savedFilterRepo.save(filter);
   }
 
-  async deleteSavedFilter(filterId: number, actor: ActiveUserData): Promise<void> {
+  async deleteSavedFilter(
+    filterId: number,
+    actor: ActiveUserData,
+  ): Promise<void> {
     const filter = await this.findOwnedSavedFilter(filterId, actor.sub);
     await this.savedFilterRepo.remove(filter);
   }
@@ -272,7 +276,9 @@ export class EdmService {
       qb.andWhere(
         new Brackets((scopeQb) => {
           scopeQb
-            .where('template.scopeType = :globalScope', { globalScope: 'global' })
+            .where('template.scopeType = :globalScope', {
+              globalScope: 'global',
+            })
             .orWhere('department.id = :departmentId', {
               departmentId: actor.departmentId ?? -1,
             });
@@ -300,7 +306,9 @@ export class EdmService {
       throw new NotFoundException('Document template not found');
     }
     this.assertDocumentTemplateScope(actor, template);
-    template.fields = [...template.fields].sort((a, b) => a.sortOrder - b.sortOrder);
+    template.fields = [...template.fields].sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
     return template;
   }
 
@@ -321,7 +329,8 @@ export class EdmService {
     if (dto.isActive !== undefined) {
       template.isActive = dto.isActive;
     }
-    template.updatedBy = (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
+    template.updatedBy =
+      (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
     await this.documentTemplateRepo.save(template);
 
     if (dto.fields) {
@@ -342,7 +351,8 @@ export class EdmService {
     this.assertDocumentTemplateWriteScope(actor, template);
     template.deletedAt = new Date();
     template.isActive = false;
-    template.updatedBy = (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
+    template.updatedBy =
+      (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
     await this.documentTemplateRepo.save(template);
   }
 
@@ -391,7 +401,10 @@ export class EdmService {
       throw new NotFoundException('Department not found');
     }
 
-    if (!this.isGlobalEdmRole(actor.role) && actor.departmentId !== department.id) {
+    if (
+      !this.isGlobalEdmRole(actor.role) &&
+      actor.departmentId !== department.id
+    ) {
       throw new ForbiddenException('Document department is outside your scope');
     }
 
@@ -402,7 +415,8 @@ export class EdmService {
       subject: resolvedSubject,
       summary: resolvedSummary,
       resolutionText: resolvedResolutionText,
-      confidentiality: resolvedConfidentiality as EdmDocument['confidentiality'],
+      confidentiality:
+        resolvedConfidentiality as EdmDocument['confidentiality'],
       department,
       creator,
       dueAt: resolvedDueAt ? new Date(resolvedDueAt) : null,
@@ -475,7 +489,9 @@ export class EdmService {
     actor: ActiveUserData,
   ): Promise<EdmRouteTemplate> {
     if (!dto.stages?.length) {
-      throw new BadRequestException('Route template requires at least one stage');
+      throw new BadRequestException(
+        'Route template requires at least one stage',
+      );
     }
 
     const creator = await this.userRepo.findOneBy({ id: actor.sub });
@@ -535,7 +551,9 @@ export class EdmService {
       qb.andWhere(
         new Brackets((scopeQb) => {
           scopeQb
-            .where('template.scopeType = :globalScope', { globalScope: 'global' })
+            .where('template.scopeType = :globalScope', {
+              globalScope: 'global',
+            })
             .orWhere('department.id = :departmentId', {
               departmentId: actor.departmentId ?? -1,
             });
@@ -568,7 +586,9 @@ export class EdmService {
     }
 
     this.assertTemplateScope(actor, template);
-    template.stages = [...template.stages].sort((a, b) => a.orderNo - b.orderNo);
+    template.stages = [...template.stages].sort(
+      (a, b) => a.orderNo - b.orderNo,
+    );
     return template;
   }
 
@@ -596,7 +616,9 @@ export class EdmService {
 
     if (dto.stages) {
       if (!dto.stages.length) {
-        throw new BadRequestException('Route template requires at least one stage');
+        throw new BadRequestException(
+          'Route template requires at least one stage',
+        );
       }
       await this.replaceTemplateStages(template, dto.stages);
     }
@@ -604,12 +626,16 @@ export class EdmService {
     return this.findRouteTemplate(template.id, actor);
   }
 
-  async deleteRouteTemplate(templateId: number, actor: ActiveUserData): Promise<void> {
+  async deleteRouteTemplate(
+    templateId: number,
+    actor: ActiveUserData,
+  ): Promise<void> {
     const template = await this.findRouteTemplate(templateId, actor);
     this.assertTemplateWriteScope(actor, template);
     template.deletedAt = new Date();
     template.isActive = false;
-    template.updatedBy = (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
+    template.updatedBy =
+      (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
     await this.routeTemplateRepo.save(template);
   }
 
@@ -637,11 +663,16 @@ export class EdmService {
       }
 
       if (!document.externalNumber) {
-        document.externalNumber = await this.assignExternalNumber(manager, document);
+        document.externalNumber = await this.assignExternalNumber(
+          manager,
+          document,
+        );
         await manager.getRepository(EdmDocument).save(document);
       }
 
-      const actorUser = await manager.getRepository(User).findOneBy({ id: actor.sub });
+      const actorUser = await manager
+        .getRepository(User)
+        .findOneBy({ id: actor.sub });
       if (!actorUser) {
         throw new NotFoundException('Actor not found');
       }
@@ -792,7 +823,9 @@ export class EdmService {
           relations: { department: true },
         });
         if (!receiver) {
-          throw new NotFoundException(`Receiver ${taskDto.receiverId} not found`);
+          throw new NotFoundException(
+            `Receiver ${taskDto.receiverId} not found`,
+          );
         }
 
         if (
@@ -837,7 +870,10 @@ export class EdmService {
     });
   }
 
-  async listDocumentTasks(documentId: number, actor: ActiveUserData): Promise<Task[]> {
+  async listDocumentTasks(
+    documentId: number,
+    actor: ActiveUserData,
+  ): Promise<Task[]> {
     const document = await this.getDocumentOrFail(documentId);
     await this.assertDocumentReadScope(actor, document);
 
@@ -867,8 +903,12 @@ export class EdmService {
   async getDocumentTaskProgress(documentId: number, actor: ActiveUserData) {
     const tasks = await this.listDocumentTasks(documentId, actor);
     const total = tasks.length;
-    const completed = tasks.filter((task) => task.status === 'completed').length;
-    const inProgress = tasks.filter((task) => task.status === 'in_progress').length;
+    const completed = tasks.filter(
+      (task) => task.status === 'completed',
+    ).length;
+    const inProgress = tasks.filter(
+      (task) => task.status === 'in_progress',
+    ).length;
     const newCount = tasks.filter((task) => task.status === 'new').length;
     return {
       documentId,
@@ -876,12 +916,16 @@ export class EdmService {
       completed,
       inProgress,
       new: newCount,
-      completionRate: total > 0 ? Number(((completed / total) * 100).toFixed(2)) : 0,
+      completionRate:
+        total > 0 ? Number(((completed / total) * 100).toFixed(2)) : 0,
     };
   }
 
   async processDeadlineAlerts(actor: ActiveUserData) {
-    if (!this.isGlobalEdmRole(actor.role) && !this.isDepartmentManagerRole(actor.role)) {
+    if (
+      !this.isGlobalEdmRole(actor.role) &&
+      !this.isDepartmentManagerRole(actor.role)
+    ) {
       throw new ForbiddenException(
         'Only global roles or department heads can process deadline alerts',
       );
@@ -901,7 +945,9 @@ export class EdmService {
     const escalationThresholdHours = Number(
       process.env.EDM_ESCALATION_THRESHOLD_HOURS ?? '24',
     );
-    const reminderUntil = new Date(now.getTime() + reminderWindowHours * 60 * 60 * 1000);
+    const reminderUntil = new Date(
+      now.getTime() + reminderWindowHours * 60 * 60 * 1000,
+    );
     const escalationBefore = new Date(
       now.getTime() - escalationThresholdHours * 60 * 60 * 1000,
     );
@@ -914,7 +960,9 @@ export class EdmService {
       .leftJoinAndSelect('document.creator', 'documentCreator')
       .leftJoinAndSelect('stage.assigneeUser', 'assigneeUser')
       .leftJoinAndSelect('stage.assigneeDepartment', 'assigneeDepartment')
-      .where('stage.state IN (:...states)', { states: ['pending', 'in_progress'] })
+      .where('stage.state IN (:...states)', {
+        states: ['pending', 'in_progress'],
+      })
       .andWhere('stage.dueAt IS NOT NULL')
       .getMany();
 
@@ -966,7 +1014,8 @@ export class EdmService {
       }
 
       if (dueAt <= escalationBefore) {
-        const escalationRecipients = await this.resolveEscalationRecipients(stage);
+        const escalationRecipients =
+          await this.resolveEscalationRecipients(stage);
         for (const recipientId of escalationRecipients) {
           const wasCreated = await this.createAlertIfMissing({
             documentId: document.id,
@@ -1002,7 +1051,9 @@ export class EdmService {
       .createQueryBuilder('alert')
       .leftJoinAndSelect('alert.document', 'document')
       .leftJoinAndSelect('alert.stage', 'stage')
-      .where('alert.recipientUser = :recipientUserId', { recipientUserId: actor.sub })
+      .where('alert.recipientUser = :recipientUserId', {
+        recipientUserId: actor.sub,
+      })
       .orderBy('alert.createdAt', 'DESC');
 
     if (query.kind) {
@@ -1016,7 +1067,10 @@ export class EdmService {
     return { items, total, page, limit };
   }
 
-  async acknowledgeAlert(alertId: number, actor: ActiveUserData): Promise<EdmAlert> {
+  async acknowledgeAlert(
+    alertId: number,
+    actor: ActiveUserData,
+  ): Promise<EdmAlert> {
     const alert = await this.alertRepo.findOne({
       where: { id: alertId },
       relations: {
@@ -1054,12 +1108,25 @@ export class EdmService {
       .getMany();
 
     const scopedRoutes = routes.filter((route) =>
-      this.isReportScopeAllowed(actor, route.document.department?.id ?? null, route.document.creator?.id),
+      this.isReportScopeAllowed(
+        actor,
+        route.document.department?.id ?? null,
+        route.document.creator?.id,
+      ),
     );
 
     const byDepartment = new Map<
       number,
-      { departmentId: number; total: number; finished: number; onTime: number; late: number; avgHours: number; _sum: number; _count: number }
+      {
+        departmentId: number;
+        total: number;
+        finished: number;
+        onTime: number;
+        late: number;
+        avgHours: number;
+        _sum: number;
+        _count: number;
+      }
     >();
 
     let total = 0;
@@ -1070,23 +1137,24 @@ export class EdmService {
     let countHours = 0;
 
     for (const route of scopedRoutes) {
-      if (query.departmentId && route.document.department?.id !== query.departmentId) {
+      if (
+        query.departmentId &&
+        route.document.department?.id !== query.departmentId
+      ) {
         continue;
       }
       total += 1;
       const departmentId = route.document.department?.id ?? -1;
-      const depAgg =
-        byDepartment.get(departmentId) ??
-        {
-          departmentId,
-          total: 0,
-          finished: 0,
-          onTime: 0,
-          late: 0,
-          avgHours: 0,
-          _sum: 0,
-          _count: 0,
-        };
+      const depAgg = byDepartment.get(departmentId) ?? {
+        departmentId,
+        total: 0,
+        finished: 0,
+        onTime: 0,
+        late: 0,
+        avgHours: 0,
+        _sum: 0,
+        _count: 0,
+      };
       depAgg.total += 1;
 
       if (route.finishedAt) {
@@ -1125,13 +1193,17 @@ export class EdmService {
     }));
 
     return {
-      period: { fromDate: fromDate.toISOString(), toDate: toDate.toISOString() },
+      period: {
+        fromDate: fromDate.toISOString(),
+        toDate: toDate.toISOString(),
+      },
       total,
       finished,
       onTime,
       late,
       avgHours: countHours > 0 ? Number((sumHours / countHours).toFixed(2)) : 0,
-      completionRate: total > 0 ? Number(((finished / total) * 100).toFixed(2)) : 0,
+      completionRate:
+        total > 0 ? Number(((finished / total) * 100).toFixed(2)) : 0,
       byDepartment: byDepartmentResult,
     };
   }
@@ -1145,19 +1217,30 @@ export class EdmService {
       .leftJoinAndSelect('document.department', 'department')
       .leftJoinAndSelect('document.creator', 'creator')
       .leftJoinAndSelect('stage.assigneeUser', 'assigneeUser')
-      .where('stage.state IN (:...states)', { states: ['pending', 'in_progress'] })
+      .where('stage.state IN (:...states)', {
+        states: ['pending', 'in_progress'],
+      })
       .andWhere('stage.dueAt < :now', { now })
       .getMany();
 
     const scoped = stages.filter((stage) =>
-      this.isReportScopeAllowed(actor, stage.route.document.department?.id ?? null, stage.route.document.creator?.id),
+      this.isReportScopeAllowed(
+        actor,
+        stage.route.document.department?.id ?? null,
+        stage.route.document.creator?.id,
+      ),
     );
     const filtered = query.departmentId
-      ? scoped.filter((stage) => stage.route.document.department?.id === query.departmentId)
+      ? scoped.filter(
+          (stage) => stage.route.document.department?.id === query.departmentId,
+        )
       : scoped;
 
     const byDepartment = new Map<number, number>();
-    const byAssignee = new Map<number, { userId: number; name: string; total: number }>();
+    const byAssignee = new Map<
+      number,
+      { userId: number; name: string; total: number }
+    >();
     let oldestDueAt: Date | null = null;
 
     for (const stage of filtered) {
@@ -1183,10 +1266,12 @@ export class EdmService {
       asOf: now.toISOString(),
       totalOverdue: filtered.length,
       oldestDueAt: oldestDueAt ? oldestDueAt.toISOString() : null,
-      byDepartment: [...byDepartment.entries()].map(([departmentId, total]) => ({
-        departmentId,
-        total,
-      })),
+      byDepartment: [...byDepartment.entries()].map(
+        ([departmentId, total]) => ({
+          departmentId,
+          total,
+        }),
+      ),
       byAssignee: [...byAssignee.values()].sort((a, b) => b.total - a.total),
     };
   }
@@ -1200,26 +1285,42 @@ export class EdmService {
       .leftJoinAndSelect('document.department', 'department')
       .leftJoinAndSelect('document.creator', 'creator')
       .leftJoinAndSelect('stage.assigneeUser', 'assigneeUser')
-      .where('stage.state IN (:...states)', { states: ['pending', 'in_progress'] })
+      .where('stage.state IN (:...states)', {
+        states: ['pending', 'in_progress'],
+      })
       .getMany();
 
     const scopedStages = activeStages.filter((stage) =>
-      this.isReportScopeAllowed(actor, stage.route.document.department?.id ?? null, stage.route.document.creator?.id),
+      this.isReportScopeAllowed(
+        actor,
+        stage.route.document.department?.id ?? null,
+        stage.route.document.creator?.id,
+      ),
     );
     const filteredStages = query.departmentId
-      ? scopedStages.filter((stage) => stage.route.document.department?.id === query.departmentId)
+      ? scopedStages.filter(
+          (stage) => stage.route.document.department?.id === query.departmentId,
+        )
       : scopedStages;
 
     const byDepartment = new Map<
       number,
-      { departmentId: number; activeStages: number; overdueStages: number; documentsInRoute: Set<number> }
+      {
+        departmentId: number;
+        activeStages: number;
+        overdueStages: number;
+        documentsInRoute: Set<number>;
+      }
     >();
 
     for (const stage of filteredStages) {
       const depId = stage.route.document.department?.id ?? -1;
-      const row =
-        byDepartment.get(depId) ??
-        { departmentId: depId, activeStages: 0, overdueStages: 0, documentsInRoute: new Set<number>() };
+      const row = byDepartment.get(depId) ?? {
+        departmentId: depId,
+        activeStages: 0,
+        overdueStages: 0,
+        documentsInRoute: new Set<number>(),
+      };
       row.activeStages += 1;
       if (stage.dueAt && stage.dueAt < now) {
         row.overdueStages += 1;
@@ -1261,8 +1362,9 @@ export class EdmService {
           departmentId: manager.department?.id ?? null,
           assignedStages: managerStages.length,
           overdueAssignedStages: managerOverdue,
-          ownedDocumentsInRoute: new Set(managerDocumentsOwned.map((s) => s.route.document.id))
-            .size,
+          ownedDocumentsInRoute: new Set(
+            managerDocumentsOwned.map((s) => s.route.document.id),
+          ).size,
         };
       });
 
@@ -1485,19 +1587,31 @@ export class EdmService {
     ]);
   }
 
-  async getDashboardSummary(actor: ActiveUserData, query: EdmDashboardQueryDto) {
+  async getDashboardSummary(
+    actor: ActiveUserData,
+    query: EdmDashboardQueryDto,
+  ) {
     const [sla, overdue, workload] = await Promise.all([
       this.getSlaReport(actor, query),
       this.getOverdueReport(actor, query),
       this.getWorkloadReport(actor, query),
     ]);
 
-    const topManagers = Math.min(25, Math.max(1, Number(query.topManagers ?? 10)));
+    const topManagers = Math.min(
+      25,
+      Math.max(1, Number(query.topManagers ?? 10)),
+    );
     const onTimeRate =
-      sla.finished > 0 ? Number(((sla.onTime / sla.finished) * 100).toFixed(2)) : 0;
+      sla.finished > 0
+        ? Number(((sla.onTime / sla.finished) * 100).toFixed(2))
+        : 0;
     const overdueLoadRate =
       workload.totalActiveStages > 0
-        ? Number(((overdue.totalOverdue / workload.totalActiveStages) * 100).toFixed(2))
+        ? Number(
+            ((overdue.totalOverdue / workload.totalActiveStages) * 100).toFixed(
+              2,
+            ),
+          )
         : 0;
 
     return {
@@ -1528,17 +1642,25 @@ export class EdmService {
     id: number,
     dto: SubmitEdmDocumentDto,
     actor: ActiveUserData,
-  ): Promise<{ documentId: number; status: string; routeId: number; versionNo: number; externalNumber: string }> {
+  ): Promise<{
+    documentId: number;
+    status: string;
+    routeId: number;
+    versionNo: number;
+    externalNumber: string;
+  }> {
     const document = await this.getDocumentOrFail(id);
     this.assertDocumentScope(actor, document);
 
     if (!['draft', 'returned_for_revision'].includes(document.status)) {
-      throw new ConflictException('Document cannot be submitted in current state');
+      throw new ConflictException(
+        'Document cannot be submitted in current state',
+      );
     }
 
     const stagesInput = dto.routeTemplateId
       ? await this.buildStagesFromTemplate(dto.routeTemplateId, actor, document)
-      : dto.stages ?? [];
+      : (dto.stages ?? []);
     if (!stagesInput.length) {
       throw new BadRequestException('At least one route stage is required');
     }
@@ -1574,7 +1696,9 @@ export class EdmService {
         }),
       );
 
-      const sortedStages = [...stagesInput].sort((a, b) => a.orderNo - b.orderNo);
+      const sortedStages = [...stagesInput].sort(
+        (a, b) => a.orderNo - b.orderNo,
+      );
       const firstOrder = sortedStages[0].orderNo;
       const firstGroupNo = sortedStages[0].stageGroupNo ?? null;
 
@@ -1583,7 +1707,9 @@ export class EdmService {
         this.assertAssigneeConsistency(stageDto);
 
         const assigneeUser = stageDto.assigneeUserId
-          ? await manager.getRepository(User).findOneBy({ id: stageDto.assigneeUserId })
+          ? await manager
+              .getRepository(User)
+              .findOneBy({ id: stageDto.assigneeUserId })
           : null;
         const assigneeDepartment = stageDto.assigneeDepartmentId
           ? await manager
@@ -1592,7 +1718,8 @@ export class EdmService {
           : null;
 
         const isFirstSequentialStage =
-          stageDto.orderNo === firstOrder && route.completionPolicy === 'sequential';
+          stageDto.orderNo === firstOrder &&
+          route.completionPolicy === 'sequential';
         const isFirstParallelGroupStage =
           route.completionPolicy !== 'sequential' &&
           stageDto.orderNo === firstOrder &&
@@ -1627,7 +1754,10 @@ export class EdmService {
       document.currentRoute = route;
       document.status = 'in_route';
       if (!document.externalNumber) {
-        document.externalNumber = await this.assignExternalNumber(manager, document);
+        document.externalNumber = await this.assignExternalNumber(
+          manager,
+          document,
+        );
       }
       document.approvedAt = null;
       document.rejectedAt = null;
@@ -1652,7 +1782,8 @@ export class EdmService {
             fromRole: actor.role,
             toRole:
               firstHop.assigneeRole ??
-              (firstHop.assigneeUser?.role ?? firstHop.assigneeType),
+              firstHop.assigneeUser?.role ??
+              firstHop.assigneeType,
             responsibleUser: firstHop.assigneeUser ?? null,
             parentEvent: null,
             threadId: `doc-${document.id}-main`,
@@ -1735,7 +1866,11 @@ export class EdmService {
         stage,
         Permission.DOCUMENTS_ROUTE_EXECUTE,
       );
-      this.assertStageAssignee(actor, stage, delegation?.delegatorUser?.id ?? null);
+      this.assertStageAssignee(
+        actor,
+        stage,
+        delegation?.delegatorUser?.id ?? null,
+      );
 
       const actionResultState = this.resolveActionResultState(dto.action);
       const stageState = this.resolveStageState(dto.action);
@@ -1744,13 +1879,17 @@ export class EdmService {
         stage.startedAt = new Date();
       }
       stage.state = stageState;
-      stage.completedAt = ['approved', 'rejected', 'returned'].includes(stageState)
+      stage.completedAt = ['approved', 'rejected', 'returned'].includes(
+        stageState,
+      )
         ? new Date()
         : null;
 
       await manager.getRepository(EdmRouteStage).save(stage);
 
-      const actorUser = await manager.getRepository(User).findOneBy({ id: actor.sub });
+      const actorUser = await manager
+        .getRepository(User)
+        .findOneBy({ id: actor.sub });
       if (!actorUser) {
         throw new NotFoundException('Actor not found');
       }
@@ -1855,7 +1994,9 @@ export class EdmService {
       await manager.getRepository(EdmDocumentRoute).save(route);
       await manager.getRepository(EdmDocument).save(document);
 
-      const actorUser = await manager.getRepository(User).findOneBy({ id: actor.sub });
+      const actorUser = await manager
+        .getRepository(User)
+        .findOneBy({ id: actor.sub });
       if (actorUser) {
         const openStages = await manager.getRepository(EdmRouteStage).find({
           where: { route: { id: route.id } },
@@ -1876,7 +2017,9 @@ export class EdmService {
                   ? 'override_approved'
                   : 'override_rejected',
               actionResultState:
-                dto.overrideAction === 'force_approve' ? 'approved' : 'rejected',
+                dto.overrideAction === 'force_approve'
+                  ? 'approved'
+                  : 'rejected',
               actorUser,
               onBehalfOfUser: null,
               commentText: dto.reason,
@@ -2035,12 +2178,17 @@ export class EdmService {
       return directCriteria;
     }
 
-    const savedFilter = await this.findOwnedSavedFilter(query.savedFilterId, actor.sub);
+    const savedFilter = await this.findOwnedSavedFilter(
+      query.savedFilterId,
+      actor.sub,
+    );
     const savedCriteria = this.normalizeDocumentsCriteria(savedFilter.criteria);
     return {
       ...savedCriteria,
       ...Object.fromEntries(
-        Object.entries(directCriteria).filter(([, value]) => value !== undefined),
+        Object.entries(directCriteria).filter(
+          ([, value]) => value !== undefined,
+        ),
       ),
     } as SavedDocumentsCriteriaDto;
   }
@@ -2102,7 +2250,9 @@ export class EdmService {
       }
     } else {
       this.applyDocumentListScope(qb, actor);
-      qb.andWhere('document.status = :inRouteStatus', { inRouteStatus: 'in_route' });
+      qb.andWhere('document.status = :inRouteStatus', {
+        inRouteStatus: 'in_route',
+      });
     }
 
     const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
@@ -2182,7 +2332,9 @@ export class EdmService {
       qb.andWhere('action.action IN (:...actions)', { actions: auditActions });
     }
     if (query.actorUserId) {
-      qb.andWhere('actorUser.id = :actorUserId', { actorUserId: query.actorUserId });
+      qb.andWhere('actorUser.id = :actorUserId', {
+        actorUserId: query.actorUserId,
+      });
     }
     if (query.onBehalfOfUserId) {
       qb.andWhere('onBehalfOfUser.id = :onBehalfOfUserId', {
@@ -2198,13 +2350,20 @@ export class EdmService {
       });
     }
     if (query.fromDate) {
-      qb.andWhere('action.createdAt >= :fromDate', { fromDate: new Date(query.fromDate) });
+      qb.andWhere('action.createdAt >= :fromDate', {
+        fromDate: new Date(query.fromDate),
+      });
     }
     if (query.toDate) {
-      qb.andWhere('action.createdAt <= :toDate', { toDate: new Date(query.toDate) });
+      qb.andWhere('action.createdAt <= :toDate', {
+        toDate: new Date(query.toDate),
+      });
     }
 
-    return qb.orderBy('action.createdAt', 'ASC').addOrderBy('action.id', 'ASC').getMany();
+    return qb
+      .orderBy('action.createdAt', 'ASC')
+      .addOrderBy('action.id', 'ASC')
+      .getMany();
   }
 
   async findHistory(
@@ -2237,10 +2396,14 @@ export class EdmService {
       });
     }
     if (query.actorUserId) {
-      qb.andWhere('actorUser.id = :actorUserId', { actorUserId: query.actorUserId });
+      qb.andWhere('actorUser.id = :actorUserId', {
+        actorUserId: query.actorUserId,
+      });
     }
     if (query.fromUserId) {
-      qb.andWhere('fromUser.id = :fromUserId', { fromUserId: query.fromUserId });
+      qb.andWhere('fromUser.id = :fromUserId', {
+        fromUserId: query.fromUserId,
+      });
     }
     if (query.toUserId) {
       qb.andWhere('toUser.id = :toUserId', { toUserId: query.toUserId });
@@ -2251,21 +2414,30 @@ export class EdmService {
       });
     }
     if (query.threadId) {
-      qb.andWhere('timeline.threadId = :threadId', { threadId: query.threadId });
+      qb.andWhere('timeline.threadId = :threadId', {
+        threadId: query.threadId,
+      });
     }
     if (query.fromDate) {
-      qb.andWhere('timeline.createdAt >= :fromDate', { fromDate: new Date(query.fromDate) });
+      qb.andWhere('timeline.createdAt >= :fromDate', {
+        fromDate: new Date(query.fromDate),
+      });
     }
     if (query.toDate) {
-      qb.andWhere('timeline.createdAt <= :toDate', { toDate: new Date(query.toDate) });
+      qb.andWhere('timeline.createdAt <= :toDate', {
+        toDate: new Date(query.toDate),
+      });
     }
     if (query.q) {
-      qb.andWhere('LOWER(COALESCE(timeline.commentText, \'\')) LIKE :search', {
+      qb.andWhere("LOWER(COALESCE(timeline.commentText, '')) LIKE :search", {
         search: `%${query.q.toLowerCase()}%`,
       });
     }
 
-    return qb.orderBy('timeline.createdAt', 'ASC').addOrderBy('timeline.id', 'ASC').getMany();
+    return qb
+      .orderBy('timeline.createdAt', 'ASC')
+      .addOrderBy('timeline.id', 'ASC')
+      .getMany();
   }
 
   async exportDocumentAuditCsv(
@@ -2275,7 +2447,17 @@ export class EdmService {
   ): Promise<string> {
     const audit = await this.findAudit(documentId, actor, query);
     const rows: Array<Array<string | number | null>> = [
-      ['documentId', 'actionId', 'createdAt', 'action', 'stageId', 'actorUserId', 'onBehalfOfUserId', 'reasonCode', 'commentText'],
+      [
+        'documentId',
+        'actionId',
+        'createdAt',
+        'action',
+        'stageId',
+        'actorUserId',
+        'onBehalfOfUserId',
+        'reasonCode',
+        'commentText',
+      ],
       ...audit.map((item) => [
         documentId,
         item.id,
@@ -2301,7 +2483,17 @@ export class EdmService {
       {
         name: 'audit',
         rows: [
-          ['documentId', 'actionId', 'createdAt', 'action', 'stageId', 'actorUserId', 'onBehalfOfUserId', 'reasonCode', 'commentText'],
+          [
+            'documentId',
+            'actionId',
+            'createdAt',
+            'action',
+            'stageId',
+            'actorUserId',
+            'onBehalfOfUserId',
+            'reasonCode',
+            'commentText',
+          ],
           ...audit.map((item) => [
             documentId,
             item.id,
@@ -2520,7 +2712,8 @@ export class EdmService {
       threadId: `doc-${document.id}-main`,
       commentText: dto.reason ?? null,
       meta: {
-        previousResponsibleUserId: latestAssignment?.responsibleUser?.id ?? null,
+        previousResponsibleUserId:
+          latestAssignment?.responsibleUser?.id ?? null,
         ip: requestMeta.ip,
         userAgent: requestMeta.userAgent,
       },
@@ -2547,7 +2740,9 @@ export class EdmService {
     await this.assertDocumentReadScope(actor, document);
 
     return this.dataSource.transaction(async (manager) => {
-      const actorUser = await manager.getRepository(User).findOneBy({ id: actor.sub });
+      const actorUser = await manager
+        .getRepository(User)
+        .findOneBy({ id: actor.sub });
       if (!actorUser) {
         throw new NotFoundException('Actor not found');
       }
@@ -2578,7 +2773,8 @@ export class EdmService {
         }
       }
 
-      const threadId = parentReply?.threadId ?? `doc-${document.id}-thread-${Date.now()}`;
+      const threadId =
+        parentReply?.threadId ?? `doc-${document.id}-thread-${Date.now()}`;
       const timelineEvent = await this.recordTimelineEvent(
         {
           document,
@@ -2643,7 +2839,10 @@ export class EdmService {
     });
   }
 
-  async findFiles(documentId: number, actor: ActiveUserData): Promise<FileEntity[]> {
+  async findFiles(
+    documentId: number,
+    actor: ActiveUserData,
+  ): Promise<FileEntity[]> {
     const document = await this.getDocumentOrFail(documentId);
     await this.assertDocumentReadScope(actor, document);
 
@@ -2742,7 +2941,9 @@ export class EdmService {
     return true;
   }
 
-  private async resolveAssigneeRecipients(stage: EdmRouteStage): Promise<number[]> {
+  private async resolveAssigneeRecipients(
+    stage: EdmRouteStage,
+  ): Promise<number[]> {
     if (stage.assigneeType === 'user' && stage.assigneeUser?.id) {
       return [stage.assigneeUser.id];
     }
@@ -2781,14 +2982,22 @@ export class EdmService {
     return [];
   }
 
-  private async resolveEscalationRecipients(stage: EdmRouteStage): Promise<number[]> {
+  private async resolveEscalationRecipients(
+    stage: EdmRouteStage,
+  ): Promise<number[]> {
     const document = stage.route.document;
     const departmentId = stage.assigneeDepartment?.id ?? document.department.id;
 
     const [globalUsers, managers] = await Promise.all([
       this.userRepo.find({
         where: {
-          role: In([Role.Admin, Role.Chairperson, Role.FirstDeputy, Role.Deputy, Role.Chancellery]),
+          role: In([
+            Role.Admin,
+            Role.Chairperson,
+            Role.FirstDeputy,
+            Role.Deputy,
+            Role.Chancellery,
+          ]),
           isActive: true,
         },
       }),
@@ -2852,7 +3061,9 @@ export class EdmService {
     template: EdmDocumentTemplate,
     fields: DocumentTemplateFieldDto[],
   ): Promise<void> {
-    await this.documentTemplateFieldRepo.delete({ template: { id: template.id } });
+    await this.documentTemplateFieldRepo.delete({
+      template: { id: template.id },
+    });
     const sorted = [...fields].sort(
       (a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100),
     );
@@ -2921,7 +3132,9 @@ export class EdmService {
       }
       if (
         field.isRequired &&
-        (effectiveValue === undefined || effectiveValue === null || effectiveValue === '')
+        (effectiveValue === undefined ||
+          effectiveValue === null ||
+          effectiveValue === '')
       ) {
         throw new BadRequestException(
           `Field "${field.fieldKey}" is required in selected template`,
@@ -2942,14 +3155,18 @@ export class EdmService {
       } else if (field.fieldKey === 'dueAt') {
         const parsed = new Date(effectiveValue);
         if (Number.isNaN(parsed.getTime())) {
-          throw new BadRequestException('Template dueAt value must be valid date');
+          throw new BadRequestException(
+            'Template dueAt value must be valid date',
+          );
         }
         resolved.dueAt = parsed.toISOString();
       } else if (field.fieldKey === 'confidentiality') {
         if (
-          !['public_internal', 'department_confidential', 'restricted'].includes(
-            effectiveValue,
-          )
+          ![
+            'public_internal',
+            'department_confidential',
+            'restricted',
+          ].includes(effectiveValue)
         ) {
           throw new BadRequestException(
             'Template confidentiality must be one of allowed values',
@@ -3039,10 +3256,14 @@ export class EdmService {
     options?: { allowDepartmentHeadWithoutDepartment?: boolean },
   ) {
     if (stageDto.assigneeType === 'user' && !stageDto.assigneeUserId) {
-      throw new BadRequestException('assigneeUserId is required for user assignee');
+      throw new BadRequestException(
+        'assigneeUserId is required for user assignee',
+      );
     }
     if (stageDto.assigneeType === 'role' && !stageDto.assigneeRole) {
-      throw new BadRequestException('assigneeRole is required for role assignee');
+      throw new BadRequestException(
+        'assigneeRole is required for role assignee',
+      );
     }
     if (
       stageDto.assigneeType === 'department_head' &&
@@ -3060,26 +3281,39 @@ export class EdmService {
     actor: ActiveUserData,
   ): Promise<Department> {
     if (!departmentId) {
-      throw new BadRequestException('departmentId is required for department scope');
+      throw new BadRequestException(
+        'departmentId is required for department scope',
+      );
     }
-    const department = await this.departmentRepo.findOneBy({ id: departmentId });
+    const department = await this.departmentRepo.findOneBy({
+      id: departmentId,
+    });
     if (!department) {
       throw new NotFoundException('Department not found');
     }
-    if (!this.isGlobalEdmRole(actor.role) && actor.departmentId !== department.id) {
+    if (
+      !this.isGlobalEdmRole(actor.role) &&
+      actor.departmentId !== department.id
+    ) {
       throw new ForbiddenException('Template department is outside your scope');
     }
     return department;
   }
 
-  private assertTemplateScope(actor: ActiveUserData, template: EdmRouteTemplate): void {
+  private assertTemplateScope(
+    actor: ActiveUserData,
+    template: EdmRouteTemplate,
+  ): void {
     if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
     if (template.scopeType === 'global') {
       return;
     }
-    if (template.department?.id && template.department.id === actor.departmentId) {
+    if (
+      template.department?.id &&
+      template.department.id === actor.departmentId
+    ) {
       return;
     }
     throw new ForbiddenException('Route template is outside your scope');
@@ -3099,7 +3333,9 @@ export class EdmService {
     ) {
       return;
     }
-    throw new ForbiddenException('Only global roles or owning department head can modify template');
+    throw new ForbiddenException(
+      'Only global roles or owning department head can modify template',
+    );
   }
 
   private async replaceTemplateStages(
@@ -3119,7 +3355,9 @@ export class EdmService {
         ? await this.userRepo.findOneBy({ id: stageDto.assigneeUserId })
         : null;
       const assigneeDepartment = stageDto.assigneeDepartmentId
-        ? await this.departmentRepo.findOneBy({ id: stageDto.assigneeDepartmentId })
+        ? await this.departmentRepo.findOneBy({
+            id: stageDto.assigneeDepartmentId,
+          })
         : null;
 
       entities.push(
@@ -3167,9 +3405,13 @@ export class EdmService {
         assigneeRole: stage.assigneeRole ?? undefined,
         assigneeDepartmentId:
           stage.assigneeDepartment?.id ??
-          (stage.assigneeType === 'department_head' ? document.department.id : undefined),
+          (stage.assigneeType === 'department_head'
+            ? document.department.id
+            : undefined),
         dueAt: stage.dueInHours
-          ? new Date(Date.now() + stage.dueInHours * 60 * 60 * 1000).toISOString()
+          ? new Date(
+              Date.now() + stage.dueInHours * 60 * 60 * 1000,
+            ).toISOString()
           : undefined,
         escalationPolicy: stage.escalationPolicy ?? undefined,
       }));
@@ -3286,10 +3528,17 @@ export class EdmService {
     });
 
     const minActiveOrder = stages
-      .filter((item) => ['pending', 'in_progress', 'approved'].includes(item.state))
-      .reduce((acc, item) => Math.min(acc, item.orderNo), Number.MAX_SAFE_INTEGER);
+      .filter((item) =>
+        ['pending', 'in_progress', 'approved'].includes(item.state),
+      )
+      .reduce(
+        (acc, item) => Math.min(acc, item.orderNo),
+        Number.MAX_SAFE_INTEGER,
+      );
 
-    const currentOrderStages = stages.filter((item) => item.orderNo === minActiveOrder);
+    const currentOrderStages = stages.filter(
+      (item) => item.orderNo === minActiveOrder,
+    );
 
     const inProgressOrPendingCount = currentOrderStages.filter((item) =>
       ['pending', 'in_progress'].includes(item.state),
@@ -3297,7 +3546,10 @@ export class EdmService {
 
     if (route.completionPolicy === 'parallel_any_of' && action === 'approved') {
       for (const item of currentOrderStages) {
-        if (item.id !== stage.id && ['pending', 'in_progress'].includes(item.state)) {
+        if (
+          item.id !== stage.id &&
+          ['pending', 'in_progress'].includes(item.state)
+        ) {
           item.state = 'skipped';
           item.completedAt = new Date();
           await manager.getRepository(EdmRouteStage).save(item);
@@ -3305,7 +3557,10 @@ export class EdmService {
       }
     }
 
-    if (route.completionPolicy !== 'parallel_any_of' && inProgressOrPendingCount > 0) {
+    if (
+      route.completionPolicy !== 'parallel_any_of' &&
+      inProgressOrPendingCount > 0
+    ) {
       return;
     }
 
@@ -3324,7 +3579,9 @@ export class EdmService {
     }
 
     const nextOrder = remainingPending[0].orderNo;
-    for (const item of remainingPending.filter((pending) => pending.orderNo === nextOrder)) {
+    for (const item of remainingPending.filter(
+      (pending) => pending.orderNo === nextOrder,
+    )) {
       if (item.state === 'pending') {
         item.state = 'in_progress';
         item.startedAt = item.startedAt ?? new Date();
@@ -3345,7 +3602,10 @@ export class EdmService {
       .leftJoinAndSelect('delegation.scopeDepartment', 'scopeDepartment')
       .where('delegation.delegate_user_id = :actorId', { actorId: actor.sub })
       .andWhere('delegation.status = :status', { status: 'active' })
-      .andWhere('delegation.valid_from <= :now AND delegation.valid_to >= :now', { now })
+      .andWhere(
+        'delegation.valid_from <= :now AND delegation.valid_to >= :now',
+        { now },
+      )
       .andWhere(
         new Brackets((delegationQb) => {
           delegationQb
@@ -3378,7 +3638,8 @@ export class EdmService {
     const matchesUser =
       stage.assigneeType === 'user' &&
       (stage.assigneeUser?.id === actor.sub ||
-        (onBehalfOfUserId !== null && stage.assigneeUser?.id === onBehalfOfUserId));
+        (onBehalfOfUserId !== null &&
+          stage.assigneeUser?.id === onBehalfOfUserId));
 
     const matchesRole =
       stage.assigneeType === 'role' &&
@@ -3426,13 +3687,15 @@ export class EdmService {
       })
       .andWhere(
         new Brackets((scopeQb) => {
-          scopeQb.where('assigneeUser.id = :actorId', { actorId: actor.sub }).orWhere(
-            'stage.assigneeType = :roleType AND stage.assigneeRole = :actorRole',
-            {
-              roleType: 'role',
-              actorRole: actor.role,
-            },
-          );
+          scopeQb
+            .where('assigneeUser.id = :actorId', { actorId: actor.sub })
+            .orWhere(
+              'stage.assigneeType = :roleType AND stage.assigneeRole = :actorRole',
+              {
+                roleType: 'role',
+                actorRole: actor.role,
+              },
+            );
 
           if (this.isDepartmentManagerRole(actor.role) && actor.departmentId) {
             scopeQb.orWhere(
@@ -3485,7 +3748,9 @@ export class EdmService {
     }
 
     if (!this.isDepartmentManagerRole(actor.role)) {
-      throw new ForbiddenException('You do not have permission to override this route');
+      throw new ForbiddenException(
+        'You do not have permission to override this route',
+      );
     }
 
     if (document.creator.id === actor.sub) {
@@ -3549,7 +3814,10 @@ export class EdmService {
     );
   }
 
-  private assertRoutingTargetAllowed(actor: ActiveUserData, targetUser: User): void {
+  private assertRoutingTargetAllowed(
+    actor: ActiveUserData,
+    targetUser: User,
+  ): void {
     if (actor.role === Role.Admin || actor.role === Role.Chancellery) {
       return;
     }
@@ -3573,7 +3841,9 @@ export class EdmService {
       ) {
         return;
       }
-      throw new ForbiddenException('Routing target is not allowed for chairperson');
+      throw new ForbiddenException(
+        'Routing target is not allowed for chairperson',
+      );
     }
 
     if (actor.role === Role.FirstDeputy || actor.role === Role.Deputy) {
@@ -3590,11 +3860,17 @@ export class EdmService {
       ) {
         return;
       }
-      throw new ForbiddenException('Routing target is not allowed for deputy role');
+      throw new ForbiddenException(
+        'Routing target is not allowed for deputy role',
+      );
     }
 
     if (actor.role === Role.DepartmentHead || actor.role === Role.Manager) {
-      if ([Role.DepartmentHead, Role.Manager, Role.Chancellery].includes(targetRole)) {
+      if (
+        [Role.DepartmentHead, Role.Manager, Role.Chancellery].includes(
+          targetRole,
+        )
+      ) {
         return;
       }
       if (
@@ -3603,7 +3879,9 @@ export class EdmService {
       ) {
         return;
       }
-      throw new ForbiddenException('Routing target is outside department head matrix');
+      throw new ForbiddenException(
+        'Routing target is outside department head matrix',
+      );
     }
 
     if (actor.role === Role.DivisionHead) {
@@ -3612,13 +3890,19 @@ export class EdmService {
       }
       if (
         sameDepartment &&
-        [Role.DepartmentHead, Role.Manager, Role.DivisionHead, Role.Employee, Role.Regular].includes(
-          targetRole,
-        )
+        [
+          Role.DepartmentHead,
+          Role.Manager,
+          Role.DivisionHead,
+          Role.Employee,
+          Role.Regular,
+        ].includes(targetRole)
       ) {
         return;
       }
-      throw new ForbiddenException('Routing target is outside division head matrix');
+      throw new ForbiddenException(
+        'Routing target is outside division head matrix',
+      );
     }
 
     if (actor.role === Role.Employee || actor.role === Role.Regular) {
@@ -3683,16 +3967,23 @@ export class EdmService {
     if (creatorId && creatorId === actor.sub) {
       return true;
     }
-    return this.isDepartmentManagerRole(actor.role) && departmentId === actor.departmentId;
+    return (
+      this.isDepartmentManagerRole(actor.role) &&
+      departmentId === actor.departmentId
+    );
   }
 
-  private buildCsv(rows: Array<Array<string | number | boolean | null | undefined>>): string {
+  private buildCsv(
+    rows: Array<Array<string | number | boolean | null | undefined>>,
+  ): string {
     return rows
       .map((row) => row.map((cell) => this.escapeCsvCell(cell)).join(','))
       .join('\n');
   }
 
-  private escapeCsvCell(value: string | number | boolean | null | undefined): string {
+  private escapeCsvCell(
+    value: string | number | boolean | null | undefined,
+  ): string {
     if (value === null || value === undefined) {
       return '';
     }
@@ -3712,7 +4003,10 @@ export class EdmService {
       const ws = XLSX.utils.aoa_to_sheet(sheet.rows);
       XLSX.utils.book_append_sheet(workbook, ws, sheet.name.slice(0, 31));
     }
-    const fileBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+    const fileBuffer = XLSX.write(workbook, {
+      type: 'buffer',
+      bookType: 'xlsx',
+    }) as Buffer;
     return fileBuffer;
   }
 

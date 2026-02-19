@@ -40,7 +40,9 @@ export class EdmSchemaV120260218234500 implements MigrationInterface {
     // `iam_delegations` is shared IAM infrastructure and intentionally preserved.
   }
 
-  private async createDelegationsTable(queryRunner: QueryRunner): Promise<void> {
+  private async createDelegationsTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     if (await queryRunner.hasTable('iam_delegations')) {
       return;
     }
@@ -280,8 +282,7 @@ export class EdmSchemaV120260218234500 implements MigrationInterface {
     for (const check of [
       new TableCheck({
         name: 'CHK_EDM_DOCUMENT_STATUS',
-        expression:
-          `"status" IN ('draft','in_route','approved','rejected','returned_for_revision','archived')`,
+        expression: `"status" IN ('draft','in_route','approved','rejected','returned_for_revision','archived')`,
       }),
       new TableCheck({
         name: 'CHK_EDM_DOCUMENT_TYPE',
@@ -289,8 +290,7 @@ export class EdmSchemaV120260218234500 implements MigrationInterface {
       }),
       new TableCheck({
         name: 'CHK_EDM_DOCUMENT_CONFIDENTIALITY',
-        expression:
-          `"confidentiality" IN ('public_internal','department_confidential','restricted')`,
+        expression: `"confidentiality" IN ('public_internal','department_confidential','restricted')`,
       }),
     ]) {
       await queryRunner.createCheckConstraint('edm_documents', check);
@@ -406,8 +406,7 @@ export class EdmSchemaV120260218234500 implements MigrationInterface {
       }),
       new TableCheck({
         name: 'CHK_EDM_ROUTE_COMPLETION_POLICY',
-        expression:
-          `"completion_policy" IN ('sequential','parallel_all_of','parallel_any_of')`,
+        expression: `"completion_policy" IN ('sequential','parallel_all_of','parallel_any_of')`,
       }),
     ]) {
       await queryRunner.createCheckConstraint('edm_document_routes', check);
@@ -582,8 +581,7 @@ export class EdmSchemaV120260218234500 implements MigrationInterface {
       }),
       new TableCheck({
         name: 'CHK_EDM_STAGE_STATE',
-        expression:
-          `"state" IN ('pending','in_progress','approved','rejected','returned','skipped','expired')`,
+        expression: `"state" IN ('pending','in_progress','approved','rejected','returned','skipped','expired')`,
       }),
       new TableCheck({
         name: 'CHK_EDM_ASSIGNEE_CONSISTENCY',
@@ -612,7 +610,9 @@ export class EdmSchemaV120260218234500 implements MigrationInterface {
     ]);
   }
 
-  private async createStageActionsTable(queryRunner: QueryRunner): Promise<void> {
+  private async createStageActionsTable(
+    queryRunner: QueryRunner,
+  ): Promise<void> {
     if (await queryRunner.hasTable('edm_stage_actions')) {
       return;
     }
@@ -712,8 +712,7 @@ export class EdmSchemaV120260218234500 implements MigrationInterface {
     for (const check of [
       new TableCheck({
         name: 'CHK_EDM_ACTION',
-        expression:
-          `"action" IN ('approved','rejected','returned_for_revision','commented','override_approved','override_rejected')`,
+        expression: `"action" IN ('approved','rejected','returned_for_revision','commented','override_approved','override_rejected')`,
       }),
       new TableCheck({
         name: 'CHK_EDM_ACTION_RESULT_STATE',

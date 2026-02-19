@@ -29,10 +29,7 @@ export class DocumentController {
 
   @Post()
   @Permissions(Permission.DOCUMENTS_CREATE)
-  create(
-    @Body() dto: CreateDocumentDto,
-    @ActiveUser() user: ActiveUserData,
-  ) {
+  create(@Body() dto: CreateDocumentDto, @ActiveUser() user: ActiveUserData) {
     return this.documentService.create(dto, user.sub);
   }
 
@@ -72,7 +69,12 @@ export class DocumentController {
     @ActiveUser() user: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.documentService.linkFile(id, fileId, user, getRequestMeta(request));
+    return this.documentService.linkFile(
+      id,
+      fileId,
+      user,
+      getRequestMeta(request),
+    );
   }
 
   @Delete(':id/files/:fileId')
@@ -109,5 +111,4 @@ export class DocumentController {
   remove(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
     return this.documentService.remove(+id, user);
   }
-
 }

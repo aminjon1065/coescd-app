@@ -40,7 +40,9 @@ export class DisastersService {
     }
 
     if (dto.departmentId) {
-      const dept = await this.departmentRepo.findOneBy({ id: dto.departmentId });
+      const dept = await this.departmentRepo.findOneBy({
+        id: dto.departmentId,
+      });
       if (!dept) throw new NotFoundException('Department not found');
       disaster.department = dept;
     }
@@ -48,7 +50,9 @@ export class DisastersService {
     return this.disasterRepo.save(disaster);
   }
 
-  async findAll(query: GetDisastersQueryDto): Promise<PaginatedResponse<Disaster>> {
+  async findAll(
+    query: GetDisastersQueryDto,
+  ): Promise<PaginatedResponse<Disaster>> {
     const page = Math.max(1, Number(query.page ?? 1));
     const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
     const offset = (page - 1) * limit;
@@ -65,7 +69,9 @@ export class DisastersService {
       qb.andWhere('disaster.status = :status', { status: query.status });
     }
     if (query.severity) {
-      qb.andWhere('disaster.severity = :severity', { severity: query.severity });
+      qb.andWhere('disaster.severity = :severity', {
+        severity: query.severity,
+      });
     }
     if (query.departmentId) {
       qb.andWhere('department.id = :departmentId', {
@@ -115,7 +121,9 @@ export class DisastersService {
     }
 
     if (dto.departmentId) {
-      const dept = await this.departmentRepo.findOneBy({ id: dto.departmentId });
+      const dept = await this.departmentRepo.findOneBy({
+        id: dto.departmentId,
+      });
       if (!dept) throw new NotFoundException('Department not found');
       disaster.department = dept;
     }
@@ -128,14 +136,16 @@ export class DisastersService {
     if (dto.severity) disaster.severity = dto.severity as Disaster['severity'];
     if (dto.status) disaster.status = dto.status as Disaster['status'];
     if (dto.casualties !== undefined) disaster.casualties = dto.casualties;
-    if (dto.affectedPeople !== undefined) disaster.affectedPeople = dto.affectedPeople;
+    if (dto.affectedPeople !== undefined)
+      disaster.affectedPeople = dto.affectedPeople;
 
     return this.disasterRepo.save(disaster);
   }
 
   async remove(id: number): Promise<void> {
     const result = await this.disasterRepo.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Disaster not found');
+    if (result.affected === 0)
+      throw new NotFoundException('Disaster not found');
   }
 
   async count(): Promise<number> {

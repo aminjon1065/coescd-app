@@ -1,18 +1,19 @@
 'use client';
 
-import Head from 'next/head';
-import ProtectedContent from '@/ProtectedContent';
+import { RouteTitleHead } from '@/features/navigation/RouteTitleHead';
 import AuditLogsAdmin from './components/auditLogsAdmin';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 
 export default function Page() {
   return (
     <>
-      <Head>
-        <title>Audit Logs</title>
-      </Head>
-      <ProtectedContent>
+      <RouteTitleHead routeKey="dashboard.auditLogs" />
+      <ProtectedRouteGate
+        policyKey="dashboard.auditLogs"
+        deniedDescription="Журнал аудита доступен только администратору."
+      >
         <AuditLogsAdmin />
-      </ProtectedContent>
+      </ProtectedRouteGate>
     </>
   );
 }

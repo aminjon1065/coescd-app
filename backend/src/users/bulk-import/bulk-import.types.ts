@@ -41,4 +41,3 @@ export type BulkImportSession = {
   warnings: BulkImportRowError[];
   summary: BulkImportDryRunSummary;
 };
-

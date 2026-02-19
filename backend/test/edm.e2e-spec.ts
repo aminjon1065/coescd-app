@@ -75,7 +75,9 @@ describe('EDM (e2e)', () => {
             entities: [User, Department, EdmDocument],
           }),
           dataSourceFactory: async (options) => {
-            const dataSource = db.adapters.createTypeormDataSource(options as any);
+            const dataSource = db.adapters.createTypeormDataSource(
+              options as any,
+            );
             return dataSource.initialize();
           },
         }),
@@ -322,9 +324,11 @@ describe('EDM (e2e)', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
 
-    expect(managerApprovals.body.items.some((item: { id: number }) => item.id === stage2Id)).toBe(
-      true,
-    );
+    expect(
+      managerApprovals.body.items.some(
+        (item: { id: number }) => item.id === stage2Id,
+      ),
+    ).toBe(true);
 
     await request(app.getHttpServer())
       .post(`/edm/documents/${documentId}/stages/${stage2Id}/actions`)
@@ -362,7 +366,10 @@ describe('EDM (e2e)', () => {
   });
 
   it('denies foreign department access for manager and allows admin', async () => {
-    const managerDept2Token = await signIn('edm-manager2@test.local', 'manager123');
+    const managerDept2Token = await signIn(
+      'edm-manager2@test.local',
+      'manager123',
+    );
     const adminToken = await signIn('edm-admin@test.local', 'admin123');
 
     const dept1Document = await edmDocumentRepo.findOne({
@@ -747,7 +754,11 @@ describe('EDM (e2e)', () => {
       .expect(200);
 
     const delegatedAction = auditResponse.body.find(
-      (entry: { action: string; actorUser?: { id: number }; onBehalfOfUser?: { id: number } }) =>
+      (entry: {
+        action: string;
+        actorUser?: { id: number };
+        onBehalfOfUser?: { id: number };
+      }) =>
         entry.action === 'approved' &&
         entry.actorUser?.id === regularDept1.id &&
         entry.onBehalfOfUser?.id === managerDept1.id,
@@ -766,7 +777,11 @@ describe('EDM (e2e)', () => {
     expect(filteredAuditResponse.body.length).toBeGreaterThan(0);
     expect(
       filteredAuditResponse.body.every(
-        (entry: { action: string; actorUser?: { id: number }; onBehalfOfUser?: { id: number } }) =>
+        (entry: {
+          action: string;
+          actorUser?: { id: number };
+          onBehalfOfUser?: { id: number };
+        }) =>
           entry.action === 'approved' &&
           entry.actorUser?.id === regularDept1.id &&
           entry.onBehalfOfUser?.id === managerDept1.id,
@@ -781,8 +796,12 @@ describe('EDM (e2e)', () => {
         actorUserId: regularDept1.id,
       })
       .expect(200);
-    expect(String(auditExportCsv.headers['content-type'])).toContain('text/csv');
-    expect(auditExportCsv.text).toContain('documentId,actionId,createdAt,action');
+    expect(String(auditExportCsv.headers['content-type'])).toContain(
+      'text/csv',
+    );
+    expect(auditExportCsv.text).toContain(
+      'documentId,actionId,createdAt,action',
+    );
     expect(auditExportCsv.text).toContain(',approved,');
 
     const auditExportXlsx = await request(app.getHttpServer())
@@ -918,7 +937,9 @@ describe('EDM (e2e)', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
     expect(
-      listTemplatesResponse.body.some((template: { id: number }) => template.id === templateId),
+      listTemplatesResponse.body.some(
+        (template: { id: number }) => template.id === templateId,
+      ),
     ).toBe(true);
 
     await request(app.getHttpServer())
@@ -1133,7 +1154,9 @@ describe('EDM (e2e)', () => {
       .expect(201);
     const documentId = createResponse.body.id as number;
 
-    const overdueDueAt = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const overdueDueAt = new Date(
+      Date.now() - 48 * 60 * 60 * 1000,
+    ).toISOString();
     await request(app.getHttpServer())
       .post(`/edm/documents/${documentId}/submit`)
       .set('Authorization', `Bearer ${managerToken}`)
@@ -1198,9 +1221,11 @@ describe('EDM (e2e)', () => {
       .query({ kind: 'overdue', status: 'read' })
       .expect(200);
     expect(
-      regularReadResponse.body.items.some((item: { id: number; status: string }) => {
-        return item.id === alertId && item.status === 'read';
-      }),
+      regularReadResponse.body.items.some(
+        (item: { id: number; status: string }) => {
+          return item.id === alertId && item.status === 'read';
+        },
+      ),
     ).toBe(true);
   });
 
@@ -1253,7 +1278,9 @@ describe('EDM (e2e)', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
     expect(
-      listFiltersResponse.body.some((item: { id: number }) => item.id === filterId),
+      listFiltersResponse.body.some(
+        (item: { id: number }) => item.id === filterId,
+      ),
     ).toBe(true);
 
     const filteredDocsResponse = await request(app.getHttpServer())
@@ -1326,10 +1353,30 @@ describe('EDM (e2e)', () => {
         scopeType: 'department',
         departmentId: dept1Id,
         fields: [
-          { fieldKey: 'title', label: 'Title', isRequired: true, isReadonly: true, defaultValue: 'Template Title' },
-          { fieldKey: 'summary', label: 'Summary', isRequired: true, defaultValue: 'Template summary default' },
-          { fieldKey: 'confidentiality', label: 'Conf', defaultValue: 'department_confidential' },
-          { fieldKey: 'type', label: 'Doc Type', defaultValue: 'internal', isReadonly: true },
+          {
+            fieldKey: 'title',
+            label: 'Title',
+            isRequired: true,
+            isReadonly: true,
+            defaultValue: 'Template Title',
+          },
+          {
+            fieldKey: 'summary',
+            label: 'Summary',
+            isRequired: true,
+            defaultValue: 'Template summary default',
+          },
+          {
+            fieldKey: 'confidentiality',
+            label: 'Conf',
+            defaultValue: 'department_confidential',
+          },
+          {
+            fieldKey: 'type',
+            label: 'Doc Type',
+            defaultValue: 'internal',
+            isReadonly: true,
+          },
         ],
       })
       .expect(201);
@@ -1356,7 +1403,9 @@ describe('EDM (e2e)', () => {
 
     expect(createFromTemplateResponse.body.type).toBe('internal');
     expect(createFromTemplateResponse.body.title).toBe('Template Title');
-    expect(createFromTemplateResponse.body.summary).toBe('Summary from template values');
+    expect(createFromTemplateResponse.body.summary).toBe(
+      'Summary from template values',
+    );
     expect(createFromTemplateResponse.body.confidentiality).toBe(
       'department_confidential',
     );
@@ -1443,7 +1492,9 @@ describe('EDM (e2e)', () => {
       .get('/edm/reports/sla/export')
       .set('Authorization', `Bearer ${managerToken}`)
       .expect(200);
-    expect(String(slaExportResponse.headers['content-type'])).toContain('text/csv');
+    expect(String(slaExportResponse.headers['content-type'])).toContain(
+      'text/csv',
+    );
     expect(slaExportResponse.text).toContain('metric,value');
 
     const overdueExportResponse = await request(app.getHttpServer())
@@ -1465,7 +1516,9 @@ describe('EDM (e2e)', () => {
     expect(String(slaXlsxResponse.headers['content-type'])).toContain(
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
-    expect(String(slaXlsxResponse.headers['content-disposition'])).toContain('.xlsx');
+    expect(String(slaXlsxResponse.headers['content-disposition'])).toContain(
+      '.xlsx',
+    );
 
     const overdueXlsxResponse = await request(app.getHttpServer())
       .get('/edm/reports/overdue/export/xlsx')
@@ -1490,7 +1543,9 @@ describe('EDM (e2e)', () => {
       .expect(200);
     expect(dashboardResponse.body.kpis.totalRoutes).toBeGreaterThan(0);
     expect(Array.isArray(dashboardResponse.body.charts.managerLoad)).toBe(true);
-    expect(dashboardResponse.body.charts.managerLoad.length).toBeLessThanOrEqual(5);
+    expect(
+      dashboardResponse.body.charts.managerLoad.length,
+    ).toBeLessThanOrEqual(5);
 
     const foreignManagerReport = await request(app.getHttpServer())
       .get('/edm/reports/overdue')
@@ -1521,7 +1576,9 @@ describe('EDM (e2e)', () => {
       })
       .expect(201);
 
-    const overdueDueAt = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    const overdueDueAt = new Date(
+      Date.now() - 72 * 60 * 60 * 1000,
+    ).toISOString();
     await request(app.getHttpServer())
       .post(`/edm/documents/${createResponse.body.id}/submit`)
       .set('Authorization', `Bearer ${managerToken}`)
@@ -1717,7 +1774,9 @@ describe('EDM (e2e)', () => {
       .expect(200);
     expect(forwardedOnly.body.length).toBeGreaterThan(0);
     expect(
-      forwardedOnly.body.every((event: { eventType: string }) => event.eventType === 'forwarded'),
+      forwardedOnly.body.every(
+        (event: { eventType: string }) => event.eventType === 'forwarded',
+      ),
     ).toBe(true);
 
     const regularActorHistory = await request(app.getHttpServer())
@@ -1732,7 +1791,8 @@ describe('EDM (e2e)', () => {
     expect(
       regularActorHistory.body.every(
         (event: { eventType: string; actorUser?: { id: number } }) =>
-          event.eventType === 'reply_sent' && event.actorUser?.id === regularDept1.id,
+          event.eventType === 'reply_sent' &&
+          event.actorUser?.id === regularDept1.id,
       ),
     ).toBe(true);
 
@@ -1749,7 +1809,9 @@ describe('EDM (e2e)', () => {
       threadHistory.body.every(
         (event: { threadId?: string; commentText?: string }) =>
           event.threadId === replyResponse.body.threadId &&
-          String(event.commentText ?? '').toLowerCase().includes('accepted'),
+          String(event.commentText ?? '')
+            .toLowerCase()
+            .includes('accepted'),
       ),
     ).toBe(true);
 
@@ -1760,8 +1822,12 @@ describe('EDM (e2e)', () => {
         eventTypes: 'reply_sent',
       })
       .expect(200);
-    expect(String(historyExportCsv.headers['content-type'])).toContain('text/csv');
-    expect(historyExportCsv.text).toContain('documentId,eventId,createdAt,eventType');
+    expect(String(historyExportCsv.headers['content-type'])).toContain(
+      'text/csv',
+    );
+    expect(historyExportCsv.text).toContain(
+      'documentId,eventId,createdAt,eventType',
+    );
     expect(historyExportCsv.text).toContain(',reply_sent,');
 
     const historyExportXlsx = await request(app.getHttpServer())
@@ -1782,11 +1848,26 @@ describe('EDM (e2e)', () => {
   });
 
   it('enforces org routing matrix for new committee roles', async () => {
-    const chairpersonToken = await signIn('edm-chairperson@test.local', 'manager123');
-    const firstDeputyToken = await signIn('edm-first-deputy@test.local', 'manager123');
-    const departmentHeadToken = await signIn('edm-department-head@test.local', 'manager123');
-    const divisionHead1Token = await signIn('edm-division-head1@test.local', 'manager123');
-    const chancelleryToken = await signIn('edm-chancellery@test.local', 'manager123');
+    const chairpersonToken = await signIn(
+      'edm-chairperson@test.local',
+      'manager123',
+    );
+    const firstDeputyToken = await signIn(
+      'edm-first-deputy@test.local',
+      'manager123',
+    );
+    const departmentHeadToken = await signIn(
+      'edm-department-head@test.local',
+      'manager123',
+    );
+    const divisionHead1Token = await signIn(
+      'edm-division-head1@test.local',
+      'manager123',
+    );
+    const chancelleryToken = await signIn(
+      'edm-chancellery@test.local',
+      'manager123',
+    );
     const managerToken = await signIn('edm-manager1@test.local', 'manager123');
 
     const chairDocument = await request(app.getHttpServer())

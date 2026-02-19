@@ -7,7 +7,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "audit:dashboard-policies": "node scripts/audit-dashboard-policies.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.7",
@@ -38,6 +41,7 @@
     "tailwind-merge": "^3.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",

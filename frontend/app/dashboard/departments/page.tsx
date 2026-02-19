@@ -1,18 +1,19 @@
 'use client';
 
-import Head from 'next/head';
-import ProtectedContent from '@/ProtectedContent';
+import { RouteTitleHead } from '@/features/navigation/RouteTitleHead';
 import DepartmentsAdmin from './components/departmentsAdmin';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 
 export default function Page() {
   return (
     <>
-      <Head>
-        <title>Departments</title>
-      </Head>
-      <ProtectedContent>
+      <RouteTitleHead routeKey="dashboard.departments" />
+      <ProtectedRouteGate
+        policyKey="dashboard.departments"
+        deniedDescription="Раздел департаментов доступен только администратору."
+      >
         <DepartmentsAdmin />
-      </ProtectedContent>
+      </ProtectedRouteGate>
     </>
   );
 }

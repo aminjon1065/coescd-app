@@ -38,9 +38,7 @@ export class TaskScopePolicy extends BaseScopePolicy {
 }
 
 @Injectable()
-export class UserScopePolicyHandler
-  implements PolicyHandler<UserScopePolicy>
-{
+export class UserScopePolicyHandler implements PolicyHandler<UserScopePolicy> {
   constructor(
     private readonly policyHandlerStorage: PolicyHandlersStorage,
     @InjectRepository(User) private readonly userRepository: Repository<User>,

@@ -61,7 +61,8 @@ export class ScopeService {
       return;
     }
 
-    const isOwner = task.creator?.id === actor.sub || task.receiver?.id === actor.sub;
+    const isOwner =
+      task.creator?.id === actor.sub || task.receiver?.id === actor.sub;
     if (isOwner) {
       return;
     }
@@ -188,18 +189,12 @@ export class ScopeService {
           });
         if (this.isManager(actor) && actor.departmentId) {
           scopeQb
-            .orWhere(
-              `${aliases.creatorDepartmentAlias}.id = :departmentId`,
-              {
-                departmentId: actor.departmentId,
-              },
-            )
-            .orWhere(
-              `${aliases.receiverDepartmentAlias}.id = :departmentId`,
-              {
-                departmentId: actor.departmentId,
-              },
-            );
+            .orWhere(`${aliases.creatorDepartmentAlias}.id = :departmentId`, {
+              departmentId: actor.departmentId,
+            })
+            .orWhere(`${aliases.receiverDepartmentAlias}.id = :departmentId`, {
+              departmentId: actor.departmentId,
+            });
         }
       }),
     );

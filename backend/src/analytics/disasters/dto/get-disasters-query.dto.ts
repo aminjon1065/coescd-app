@@ -26,4 +26,3 @@ export class GetDisastersQueryDto extends PaginationQueryDto {
   @IsString()
   q?: string;
 }
-

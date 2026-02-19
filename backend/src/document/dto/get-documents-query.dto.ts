@@ -20,4 +20,3 @@ export class GetDocumentsQueryDto extends PaginationQueryDto {
   @IsString()
   q?: string;
 }
-

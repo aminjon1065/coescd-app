@@ -65,7 +65,9 @@ export class EdmAlertsScheduler implements OnModuleInit, OnModuleDestroy {
 
   private async runTick() {
     if (this.isRunning) {
-      this.logger.warn('EDM alerts tick skipped because previous run is still in progress');
+      this.logger.warn(
+        'EDM alerts tick skipped because previous run is still in progress',
+      );
       return;
     }
     this.isRunning = true;
@@ -76,7 +78,8 @@ export class EdmAlertsScheduler implements OnModuleInit, OnModuleDestroy {
         `EDM alerts tick finished: processedStages=${result.processedStages}, createdAlerts=${result.createdAlerts}`,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.stack ?? error.message : String(error);
+      const message =
+        error instanceof Error ? (error.stack ?? error.message) : String(error);
       this.logger.error(`EDM alerts tick failed: ${message}`);
     } finally {
       this.isRunning = false;

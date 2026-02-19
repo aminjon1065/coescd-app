@@ -71,3 +71,75 @@ export interface IEdmDocument {
   updatedAt: string;
   route?: IEdmRoute | null;
 }
+
+export interface IEdmHistoryEvent {
+  id: number;
+  eventType: string;
+  commentText?: string | null;
+  threadId?: string | null;
+  createdAt: string;
+  actorUser?: IUser | null;
+  fromUser?: IUser | null;
+  toUser?: IUser | null;
+  responsibleUser?: IUser | null;
+}
+
+export interface IEdmAuditEvent {
+  id: number;
+  action: string;
+  commentText?: string | null;
+  reasonCode?: string | null;
+  createdAt: string;
+  actorUser?: IUser | null;
+  onBehalfOfUser?: IUser | null;
+  stage?: {
+    id: number;
+    orderNo: number;
+    stageType: string;
+  } | null;
+}
+
+export interface IEdmReply {
+  id: number;
+  threadId: string;
+  messageText: string;
+  createdAt: string;
+  senderUser?: IUser | null;
+  parentReply?: { id: number } | null;
+}
+
+export interface IEdmSavedFilterCriteria {
+  status?: EdmDocumentStatus;
+  type?: EdmDocumentType;
+  departmentId?: number;
+  creatorId?: number;
+  externalNumber?: string;
+  q?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface IEdmSavedFilter {
+  id: number;
+  scope: 'documents';
+  name: string;
+  criteria: IEdmSavedFilterCriteria;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IEdmFileAttachment {
+  id: number;
+  originalName: string;
+  storageKey: string;
+  bucket: string;
+  mimeType: string;
+  sizeBytes: string;
+  checksumSha256: string;
+  status: 'active' | 'quarantined' | 'deleted';
+  createdAt: string;
+  updatedAt: string;
+  owner?: IUser | null;
+  department?: IDepartment | null;
+}

@@ -12,7 +12,9 @@ export class RoleMatrixAndUserAuditSchema20260218200000
   name = 'RoleMatrixAndUserAuditSchema20260218200000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasRoleProfiles = await queryRunner.hasTable('role_permission_profiles');
+    const hasRoleProfiles = await queryRunner.hasTable(
+      'role_permission_profiles',
+    );
     if (!hasRoleProfiles) {
       await queryRunner.createTable(
         new Table({

@@ -14,6 +14,7 @@ import { CreateTaskDialog } from './components/create-task-dialog';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { extractListItems, ListResponse } from '@/lib/list-response';
+import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 
 const statusLabel: Record<TaskStatus, string> = {
   new: 'Новая',
@@ -28,6 +29,17 @@ const statusBadgeClass: Record<TaskStatus, string> = {
 };
 
 export default function TasksPage() {
+  return (
+    <ProtectedRouteGate
+      policyKey="dashboard.tasks"
+      deniedDescription="Раздел задач доступен пользователям с правом чтения задач."
+    >
+      <TasksContent />
+    </ProtectedRouteGate>
+  );
+}
+
+function TasksContent() {
   const { accessToken } = useAuth();
   const [tasks, setTasks] = useState<ITask[]>([]);
   const [loading, setLoading] = useState(true);

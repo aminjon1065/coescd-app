@@ -47,7 +47,8 @@ export function getFilesRuntimeConfig(): FilesRuntimeConfig {
       process.env.FILES_ALLOWED_MIME_TYPES,
       DEFAULT_ALLOWED_MIME_TYPES,
     ),
-    presignedEnabled: (process.env.FILES_PRESIGNED_ENABLED ?? 'false') === 'true',
+    presignedEnabled:
+      (process.env.FILES_PRESIGNED_ENABLED ?? 'false') === 'true',
     presignedUploadTtlSeconds: parsePositiveInt(
       process.env.FILES_PRESIGNED_UPLOAD_TTL_SECONDS,
       DEFAULT_PRESIGNED_UPLOAD_TTL_SECONDS,

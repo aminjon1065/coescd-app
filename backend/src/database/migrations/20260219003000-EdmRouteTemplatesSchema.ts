@@ -7,7 +7,9 @@ import {
   TableIndex,
 } from 'typeorm';
 
-export class EdmRouteTemplatesSchema20260219003000 implements MigrationInterface {
+export class EdmRouteTemplatesSchema20260219003000
+  implements MigrationInterface
+{
   name = 'EdmRouteTemplatesSchema20260219003000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -220,7 +222,10 @@ export class EdmRouteTemplatesSchema20260219003000 implements MigrationInterface
             `("assignee_type" = 'department_head'))`,
         }),
       ]) {
-        await queryRunner.createCheckConstraint('edm_route_template_stages', check);
+        await queryRunner.createCheckConstraint(
+          'edm_route_template_stages',
+          check,
+        );
       }
 
       await queryRunner.createIndices('edm_route_template_stages', [

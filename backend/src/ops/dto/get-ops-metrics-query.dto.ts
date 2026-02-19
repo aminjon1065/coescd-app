@@ -16,4 +16,3 @@ export class GetOpsMetricsQueryDto {
   @Max(1000)
   authFailureThreshold?: number;
 }
-

@@ -41,7 +41,9 @@ export class UsersService {
     requestMeta: { ip: string | null; userAgent: string | null },
   ) {
     const department = createUserDto.departmentId
-      ? await this.departmentRepository.findOneBy({ id: createUserDto.departmentId })
+      ? await this.departmentRepository.findOneBy({
+          id: createUserDto.departmentId,
+        })
       : null;
 
     if (createUserDto.departmentId && !department) {
@@ -188,7 +190,8 @@ export class UsersService {
     };
 
     if (
-      (updateUserDto.role !== undefined || updateUserDto.departmentId !== undefined) &&
+      (updateUserDto.role !== undefined ||
+        updateUserDto.departmentId !== undefined) &&
       actor.role !== Role.Admin
     ) {
       throw new ForbiddenException('Only admin can update role or department');
@@ -339,7 +342,9 @@ export class UsersService {
     reason?: string | null;
   }): Promise<void> {
     const [actor, targetUser] = await Promise.all([
-      params.actorId ? this.userRepository.findOneBy({ id: params.actorId }) : null,
+      params.actorId
+        ? this.userRepository.findOneBy({ id: params.actorId })
+        : null,
       params.targetUserId
         ? this.userRepository.findOneBy({ id: params.targetUserId })
         : null,

@@ -4,6 +4,6 @@ import { PredictionController } from './prediction.controller';
 
 @Module({
   providers: [PredictionService],
-  controllers: [PredictionController]
+  controllers: [PredictionController],
 })
 export class PredictionModule {}
