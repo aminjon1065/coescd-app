@@ -753,6 +753,49 @@ describe('EDM (e2e)', () => {
         entry.onBehalfOfUser?.id === managerDept1.id,
     );
     expect(delegatedAction).toBeDefined();
+
+    const filteredAuditResponse = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/audit`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({
+        actions: 'approved',
+        actorUserId: regularDept1.id,
+        onBehalfOfUserId: managerDept1.id,
+      })
+      .expect(200);
+    expect(filteredAuditResponse.body.length).toBeGreaterThan(0);
+    expect(
+      filteredAuditResponse.body.every(
+        (entry: { action: string; actorUser?: { id: number }; onBehalfOfUser?: { id: number } }) =>
+          entry.action === 'approved' &&
+          entry.actorUser?.id === regularDept1.id &&
+          entry.onBehalfOfUser?.id === managerDept1.id,
+      ),
+    ).toBe(true);
+
+    const auditExportCsv = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/audit/export`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({
+        actions: 'approved',
+        actorUserId: regularDept1.id,
+      })
+      .expect(200);
+    expect(String(auditExportCsv.headers['content-type'])).toContain('text/csv');
+    expect(auditExportCsv.text).toContain('documentId,actionId,createdAt,action');
+    expect(auditExportCsv.text).toContain(',approved,');
+
+    const auditExportXlsx = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/audit/export/xlsx`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({
+        actions: 'approved',
+        actorUserId: regularDept1.id,
+      })
+      .expect(200);
+    expect(String(auditExportXlsx.headers['content-type'])).toContain(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
   });
 
   it('denies delegation when permission subset does not include route execute', async () => {
@@ -1666,6 +1709,71 @@ describe('EDM (e2e)', () => {
     expect(eventTypes).toContain('forwarded');
     expect(eventTypes).toContain('responsible_assigned');
     expect(eventTypes).toContain('reply_sent');
+
+    const forwardedOnly = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({ eventTypes: 'forwarded' })
+      .expect(200);
+    expect(forwardedOnly.body.length).toBeGreaterThan(0);
+    expect(
+      forwardedOnly.body.every((event: { eventType: string }) => event.eventType === 'forwarded'),
+    ).toBe(true);
+
+    const regularActorHistory = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({
+        eventTypes: 'reply_sent',
+        actorUserId: regularDept1.id,
+      })
+      .expect(200);
+    expect(regularActorHistory.body.length).toBeGreaterThan(0);
+    expect(
+      regularActorHistory.body.every(
+        (event: { eventType: string; actorUser?: { id: number } }) =>
+          event.eventType === 'reply_sent' && event.actorUser?.id === regularDept1.id,
+      ),
+    ).toBe(true);
+
+    const threadHistory = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({
+        threadId: replyResponse.body.threadId,
+        q: 'accepted',
+      })
+      .expect(200);
+    expect(threadHistory.body.length).toBeGreaterThan(0);
+    expect(
+      threadHistory.body.every(
+        (event: { threadId?: string; commentText?: string }) =>
+          event.threadId === replyResponse.body.threadId &&
+          String(event.commentText ?? '').toLowerCase().includes('accepted'),
+      ),
+    ).toBe(true);
+
+    const historyExportCsv = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history/export`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({
+        eventTypes: 'reply_sent',
+      })
+      .expect(200);
+    expect(String(historyExportCsv.headers['content-type'])).toContain('text/csv');
+    expect(historyExportCsv.text).toContain('documentId,eventId,createdAt,eventType');
+    expect(historyExportCsv.text).toContain(',reply_sent,');
+
+    const historyExportXlsx = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history/export/xlsx`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({
+        eventTypes: 'reply_sent',
+      })
+      .expect(200);
+    expect(String(historyExportXlsx.headers['content-type'])).toContain(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
 
     await request(app.getHttpServer())
       .get(`/edm/documents/${documentId}/history`)

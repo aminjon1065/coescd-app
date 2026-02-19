@@ -78,6 +78,10 @@ import {
   CreateDocumentReplyDto,
   ForwardEdmDocumentDto,
 } from './dto/document-history.dto';
+import {
+  GetDocumentAuditQueryDto,
+  GetDocumentHistoryQueryDto,
+} from './dto/document-audit-query.dto';
 
 @Injectable()
 export class EdmService {
@@ -2152,45 +2156,240 @@ export class EdmService {
     };
   }
 
-  async findAudit(documentId: number, actor: ActiveUserData) {
+  async findAudit(
+    documentId: number,
+    actor: ActiveUserData,
+    query: GetDocumentAuditQueryDto,
+  ) {
     const document = await this.getDocumentOrFail(documentId);
     await this.assertDocumentReadScope(actor, document);
 
-    return this.edmActionRepo.find({
-      where: {
-        document: { id: documentId },
-      },
-      relations: {
-        stage: true,
-        actorUser: true,
-        onBehalfOfUser: true,
-      },
-      order: {
-        createdAt: 'ASC',
-      },
-    });
+    const qb = this.edmActionRepo
+      .createQueryBuilder('action')
+      .leftJoinAndSelect('action.stage', 'stage')
+      .leftJoinAndSelect('action.actorUser', 'actorUser')
+      .leftJoinAndSelect('action.onBehalfOfUser', 'onBehalfOfUser')
+      .leftJoin('action.document', 'document')
+      .where('document.id = :documentId', { documentId });
+
+    const rawActions = query.actions as unknown;
+    const auditActions = Array.isArray(rawActions)
+      ? rawActions.map((item) => String(item))
+      : rawActions
+        ? [String(rawActions)]
+        : [];
+    if (auditActions.length) {
+      qb.andWhere('action.action IN (:...actions)', { actions: auditActions });
+    }
+    if (query.actorUserId) {
+      qb.andWhere('actorUser.id = :actorUserId', { actorUserId: query.actorUserId });
+    }
+    if (query.onBehalfOfUserId) {
+      qb.andWhere('onBehalfOfUser.id = :onBehalfOfUserId', {
+        onBehalfOfUserId: query.onBehalfOfUserId,
+      });
+    }
+    if (query.stageId) {
+      qb.andWhere('stage.id = :stageId', { stageId: query.stageId });
+    }
+    if (query.reasonCode) {
+      qb.andWhere('action.reasonCode = :reasonCode', {
+        reasonCode: query.reasonCode,
+      });
+    }
+    if (query.fromDate) {
+      qb.andWhere('action.createdAt >= :fromDate', { fromDate: new Date(query.fromDate) });
+    }
+    if (query.toDate) {
+      qb.andWhere('action.createdAt <= :toDate', { toDate: new Date(query.toDate) });
+    }
+
+    return qb.orderBy('action.createdAt', 'ASC').addOrderBy('action.id', 'ASC').getMany();
   }
 
-  async findHistory(documentId: number, actor: ActiveUserData) {
+  async findHistory(
+    documentId: number,
+    actor: ActiveUserData,
+    query: GetDocumentHistoryQueryDto,
+  ) {
     const document = await this.getDocumentOrFail(documentId);
     await this.assertDocumentReadScope(actor, document);
 
-    return this.timelineRepo.find({
-      where: {
-        document: { id: documentId },
+    const qb = this.timelineRepo
+      .createQueryBuilder('timeline')
+      .leftJoinAndSelect('timeline.actorUser', 'actorUser')
+      .leftJoinAndSelect('timeline.fromUser', 'fromUser')
+      .leftJoinAndSelect('timeline.toUser', 'toUser')
+      .leftJoinAndSelect('timeline.responsibleUser', 'responsibleUser')
+      .leftJoinAndSelect('timeline.parentEvent', 'parentEvent')
+      .leftJoin('timeline.document', 'document')
+      .where('document.id = :documentId', { documentId });
+
+    const rawEventTypes = query.eventTypes as unknown;
+    const historyEventTypes = Array.isArray(rawEventTypes)
+      ? rawEventTypes.map((item) => String(item))
+      : rawEventTypes
+        ? [String(rawEventTypes)]
+        : [];
+    if (historyEventTypes.length) {
+      qb.andWhere('timeline.eventType IN (:...eventTypes)', {
+        eventTypes: historyEventTypes,
+      });
+    }
+    if (query.actorUserId) {
+      qb.andWhere('actorUser.id = :actorUserId', { actorUserId: query.actorUserId });
+    }
+    if (query.fromUserId) {
+      qb.andWhere('fromUser.id = :fromUserId', { fromUserId: query.fromUserId });
+    }
+    if (query.toUserId) {
+      qb.andWhere('toUser.id = :toUserId', { toUserId: query.toUserId });
+    }
+    if (query.responsibleUserId) {
+      qb.andWhere('responsibleUser.id = :responsibleUserId', {
+        responsibleUserId: query.responsibleUserId,
+      });
+    }
+    if (query.threadId) {
+      qb.andWhere('timeline.threadId = :threadId', { threadId: query.threadId });
+    }
+    if (query.fromDate) {
+      qb.andWhere('timeline.createdAt >= :fromDate', { fromDate: new Date(query.fromDate) });
+    }
+    if (query.toDate) {
+      qb.andWhere('timeline.createdAt <= :toDate', { toDate: new Date(query.toDate) });
+    }
+    if (query.q) {
+      qb.andWhere('LOWER(COALESCE(timeline.commentText, \'\')) LIKE :search', {
+        search: `%${query.q.toLowerCase()}%`,
+      });
+    }
+
+    return qb.orderBy('timeline.createdAt', 'ASC').addOrderBy('timeline.id', 'ASC').getMany();
+  }
+
+  async exportDocumentAuditCsv(
+    documentId: number,
+    actor: ActiveUserData,
+    query: GetDocumentAuditQueryDto,
+  ): Promise<string> {
+    const audit = await this.findAudit(documentId, actor, query);
+    const rows: Array<Array<string | number | null>> = [
+      ['documentId', 'actionId', 'createdAt', 'action', 'stageId', 'actorUserId', 'onBehalfOfUserId', 'reasonCode', 'commentText'],
+      ...audit.map((item) => [
+        documentId,
+        item.id,
+        item.createdAt.toISOString(),
+        item.action,
+        item.stage?.id ?? null,
+        item.actorUser?.id ?? null,
+        item.onBehalfOfUser?.id ?? null,
+        item.reasonCode,
+        item.commentText,
+      ]),
+    ];
+    return `\uFEFF${this.buildCsv(rows)}`;
+  }
+
+  async exportDocumentAuditXlsx(
+    documentId: number,
+    actor: ActiveUserData,
+    query: GetDocumentAuditQueryDto,
+  ): Promise<Buffer> {
+    const audit = await this.findAudit(documentId, actor, query);
+    return this.buildXlsxBuffer([
+      {
+        name: 'audit',
+        rows: [
+          ['documentId', 'actionId', 'createdAt', 'action', 'stageId', 'actorUserId', 'onBehalfOfUserId', 'reasonCode', 'commentText'],
+          ...audit.map((item) => [
+            documentId,
+            item.id,
+            item.createdAt.toISOString(),
+            item.action,
+            item.stage?.id ?? null,
+            item.actorUser?.id ?? null,
+            item.onBehalfOfUser?.id ?? null,
+            item.reasonCode,
+            item.commentText,
+          ]),
+        ],
       },
-      relations: {
-        actorUser: true,
-        fromUser: true,
-        toUser: true,
-        responsibleUser: true,
-        parentEvent: true,
+    ]);
+  }
+
+  async exportDocumentHistoryCsv(
+    documentId: number,
+    actor: ActiveUserData,
+    query: GetDocumentHistoryQueryDto,
+  ): Promise<string> {
+    const history = await this.findHistory(documentId, actor, query);
+    const rows: Array<Array<string | number | null>> = [
+      [
+        'documentId',
+        'eventId',
+        'createdAt',
+        'eventType',
+        'actorUserId',
+        'fromUserId',
+        'toUserId',
+        'responsibleUserId',
+        'threadId',
+        'commentText',
+      ],
+      ...history.map((item) => [
+        documentId,
+        item.id,
+        item.createdAt.toISOString(),
+        item.eventType,
+        item.actorUser?.id ?? null,
+        item.fromUser?.id ?? null,
+        item.toUser?.id ?? null,
+        item.responsibleUser?.id ?? null,
+        item.threadId,
+        item.commentText,
+      ]),
+    ];
+    return `\uFEFF${this.buildCsv(rows)}`;
+  }
+
+  async exportDocumentHistoryXlsx(
+    documentId: number,
+    actor: ActiveUserData,
+    query: GetDocumentHistoryQueryDto,
+  ): Promise<Buffer> {
+    const history = await this.findHistory(documentId, actor, query);
+    return this.buildXlsxBuffer([
+      {
+        name: 'history',
+        rows: [
+          [
+            'documentId',
+            'eventId',
+            'createdAt',
+            'eventType',
+            'actorUserId',
+            'fromUserId',
+            'toUserId',
+            'responsibleUserId',
+            'threadId',
+            'commentText',
+          ],
+          ...history.map((item) => [
+            documentId,
+            item.id,
+            item.createdAt.toISOString(),
+            item.eventType,
+            item.actorUser?.id ?? null,
+            item.fromUser?.id ?? null,
+            item.toUser?.id ?? null,
+            item.responsibleUser?.id ?? null,
+            item.threadId,
+            item.commentText,
+          ]),
+        ],
       },
-      order: {
-        createdAt: 'ASC',
-        id: 'ASC',
-      },
-    });
+    ]);
   }
 
   async forwardDocument(

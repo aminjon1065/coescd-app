@@ -49,6 +49,10 @@ import {
   ForwardEdmDocumentDto,
 } from './dto/document-history.dto';
 import {
+  GetDocumentAuditQueryDto,
+  GetDocumentHistoryQueryDto,
+} from './dto/document-audit-query.dto';
+import {
   CreateDocumentTemplateDto,
   GetDocumentTemplatesQueryDto,
   UpdateDocumentTemplateDto,
@@ -487,14 +491,84 @@ export class EdmController {
 
   @Get('documents/:id/audit')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
-  findAudit(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
-    return this.edmService.findAudit(id, actor);
+  findAudit(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetDocumentAuditQueryDto,
+  ) {
+    return this.edmService.findAudit(id, actor, query);
+  }
+
+  @Get('documents/:id/audit/export')
+  @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  async exportAuditCsv(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetDocumentAuditQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const fileName = `edm-document-${id}-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    return this.edmService.exportDocumentAuditCsv(id, actor, query);
+  }
+
+  @Get('documents/:id/audit/export/xlsx')
+  @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  async exportAuditXlsx(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetDocumentAuditQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const fileName = `edm-document-${id}-audit-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    return this.edmService.exportDocumentAuditXlsx(id, actor, query);
   }
 
   @Get('documents/:id/history')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
-  findHistory(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
-    return this.edmService.findHistory(id, actor);
+  findHistory(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetDocumentHistoryQueryDto,
+  ) {
+    return this.edmService.findHistory(id, actor, query);
+  }
+
+  @Get('documents/:id/history/export')
+  @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  async exportHistoryCsv(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetDocumentHistoryQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const fileName = `edm-document-${id}-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    return this.edmService.exportDocumentHistoryCsv(id, actor, query);
+  }
+
+  @Get('documents/:id/history/export/xlsx')
+  @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  async exportHistoryXlsx(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetDocumentHistoryQueryDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const fileName = `edm-document-${id}-history-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    return this.edmService.exportDocumentHistoryXlsx(id, actor, query);
   }
 
   @Post('documents/:id/forward')
