@@ -1,10 +1,13 @@
 # Roles Permissions Matrix (Wave 1 Baseline)
 
-Last updated: 2026-02-18
+Last updated: 2026-02-19
 
 ## 1. Purpose
 This document is the single source of truth for role permissions in Wave 1.
 No endpoint or frontend action may be delivered without explicit mapping in this matrix.
+
+Implementation lock for current sprint:
+- `docs/role-permissions-lock-2026-02-19.md`
 
 ## 2. Role Mapping
 Current backend roles (`Role` enum):

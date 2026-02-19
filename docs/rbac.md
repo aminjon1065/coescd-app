@@ -1,6 +1,8 @@
 ﻿# RBAC Matrix
 
-Last updated: 2026-02-18
+Last updated: 2026-02-19
+
+Canonical sprint baseline: `docs/role-permissions-lock-2026-02-19.md`
 
 ## Roles
 
@@ -22,6 +24,16 @@ Last updated: 2026-02-18
 - `documents.create`
 - `documents.update`
 - `documents.delete`
+- `documents.route.execute`
+- `documents.archive`
+- `documents.audit.read`
+- `documents.register`
+- `documents.alerts.read`
+- `documents.alerts.manage`
+- `documents.templates.read`
+- `documents.templates.write`
+- `documents.route.templates.read`
+- `documents.route.templates.write`
 - `tasks.read`
 - `tasks.create`
 - `tasks.update`
@@ -46,6 +58,16 @@ Last updated: 2026-02-18
   - `documents.read`
   - `documents.create`
   - `documents.update`
+  - `documents.route.execute`
+  - `documents.archive`
+  - `documents.audit.read`
+  - `documents.register`
+  - `documents.alerts.read`
+  - `documents.alerts.manage`
+  - `documents.templates.read`
+  - `documents.templates.write`
+  - `documents.route.templates.read`
+  - `documents.route.templates.write`
   - `tasks.read`
   - `tasks.create`
   - `tasks.update`
@@ -58,6 +80,8 @@ Last updated: 2026-02-18
   - `files.write`
 - `regular`:
   - `documents.read`
+  - `documents.route.execute`
+  - `documents.alerts.read`
   - `tasks.read`
   - `analytics.read`
   - `gis.read`

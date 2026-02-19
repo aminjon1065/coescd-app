@@ -154,6 +154,63 @@ Indexes:
 - `IDX_EDM_ACTION_DOCUMENT_CREATED_AT` (`document_id`,`created_at`)
 - `IDX_EDM_ACTION_ACTOR_CREATED_AT` (`actor_user_id`,`created_at`)
 
+## 4.1) `edm_document_timeline_events`
+
+Purpose:
+- unified immutable history of document movement and responsibility.
+
+Columns:
+- `id` bigint PK
+- `document_id` bigint not null FK -> `edm_documents.id`
+- `event_type` varchar not null
+- `actor_user_id` bigint not null FK -> `user.id`
+- `from_user_id` bigint nullable FK -> `user.id`
+- `to_user_id` bigint nullable FK -> `user.id`
+- `from_role` varchar nullable
+- `to_role` varchar nullable
+- `responsible_user_id` bigint nullable FK -> `user.id`
+- `parent_event_id` bigint nullable FK -> `edm_document_timeline_events.id`
+- `thread_id` varchar nullable
+- `comment_text` text nullable
+- `meta` jsonb nullable
+- `created_at` timestamp not null default `now()`
+
+Constraints:
+- `event_type` in (
+  `created`,
+  `forwarded`,
+  `responsible_assigned`,
+  `responsible_reassigned`,
+  `reply_sent`,
+  `route_action`,
+  `override`,
+  `archived`
+)
+
+Indexes:
+- `IDX_EDM_TIMELINE_DOCUMENT_CREATED_AT` (`document_id`,`created_at`)
+- `IDX_EDM_TIMELINE_THREAD_CREATED_AT` (`thread_id`,`created_at`)
+- `IDX_EDM_TIMELINE_EVENT_TYPE_CREATED_AT` (`event_type`,`created_at`)
+
+## 4.2) `edm_document_replies`
+
+Purpose:
+- correspondence thread records linked to document timeline.
+
+Columns:
+- `id` bigint PK
+- `document_id` bigint not null FK -> `edm_documents.id`
+- `timeline_event_id` bigint not null FK -> `edm_document_timeline_events.id`
+- `sender_user_id` bigint not null FK -> `user.id`
+- `parent_reply_id` bigint nullable FK -> `edm_document_replies.id`
+- `thread_id` varchar not null
+- `message_text` text not null
+- `created_at` timestamp not null default `now()`
+
+Indexes:
+- `IDX_EDM_REPLY_DOCUMENT_CREATED_AT` (`document_id`,`created_at`)
+- `IDX_EDM_REPLY_THREAD_CREATED_AT` (`thread_id`,`created_at`)
+
 ## 5) `edm_document_registry_sequences`
 
 Purpose:
@@ -227,8 +284,10 @@ Consider partitioning `edm_stage_actions` by month when row count > 20M.
 4. add `edm_documents.current_route_id` FK (after route table exists)
 5. create `edm_route_stages`
 6. create `edm_stage_actions`
-7. create `edm_document_registry_sequences`
-8. create indexes and check constraints
+7. create `edm_document_timeline_events`
+8. create `edm_document_replies`
+9. create `edm_document_registry_sequences`
+10. create indexes and check constraints
 
 ## Rollback Strategy
 
@@ -248,3 +307,4 @@ Consider partitioning `edm_stage_actions` by month when row count > 20M.
 3. Numbering uniqueness guaranteed by DB constraint.
 4. All action/audit rows are append-only from API perspective.
 5. Query indexes cover inbox/outbox/status/date filters.
+6. Timeline can reconstruct full movement chain and reply thread for any document.

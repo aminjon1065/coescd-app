@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, In, Repository } from 'typeorm';
 import { EntityManager } from 'typeorm';
 import * as XLSX from 'xlsx';
 import { EdmDocument } from './entities/edm-document.entity';
@@ -71,6 +71,13 @@ import {
   UpdateDocumentTemplateDto,
 } from './dto/document-template.dto';
 import { EdmDashboardQueryDto, EdmReportsQueryDto } from './dto/reports.dto';
+import { EdmDocumentTimelineEvent } from './entities/edm-document-timeline-event.entity';
+import { EdmDocumentReply } from './entities/edm-document-reply.entity';
+import {
+  AssignDocumentResponsibleDto,
+  CreateDocumentReplyDto,
+  ForwardEdmDocumentDto,
+} from './dto/document-history.dto';
 
 @Injectable()
 export class EdmService {
@@ -105,6 +112,10 @@ export class EdmService {
     private readonly documentTemplateRepo: Repository<EdmDocumentTemplate>,
     @InjectRepository(EdmDocumentTemplateField)
     private readonly documentTemplateFieldRepo: Repository<EdmDocumentTemplateField>,
+    @InjectRepository(EdmDocumentTimelineEvent)
+    private readonly timelineRepo: Repository<EdmDocumentTimelineEvent>,
+    @InjectRepository(EdmDocumentReply)
+    private readonly replyRepo: Repository<EdmDocumentReply>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Department)
@@ -253,7 +264,7 @@ export class EdmService {
       qb.andWhere('template.isActive = true');
     }
 
-    if (actor.role !== Role.Admin) {
+    if (!this.isGlobalEdmRole(actor.role)) {
       qb.andWhere(
         new Brackets((scopeQb) => {
           scopeQb
@@ -376,7 +387,7 @@ export class EdmService {
       throw new NotFoundException('Department not found');
     }
 
-    if (actor.role !== Role.Admin && actor.departmentId !== department.id) {
+    if (!this.isGlobalEdmRole(actor.role) && actor.departmentId !== department.id) {
       throw new ForbiddenException('Document department is outside your scope');
     }
 
@@ -399,7 +410,23 @@ export class EdmService {
       deletedAt: null,
     });
 
-    return this.edmDocumentRepo.save(document);
+    const saved = await this.edmDocumentRepo.save(document);
+    await this.recordTimelineEvent({
+      document: saved,
+      eventType: 'created',
+      actorUser: creator,
+      fromUser: creator,
+      toUser: null,
+      fromRole: actor.role,
+      toRole: null,
+      responsibleUser: null,
+      parentEvent: null,
+      threadId: `doc-${saved.id}-main`,
+      commentText: null,
+      meta: null,
+    });
+
+    return saved;
   }
 
   async updateDraft(
@@ -500,7 +527,7 @@ export class EdmService {
       });
     }
 
-    if (actor.role !== Role.Admin) {
+    if (!this.isGlobalEdmRole(actor.role)) {
       qb.andWhere(
         new Brackets((scopeQb) => {
           scopeQb
@@ -711,7 +738,7 @@ export class EdmService {
       });
     }
 
-    if (actor.role !== Role.Admin) {
+    if (!this.isGlobalEdmRole(actor.role)) {
       qb.andWhere(
         new Brackets((scopeQb) => {
           scopeQb
@@ -765,7 +792,7 @@ export class EdmService {
         }
 
         if (
-          actor.role !== Role.Admin &&
+          !this.isGlobalEdmRole(actor.role) &&
           receiver.department?.id !== creator.department?.id
         ) {
           throw new ForbiddenException(
@@ -850,8 +877,10 @@ export class EdmService {
   }
 
   async processDeadlineAlerts(actor: ActiveUserData) {
-    if (actor.role !== Role.Admin && actor.role !== Role.Manager) {
-      throw new ForbiddenException('Only admin/manager can process deadline alerts');
+    if (!this.isGlobalEdmRole(actor.role) && !this.isDepartmentManagerRole(actor.role)) {
+      throw new ForbiddenException(
+        'Only global roles or department heads can process deadline alerts',
+      );
     }
     return this.processDeadlineAlertsInternal(actor.sub);
   }
@@ -1195,14 +1224,18 @@ export class EdmService {
       byDepartment.set(depId, row);
     }
 
-    const managerUsers = await this.userRepo.find({
-      where: { role: Role.Manager, isActive: true },
-      relations: { department: true },
-    });
+    const managerUsers = await this.userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.department', 'department')
+      .where('user.isActive = true')
+      .andWhere('user.role IN (:...roles)', {
+        roles: [Role.Manager, Role.DepartmentHead],
+      })
+      .getMany();
 
     const byManager = managerUsers
       .filter((manager) =>
-        actor.role === Role.Admin
+        this.isGlobalEdmRole(actor.role)
           ? query.departmentId
             ? manager.department?.id === query.departmentId
             : true
@@ -1541,6 +1574,7 @@ export class EdmService {
       const firstOrder = sortedStages[0].orderNo;
       const firstGroupNo = sortedStages[0].stageGroupNo ?? null;
 
+      const createdStages: EdmRouteStage[] = [];
       for (const stageDto of sortedStages) {
         this.assertAssigneeConsistency(stageDto);
 
@@ -1560,7 +1594,7 @@ export class EdmService {
           stageDto.orderNo === firstOrder &&
           (stageDto.stageGroupNo ?? null) === firstGroupNo;
 
-        await manager.getRepository(EdmRouteStage).save(
+        const savedStage = await manager.getRepository(EdmRouteStage).save(
           manager.getRepository(EdmRouteStage).create({
             route,
             orderNo: stageDto.orderNo,
@@ -1583,6 +1617,7 @@ export class EdmService {
             escalationPolicy: stageDto.escalationPolicy ?? null,
           }),
         );
+        createdStages.push(savedStage);
       }
 
       document.currentRoute = route;
@@ -1593,6 +1628,61 @@ export class EdmService {
       document.approvedAt = null;
       document.rejectedAt = null;
       await manager.getRepository(EdmDocument).save(document);
+
+      const firstHopStages = createdStages.filter(
+        (stage) =>
+          stage.orderNo === firstOrder &&
+          (route.completionPolicy === 'sequential'
+            ? true
+            : (stage.stageGroupNo ?? null) === firstGroupNo),
+      );
+
+      for (const firstHop of firstHopStages) {
+        await this.recordTimelineEvent(
+          {
+            document,
+            eventType: 'forwarded',
+            actorUser: creator,
+            fromUser: creator,
+            toUser: firstHop.assigneeUser ?? null,
+            fromRole: actor.role,
+            toRole:
+              firstHop.assigneeRole ??
+              (firstHop.assigneeUser?.role ?? firstHop.assigneeType),
+            responsibleUser: firstHop.assigneeUser ?? null,
+            parentEvent: null,
+            threadId: `doc-${document.id}-main`,
+            commentText: 'submitted_to_route',
+            meta: {
+              routeId: route.id,
+              stageId: firstHop.id,
+              assigneeType: firstHop.assigneeType,
+              assigneeDepartmentId: firstHop.assigneeDepartment?.id ?? null,
+            },
+          },
+          manager,
+        );
+
+        if (firstHop.assigneeUser) {
+          await this.recordTimelineEvent(
+            {
+              document,
+              eventType: 'responsible_assigned',
+              actorUser: creator,
+              fromUser: creator,
+              toUser: firstHop.assigneeUser,
+              fromRole: actor.role,
+              toRole: firstHop.assigneeUser.role,
+              responsibleUser: firstHop.assigneeUser,
+              parentEvent: null,
+              threadId: `doc-${document.id}-main`,
+              commentText: 'initial_route_assignment',
+              meta: { routeId: route.id, stageId: firstHop.id },
+            },
+            manager,
+          );
+        }
+      }
 
       return {
         documentId: document.id,
@@ -1676,6 +1766,32 @@ export class EdmService {
         }),
       );
 
+      await this.recordTimelineEvent(
+        {
+          document,
+          eventType: 'route_action',
+          actorUser,
+          fromUser: actorUser,
+          toUser: stage.assigneeUser ?? null,
+          fromRole: actor.role,
+          toRole: stage.assigneeUser?.role ?? stage.assigneeRole ?? null,
+          responsibleUser: stage.assigneeUser ?? null,
+          parentEvent: null,
+          threadId: `doc-${document.id}-main`,
+          commentText: dto.commentText ?? null,
+          meta: {
+            action: dto.action,
+            stageId: stage.id,
+            routeId: stage.route.id,
+            reasonCode: dto.reasonCode ?? null,
+            ip: requestMeta.ip,
+            userAgent: requestMeta.userAgent,
+            onBehalfOfUserId: delegation?.delegatorUser?.id ?? null,
+          },
+        },
+        manager,
+      );
+
       await this.applyRouteProgress(manager, document, stage, dto.action);
 
       const updatedDocument = await manager.getRepository(EdmDocument).findOne({
@@ -1705,11 +1821,8 @@ export class EdmService {
     actor: ActiveUserData,
     requestMeta: { ip: string | null; userAgent: string | null },
   ) {
-    if (actor.role !== Role.Admin) {
-      throw new ForbiddenException('Only global admin/chairperson can override');
-    }
-
     const document = await this.getDocumentOrFail(documentId);
+    await this.assertOverrideAllowed(actor, document);
     if (!document.currentRoute) {
       throw new ConflictException('Document has no active route');
     }
@@ -1769,6 +1882,29 @@ export class EdmService {
             }),
           );
         }
+
+        await this.recordTimelineEvent(
+          {
+            document,
+            eventType: 'override',
+            actorUser,
+            fromUser: actorUser,
+            toUser: null,
+            fromRole: actor.role,
+            toRole: null,
+            responsibleUser: null,
+            parentEvent: null,
+            threadId: `doc-${document.id}-main`,
+            commentText: dto.reason,
+            meta: {
+              overrideAction: dto.overrideAction,
+              routeId: route.id,
+              ip: requestMeta.ip,
+              userAgent: requestMeta.userAgent,
+            },
+          },
+          manager,
+        );
       }
 
       return {
@@ -1789,6 +1925,23 @@ export class EdmService {
     document.status = 'archived';
     document.archivedAt = new Date();
     const saved = await this.edmDocumentRepo.save(document);
+    const actorUser = await this.userRepo.findOneBy({ id: actor.sub });
+    if (actorUser) {
+      await this.recordTimelineEvent({
+        document: saved,
+        eventType: 'archived',
+        actorUser,
+        fromUser: actorUser,
+        toUser: null,
+        fromRole: actor.role,
+        toRole: null,
+        responsibleUser: null,
+        parentEvent: null,
+        threadId: `doc-${saved.id}-main`,
+        commentText: null,
+        meta: null,
+      });
+    }
 
     return {
       id: saved.id,
@@ -1938,7 +2091,7 @@ export class EdmService {
 
     if (queue === 'outbox') {
       qb.andWhere('creator.id = :actorId', { actorId: actor.sub });
-      if (actor.role === Role.Manager && actor.departmentId) {
+      if (this.isDepartmentManagerRole(actor.role) && actor.departmentId) {
         qb.orWhere('department.id = :departmentId', {
           departmentId: actor.departmentId,
         });
@@ -2014,6 +2167,279 @@ export class EdmService {
       },
       order: {
         createdAt: 'ASC',
+      },
+    });
+  }
+
+  async findHistory(documentId: number, actor: ActiveUserData) {
+    const document = await this.getDocumentOrFail(documentId);
+    await this.assertDocumentReadScope(actor, document);
+
+    return this.timelineRepo.find({
+      where: {
+        document: { id: documentId },
+      },
+      relations: {
+        actorUser: true,
+        fromUser: true,
+        toUser: true,
+        responsibleUser: true,
+        parentEvent: true,
+      },
+      order: {
+        createdAt: 'ASC',
+        id: 'ASC',
+      },
+    });
+  }
+
+  async forwardDocument(
+    documentId: number,
+    dto: ForwardEdmDocumentDto,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
+    const document = await this.getDocumentOrFail(documentId);
+
+    const [actorUser, toUser] = await Promise.all([
+      this.userRepo.findOneBy({ id: actor.sub }),
+      this.userRepo.findOne({
+        where: { id: dto.toUserId },
+        relations: { department: true },
+      }),
+    ]);
+
+    if (!actorUser) {
+      throw new NotFoundException('Actor not found');
+    }
+    if (!toUser) {
+      throw new NotFoundException('Target user not found');
+    }
+    this.assertRoutingTargetAllowed(actor, toUser);
+
+    const event = await this.recordTimelineEvent({
+      document,
+      eventType: 'forwarded',
+      actorUser,
+      fromUser: actorUser,
+      toUser,
+      fromRole: actor.role,
+      toRole: toUser.role,
+      responsibleUser: toUser,
+      parentEvent: null,
+      threadId: `doc-${document.id}-main`,
+      commentText: dto.commentText ?? null,
+      meta: {
+        ip: requestMeta.ip,
+        userAgent: requestMeta.userAgent,
+      },
+    });
+
+    return this.timelineRepo.findOne({
+      where: { id: event.id },
+      relations: {
+        actorUser: true,
+        fromUser: true,
+        toUser: true,
+        responsibleUser: true,
+      },
+    });
+  }
+
+  async assignResponsible(
+    documentId: number,
+    dto: AssignDocumentResponsibleDto,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
+    const document = await this.getDocumentOrFail(documentId);
+    await this.assertDocumentReadScope(actor, document);
+
+    const [actorUser, responsibleUser] = await Promise.all([
+      this.userRepo.findOneBy({ id: actor.sub }),
+      this.userRepo.findOne({
+        where: { id: dto.responsibleUserId },
+        relations: { department: true },
+      }),
+    ]);
+    if (!actorUser) {
+      throw new NotFoundException('Actor not found');
+    }
+    if (!responsibleUser) {
+      throw new NotFoundException('Responsible user not found');
+    }
+    this.assertRoutingTargetAllowed(actor, responsibleUser);
+
+    const previousAssignment = await this.timelineRepo.findOne({
+      where: {
+        document: { id: documentId },
+        eventType: 'responsible_assigned',
+      },
+      relations: {
+        responsibleUser: true,
+      },
+      order: {
+        createdAt: 'DESC',
+        id: 'DESC',
+      },
+    });
+    const previousReassignment = await this.timelineRepo.findOne({
+      where: {
+        document: { id: documentId },
+        eventType: 'responsible_reassigned',
+      },
+      relations: {
+        responsibleUser: true,
+      },
+      order: {
+        createdAt: 'DESC',
+        id: 'DESC',
+      },
+    });
+
+    const latestAssignment =
+      !previousAssignment || !previousReassignment
+        ? (previousAssignment ?? previousReassignment)
+        : previousAssignment.createdAt >= previousReassignment.createdAt
+          ? previousAssignment
+          : previousReassignment;
+
+    const eventType = latestAssignment
+      ? 'responsible_reassigned'
+      : 'responsible_assigned';
+
+    const event = await this.recordTimelineEvent({
+      document,
+      eventType,
+      actorUser,
+      fromUser: actorUser,
+      toUser: responsibleUser,
+      fromRole: actor.role,
+      toRole: responsibleUser.role,
+      responsibleUser,
+      parentEvent: latestAssignment ?? null,
+      threadId: `doc-${document.id}-main`,
+      commentText: dto.reason ?? null,
+      meta: {
+        previousResponsibleUserId: latestAssignment?.responsibleUser?.id ?? null,
+        ip: requestMeta.ip,
+        userAgent: requestMeta.userAgent,
+      },
+    });
+
+    return this.timelineRepo.findOne({
+      where: { id: event.id },
+      relations: {
+        actorUser: true,
+        toUser: true,
+        responsibleUser: true,
+        parentEvent: true,
+      },
+    });
+  }
+
+  async createReply(
+    documentId: number,
+    dto: CreateDocumentReplyDto,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ) {
+    const document = await this.getDocumentOrFail(documentId);
+    await this.assertDocumentReadScope(actor, document);
+
+    return this.dataSource.transaction(async (manager) => {
+      const actorUser = await manager.getRepository(User).findOneBy({ id: actor.sub });
+      if (!actorUser) {
+        throw new NotFoundException('Actor not found');
+      }
+
+      const toUser = dto.toUserId
+        ? await manager.getRepository(User).findOne({
+            where: { id: dto.toUserId },
+            relations: { department: true },
+          })
+        : null;
+      if (dto.toUserId && !toUser) {
+        throw new NotFoundException('Reply target user not found');
+      }
+      if (toUser) {
+        this.assertRoutingTargetAllowed(actor, toUser);
+      }
+
+      let parentReply: EdmDocumentReply | null = null;
+      if (dto.parentReplyId) {
+        parentReply = await manager.getRepository(EdmDocumentReply).findOne({
+          where: { id: dto.parentReplyId },
+          relations: {
+            document: true,
+          },
+        });
+        if (!parentReply || parentReply.document.id !== documentId) {
+          throw new NotFoundException('Parent reply not found for document');
+        }
+      }
+
+      const threadId = parentReply?.threadId ?? `doc-${document.id}-thread-${Date.now()}`;
+      const timelineEvent = await this.recordTimelineEvent(
+        {
+          document,
+          eventType: 'reply_sent',
+          actorUser,
+          fromUser: actorUser,
+          toUser: toUser ?? null,
+          fromRole: actor.role,
+          toRole: toUser?.role ?? null,
+          responsibleUser: null,
+          parentEvent: null,
+          threadId,
+          commentText: dto.messageText,
+          meta: {
+            parentReplyId: parentReply?.id ?? null,
+            ip: requestMeta.ip,
+            userAgent: requestMeta.userAgent,
+          },
+        },
+        manager,
+      );
+
+      const reply = await manager.getRepository(EdmDocumentReply).save(
+        manager.getRepository(EdmDocumentReply).create({
+          document,
+          timelineEvent,
+          senderUser: actorUser,
+          parentReply,
+          threadId,
+          messageText: dto.messageText.trim(),
+        }),
+      );
+
+      return manager.getRepository(EdmDocumentReply).findOne({
+        where: { id: reply.id },
+        relations: {
+          senderUser: true,
+          parentReply: true,
+          timelineEvent: true,
+        },
+      });
+    });
+  }
+
+  async listReplies(documentId: number, actor: ActiveUserData) {
+    const document = await this.getDocumentOrFail(documentId);
+    await this.assertDocumentReadScope(actor, document);
+
+    return this.replyRepo.find({
+      where: {
+        document: { id: documentId },
+      },
+      relations: {
+        senderUser: true,
+        parentReply: true,
+        timelineEvent: true,
+      },
+      order: {
+        createdAt: 'ASC',
+        id: 'ASC',
       },
     });
   }
@@ -2144,7 +2570,7 @@ export class EdmService {
         stage.assigneeDepartment?.id ?? stage.route.document.department.id;
       const managers = await this.userRepo.find({
         where: {
-          role: Role.Manager,
+          role: In([Role.Manager, Role.DepartmentHead]),
           isActive: true,
           department: { id: targetDepartmentId },
         },
@@ -2160,13 +2586,16 @@ export class EdmService {
     const document = stage.route.document;
     const departmentId = stage.assigneeDepartment?.id ?? document.department.id;
 
-    const [admins, managers] = await Promise.all([
+    const [globalUsers, managers] = await Promise.all([
       this.userRepo.find({
-        where: { role: Role.Admin, isActive: true },
+        where: {
+          role: In([Role.Admin, Role.Chairperson, Role.FirstDeputy, Role.Deputy, Role.Chancellery]),
+          isActive: true,
+        },
       }),
       this.userRepo.find({
         where: {
-          role: Role.Manager,
+          role: In([Role.Manager, Role.DepartmentHead]),
           isActive: true,
           department: { id: departmentId },
         },
@@ -2175,8 +2604,8 @@ export class EdmService {
     ]);
 
     const recipientIds = new Set<number>();
-    for (const admin of admins) {
-      recipientIds.add(admin.id);
+    for (const globalUser of globalUsers) {
+      recipientIds.add(globalUser.id);
     }
     for (const manager of managers) {
       recipientIds.add(manager.id);
@@ -2189,7 +2618,7 @@ export class EdmService {
     actor: ActiveUserData,
     template: EdmDocumentTemplate,
   ): void {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
     if (template.scopeType === 'global') {
@@ -2205,14 +2634,18 @@ export class EdmService {
     actor: ActiveUserData,
     template: EdmDocumentTemplate,
   ): void {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
-    if (template.scopeType === 'department' && template.department?.id === actor.departmentId) {
+    if (
+      this.isDepartmentManagerRole(actor.role) &&
+      template.scopeType === 'department' &&
+      template.department?.id === actor.departmentId
+    ) {
       return;
     }
     throw new ForbiddenException(
-      'Only admin or owning department manager can modify document template',
+      'Only global roles or owning department head can modify document template',
     );
   }
 
@@ -2363,7 +2796,7 @@ export class EdmService {
     actor: ActiveUserData,
     document: EdmDocument,
   ): void {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
 
@@ -2371,7 +2804,10 @@ export class EdmService {
       return;
     }
 
-    if (actor.role === Role.Manager && actor.departmentId === document.department.id) {
+    if (
+      this.isDepartmentManagerRole(actor.role) &&
+      actor.departmentId === document.department.id
+    ) {
       return;
     }
 
@@ -2382,7 +2818,7 @@ export class EdmService {
     qb: ReturnType<Repository<EdmDocument>['createQueryBuilder']>,
     actor: ActiveUserData,
   ): void {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
 
@@ -2390,7 +2826,7 @@ export class EdmService {
       new Brackets((scopeQb) => {
         scopeQb.where('creator.id = :actorId', { actorId: actor.sub });
 
-        if (actor.role === Role.Manager && actor.departmentId) {
+        if (this.isDepartmentManagerRole(actor.role) && actor.departmentId) {
           scopeQb.orWhere('department.id = :departmentId', {
             departmentId: actor.departmentId,
           });
@@ -2431,14 +2867,14 @@ export class EdmService {
     if (!department) {
       throw new NotFoundException('Department not found');
     }
-    if (actor.role !== Role.Admin && actor.departmentId !== department.id) {
+    if (!this.isGlobalEdmRole(actor.role) && actor.departmentId !== department.id) {
       throw new ForbiddenException('Template department is outside your scope');
     }
     return department;
   }
 
   private assertTemplateScope(actor: ActiveUserData, template: EdmRouteTemplate): void {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
     if (template.scopeType === 'global') {
@@ -2454,13 +2890,17 @@ export class EdmService {
     actor: ActiveUserData,
     template: EdmRouteTemplate,
   ): void {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
-    if (template.scopeType === 'department' && template.department?.id === actor.departmentId) {
+    if (
+      this.isDepartmentManagerRole(actor.role) &&
+      template.scopeType === 'department' &&
+      template.department?.id === actor.departmentId
+    ) {
       return;
     }
-    throw new ForbiddenException('Only admin or owning department manager can modify template');
+    throw new ForbiddenException('Only global roles or owning department head can modify template');
   }
 
   private async replaceTemplateStages(
@@ -2732,7 +3172,7 @@ export class EdmService {
     stage: EdmRouteStage,
     onBehalfOfUserId: number | null,
   ): void {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
 
@@ -2747,7 +3187,7 @@ export class EdmService {
 
     const matchesDepartmentHead =
       stage.assigneeType === 'department_head' &&
-      actor.role === Role.Manager &&
+      this.isDepartmentManagerRole(actor.role) &&
       stage.assigneeDepartment?.id === actor.departmentId;
 
     if (matchesUser || matchesRole || matchesDepartmentHead) {
@@ -2761,6 +3201,10 @@ export class EdmService {
     actor: ActiveUserData,
     document: EdmDocument,
   ): Promise<void> {
+    if (this.isGlobalEdmRole(actor.role)) {
+      return;
+    }
+
     try {
       this.assertDocumentScope(actor, document);
       return;
@@ -2791,7 +3235,7 @@ export class EdmService {
             },
           );
 
-          if (actor.role === Role.Manager && actor.departmentId) {
+          if (this.isDepartmentManagerRole(actor.role) && actor.departmentId) {
             scopeQb.orWhere(
               'stage.assigneeType = :departmentHeadType AND assigneeDepartment.id = :departmentId',
               {
@@ -2805,8 +3249,187 @@ export class EdmService {
       .getExists();
 
     if (!hasAssignedStage) {
-      throw new ForbiddenException('EDM document is outside your scope');
+      const hasTimelineRecipientAccess = await this.timelineRepo
+        .createQueryBuilder('timeline')
+        .leftJoin('timeline.document', 'document')
+        .leftJoin('timeline.toUser', 'toUser')
+        .where('document.id = :documentId', { documentId: document.id })
+        .andWhere('toUser.id = :actorId', { actorId: actor.sub })
+        .getExists();
+
+      if (!hasTimelineRecipientAccess) {
+        throw new ForbiddenException('EDM document is outside your scope');
+      }
     }
+  }
+
+  private isGlobalEdmRole(role: Role): boolean {
+    return [
+      Role.Admin,
+      Role.Chairperson,
+      Role.FirstDeputy,
+      Role.Deputy,
+      Role.Chancellery,
+    ].includes(role);
+  }
+
+  private isDepartmentManagerRole(role: Role): boolean {
+    return [Role.Manager, Role.DepartmentHead].includes(role);
+  }
+
+  private async assertOverrideAllowed(
+    actor: ActiveUserData,
+    document: EdmDocument,
+  ): Promise<void> {
+    if (this.isGlobalEdmRole(actor.role)) {
+      return;
+    }
+
+    if (!this.isDepartmentManagerRole(actor.role)) {
+      throw new ForbiddenException('You do not have permission to override this route');
+    }
+
+    if (document.creator.id === actor.sub) {
+      return;
+    }
+
+    const hasParticipation = await this.timelineRepo
+      .createQueryBuilder('timeline')
+      .leftJoin('timeline.document', 'document')
+      .leftJoin('timeline.actorUser', 'actorUser')
+      .where('document.id = :documentId', { documentId: document.id })
+      .andWhere('actorUser.id = :actorId', { actorId: actor.sub })
+      .andWhere('timeline.eventType IN (:...eventTypes)', {
+        eventTypes: ['created', 'submitted', 'forwarded'],
+      })
+      .getExists();
+
+    if (!hasParticipation) {
+      throw new ForbiddenException(
+        'Department head can override only own or previously routed documents',
+      );
+    }
+  }
+
+  private async recordTimelineEvent(
+    payload: {
+      document: EdmDocument;
+      eventType: EdmDocumentTimelineEvent['eventType'];
+      actorUser: User;
+      fromUser: User | null;
+      toUser: User | null;
+      fromRole: string | null;
+      toRole: string | null;
+      responsibleUser: User | null;
+      parentEvent: EdmDocumentTimelineEvent | null;
+      threadId: string | null;
+      commentText: string | null;
+      meta: Record<string, unknown> | null;
+    },
+    manager?: EntityManager,
+  ): Promise<EdmDocumentTimelineEvent> {
+    const repo = manager
+      ? manager.getRepository(EdmDocumentTimelineEvent)
+      : this.timelineRepo;
+
+    return repo.save(
+      repo.create({
+        document: payload.document,
+        eventType: payload.eventType,
+        actorUser: payload.actorUser,
+        fromUser: payload.fromUser,
+        toUser: payload.toUser,
+        fromRole: payload.fromRole,
+        toRole: payload.toRole,
+        responsibleUser: payload.responsibleUser,
+        parentEvent: payload.parentEvent,
+        threadId: payload.threadId,
+        commentText: payload.commentText,
+        meta: payload.meta,
+      }),
+    );
+  }
+
+  private assertRoutingTargetAllowed(actor: ActiveUserData, targetUser: User): void {
+    if (actor.role === Role.Admin || actor.role === Role.Chancellery) {
+      return;
+    }
+
+    const targetRole = targetUser.role;
+    const sameDepartment =
+      actor.departmentId !== null &&
+      actor.departmentId !== undefined &&
+      targetUser.department?.id === actor.departmentId;
+
+    if (actor.role === Role.Chairperson) {
+      if (
+        [
+          Role.FirstDeputy,
+          Role.Deputy,
+          Role.DepartmentHead,
+          Role.Manager,
+          Role.DivisionHead,
+          Role.Chancellery,
+        ].includes(targetRole)
+      ) {
+        return;
+      }
+      throw new ForbiddenException('Routing target is not allowed for chairperson');
+    }
+
+    if (actor.role === Role.FirstDeputy || actor.role === Role.Deputy) {
+      if (
+        [
+          Role.Chairperson,
+          Role.FirstDeputy,
+          Role.Deputy,
+          Role.DepartmentHead,
+          Role.Manager,
+          Role.DivisionHead,
+          Role.Chancellery,
+        ].includes(targetRole)
+      ) {
+        return;
+      }
+      throw new ForbiddenException('Routing target is not allowed for deputy role');
+    }
+
+    if (actor.role === Role.DepartmentHead || actor.role === Role.Manager) {
+      if ([Role.DepartmentHead, Role.Manager, Role.Chancellery].includes(targetRole)) {
+        return;
+      }
+      if (
+        sameDepartment &&
+        [Role.DivisionHead, Role.Employee, Role.Regular].includes(targetRole)
+      ) {
+        return;
+      }
+      throw new ForbiddenException('Routing target is outside department head matrix');
+    }
+
+    if (actor.role === Role.DivisionHead) {
+      if (targetRole === Role.Chancellery) {
+        return;
+      }
+      if (
+        sameDepartment &&
+        [Role.DepartmentHead, Role.Manager, Role.DivisionHead, Role.Employee, Role.Regular].includes(
+          targetRole,
+        )
+      ) {
+        return;
+      }
+      throw new ForbiddenException('Routing target is outside division head matrix');
+    }
+
+    if (actor.role === Role.Employee || actor.role === Role.Regular) {
+      if (sameDepartment || targetRole === Role.Chancellery) {
+        return;
+      }
+      throw new ForbiddenException('Routing target is outside employee matrix');
+    }
+
+    throw new ForbiddenException('Routing target is not allowed');
   }
 
   private normalizeDocumentsCriteria(
@@ -2855,13 +3478,13 @@ export class EdmService {
     departmentId: number | null,
     creatorId?: number | null,
   ): boolean {
-    if (actor.role === Role.Admin) {
+    if (this.isGlobalEdmRole(actor.role)) {
       return true;
     }
     if (creatorId && creatorId === actor.sub) {
       return true;
     }
-    return actor.role === Role.Manager && departmentId === actor.departmentId;
+    return this.isDepartmentManagerRole(actor.role) && departmentId === actor.departmentId;
   }
 
   private buildCsv(rows: Array<Array<string | number | boolean | null | undefined>>): string {
@@ -2919,7 +3542,7 @@ export class EdmService {
       new Brackets((scopeQb) => {
         scopeQb.where('assigneeUser.id = :actorId', { actorId: actor.sub });
 
-        if (actor.role === Role.Manager) {
+        if (this.isDepartmentManagerRole(actor.role)) {
           scopeQb.orWhere(
             'stage.assigneeType = :departmentHeadType AND assigneeDepartment.id = :departmentId',
             {

@@ -1,11 +1,11 @@
 # EDM Functional Spec v1
 
-Last updated: 2026-02-18
-Status: draft for architecture sign-off
+Last updated: 2026-02-19
+Status: implementation-aligned (business target preserved)
 
 ## Purpose
 
-Define business behavior of EDM (Electronic Document Manager) before schema/API implementation.
+Define business behavior of EDM (Electronic Document Manager) and align it with current implementation baseline.
 
 Scope of this spec:
 - document lifecycle and route engine
@@ -19,14 +19,26 @@ Out of scope:
 - OCR/full-text search internals
 - external interop protocols (can be added in v2)
 
+Implementation baseline for this sprint:
+- `docs/role-permissions-lock-2026-02-19.md`
+- `docs/architecture/edm-api-contract-v1.md`
+- `backend/src/edm/edm.controller.ts`
+
 ## Actors
 
+Target business actors:
 - Chairperson
 - Deputy Chairperson
 - Department Head
 - Department Deputy
 - Regular Operator
 - System Admin (technical admin, not business approver by default)
+
+Current backend role mapping (active now):
+- `admin` -> System Admin (+ policy-based global business actions where granted)
+- `manager` -> Department Head profile
+- `regular` -> Regular Operator profile
+- analyst/profile extensions are handled via custom permissions, not separate EDM role enum value
 
 ## Core Entities
 
@@ -51,6 +63,18 @@ Out of scope:
 
 5. Delegation Grant
 - temporary authority transfer for scope + permission subset
+
+6. Document Timeline Event
+- immutable timeline event for every movement/action:
+  - created
+  - forwarded (from -> to)
+  - assigned responsible executor
+  - reply sent
+  - route action / override / archive
+
+7. Correspondence Reply
+- reply/response linked to document trail
+- supports chain (`parentReplyId`) for threaded conversation
 
 ## Document Types
 
@@ -188,16 +212,42 @@ Must audit:
 - delegation-based actions with on-behalf context
 - override operations
 - number assignment and any exceptional renumbering
+- every forwarding hop (`fromUserId`, `toUserId`, `fromRole`, `toRole`)
+- every responsible assignment change
+- every reply and reply-to-reply event
 
 Audit payload minimum:
 - actor, role snapshot, delegation context
 - resource id/type
 - action, before/after status
 - ip, user agent, timestamp, reason
+- timeline linkage:
+  - `timelineEventId`
+  - `parentEventId` (nullable)
+  - `threadId` (for correspondence chain)
 
-## API Surface (v1 target)
+## Document History And Correspondence Trail
 
-Commands:
+Mandatory timeline must answer:
+1. who created the document
+2. to whom it was sent at each step (full hop chain)
+3. who became responsible for execution and when
+4. what replies were sent and in response to which message/event
+
+Rules:
+- timeline is append-only
+- no hard delete for timeline/reply records
+- each reply is linked to:
+  - document
+  - sender
+  - recipient(s)
+  - optional parent reply
+  - created timestamp
+- UI timeline must render movement + replies in chronological order
+
+## API Surface (v1 target + implemented baseline)
+
+Core lifecycle commands:
 - create draft
 - update draft
 - submit to route
@@ -206,11 +256,20 @@ Commands:
 - archive
 - attach/detach file
 
-Queries:
+Core lifecycle queries:
 - inbox/outbox/my-approval queues
 - route detail with stages
 - audit timeline for document
 - search by number/type/status/date/department
+
+Implemented extensions in current baseline:
+- document templates CRUD
+- route templates CRUD
+- registration operations and registration journal
+- document resolution tasks + task progress
+- alerts processing/list/acknowledge
+- saved filters CRUD
+- EDM reports and dashboard summary exports
 
 ## Integration Requirements
 
@@ -229,13 +288,16 @@ With GIS/Analytics:
 - all state transitions idempotent for retry-safe operations
 - immutable audit trail for regulatory review
 
-## Open Decisions (to sign off before schema)
+## Open Decisions (business target track)
 
 1. Should `returned_for_revision` keep old route id or create new route version?
 2. Should department deputy have default sign rights without delegation?
 3. Which document types require mandatory parallel approval?
 4. Is manual registration number override ever allowed in production?
 5. What is retention policy per confidentiality level?
+
+Current implementation note:
+- these decisions remain target-level decisions and do not block the current sprint lock with roles `admin/manager/regular`.
 
 ## Acceptance Criteria (for EDM v1 implementation)
 

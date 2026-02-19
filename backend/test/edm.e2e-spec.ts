@@ -42,6 +42,12 @@ describe('EDM (e2e)', () => {
   let managerDept1: User;
   let managerDept2: User;
   let regularDept1: User;
+  let chairpersonUser: User;
+  let firstDeputyUser: User;
+  let departmentHeadUser: User;
+  let divisionHeadDept1User: User;
+  let divisionHeadDept2User: User;
+  let chancelleryUser: User;
   let dept1Id: number;
   let dept2Id: number;
 
@@ -161,6 +167,72 @@ describe('EDM (e2e)', () => {
         password: regularPassword,
         name: 'EDM Regular 1',
         role: Role.Regular,
+        permissions: [],
+        department: dept1,
+      }),
+    );
+
+    chairpersonUser = await userRepo.save(
+      userRepo.create({
+        email: 'edm-chairperson@test.local',
+        password: managerPassword,
+        name: 'EDM Chairperson',
+        role: Role.Chairperson,
+        permissions: [],
+        department: dept1,
+      }),
+    );
+
+    firstDeputyUser = await userRepo.save(
+      userRepo.create({
+        email: 'edm-first-deputy@test.local',
+        password: managerPassword,
+        name: 'EDM First Deputy',
+        role: Role.FirstDeputy,
+        permissions: [],
+        department: dept1,
+      }),
+    );
+
+    departmentHeadUser = await userRepo.save(
+      userRepo.create({
+        email: 'edm-department-head@test.local',
+        password: managerPassword,
+        name: 'EDM Department Head',
+        role: Role.DepartmentHead,
+        permissions: [],
+        department: dept2,
+      }),
+    );
+
+    divisionHeadDept1User = await userRepo.save(
+      userRepo.create({
+        email: 'edm-division-head1@test.local',
+        password: managerPassword,
+        name: 'EDM Division Head 1',
+        role: Role.DivisionHead,
+        permissions: [],
+        department: dept1,
+      }),
+    );
+
+    divisionHeadDept2User = await userRepo.save(
+      userRepo.create({
+        email: 'edm-division-head2@test.local',
+        password: managerPassword,
+        name: 'EDM Division Head 2',
+        role: Role.DivisionHead,
+        permissions: [],
+        department: dept2,
+      }),
+    );
+
+    chancelleryUser = await userRepo.save(
+      userRepo.create({
+        email: 'edm-chancellery@test.local',
+        password: managerPassword,
+        name: 'EDM Chancellery',
+        role: Role.Chancellery,
         permissions: [],
         department: dept1,
       }),
@@ -1351,5 +1423,321 @@ describe('EDM (e2e)', () => {
       .get('/edm/reports/dashboard')
       .set('Authorization', `Bearer ${regularToken}`)
       .expect(403);
+  });
+
+  it('enforces alerts permissions matrix (admin/manager allow process, regular deny)', async () => {
+    const adminToken = await signIn('edm-admin@test.local', 'admin123');
+    const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+    const regularToken = await signIn('edm-regular1@test.local', 'operator123');
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'internal',
+        title: 'EDM alerts matrix doc',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+
+    const overdueDueAt = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${createResponse.body.id}/submit`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        completionPolicy: 'sequential',
+        stages: [
+          {
+            orderNo: 1,
+            stageType: 'review',
+            assigneeType: 'user',
+            assigneeUserId: regularDept1.id,
+            dueAt: overdueDueAt,
+          },
+        ],
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/edm/alerts/process')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/edm/alerts/process')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/edm/alerts/process')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(201);
+
+    const regularAlerts = await request(app.getHttpServer())
+      .get('/edm/alerts/my')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .query({ kind: 'overdue' })
+      .expect(200);
+    expect(regularAlerts.body.items.length).toBeGreaterThan(0);
+  });
+
+  it('enforces document template permissions matrix across roles', async () => {
+    const adminToken = await signIn('edm-admin@test.local', 'admin123');
+    const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+    const regularToken = await signIn('edm-regular1@test.local', 'operator123');
+
+    const createdTemplate = await request(app.getHttpServer())
+      .post('/edm/document-templates')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        name: 'EDM role-matrix template',
+        documentType: 'internal',
+        scopeType: 'department',
+        departmentId: dept1Id,
+        fields: [{ fieldKey: 'title', label: 'Title', isRequired: true }],
+      })
+      .expect(201);
+
+    const templateId = createdTemplate.body.id as number;
+
+    await request(app.getHttpServer())
+      .get('/edm/document-templates')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get(`/edm/document-templates/${templateId}`)
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get(`/edm/document-templates/${templateId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+  });
+
+  it('enforces reports permissions matrix for list and export endpoints', async () => {
+    const adminToken = await signIn('edm-admin@test.local', 'admin123');
+    const regularToken = await signIn('edm-regular1@test.local', 'operator123');
+
+    await request(app.getHttpServer())
+      .get('/edm/reports/sla')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    const adminExport = await request(app.getHttpServer())
+      .get('/edm/reports/sla/export')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(String(adminExport.headers['content-type'])).toContain('text/csv');
+
+    await request(app.getHttpServer())
+      .get('/edm/reports/sla')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/edm/reports/sla/export')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+  });
+
+  it('stores full document trail for forwarding, responsible assignment and replies', async () => {
+    const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+    const regularToken = await signIn('edm-regular1@test.local', 'operator123');
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'internal',
+        title: 'EDM history trail doc',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+    const documentId = createResponse.body.id as number;
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${documentId}/submit`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        completionPolicy: 'sequential',
+        stages: [
+          {
+            orderNo: 1,
+            stageType: 'review',
+            assigneeType: 'user',
+            assigneeUserId: regularDept1.id,
+          },
+        ],
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${documentId}/forward`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        toUserId: regularDept1.id,
+        commentText: 'Forward to execution',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${documentId}/responsible`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        responsibleUserId: regularDept1.id,
+        reason: 'Primary executor',
+      })
+      .expect(201);
+
+    const replyResponse = await request(app.getHttpServer())
+      .post(`/edm/documents/${documentId}/replies`)
+      .set('Authorization', `Bearer ${regularToken}`)
+      .send({
+        messageText: 'Accepted for execution',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${documentId}/replies`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        messageText: 'Proceed and report back',
+        parentReplyId: replyResponse.body.id,
+        toUserId: regularDept1.id,
+      })
+      .expect(201);
+
+    const repliesResponse = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/replies`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(repliesResponse.body.length).toBeGreaterThanOrEqual(2);
+
+    const historyResponse = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+
+    const eventTypes = historyResponse.body.map(
+      (event: { eventType: string }) => event.eventType,
+    );
+    expect(eventTypes).toContain('created');
+    expect(eventTypes).toContain('forwarded');
+    expect(eventTypes).toContain('responsible_assigned');
+    expect(eventTypes).toContain('reply_sent');
+
+    await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history`)
+      .set('Authorization', `Bearer ${regularToken}`)
+      .expect(403);
+  });
+
+  it('enforces org routing matrix for new committee roles', async () => {
+    const chairpersonToken = await signIn('edm-chairperson@test.local', 'manager123');
+    const firstDeputyToken = await signIn('edm-first-deputy@test.local', 'manager123');
+    const departmentHeadToken = await signIn('edm-department-head@test.local', 'manager123');
+    const divisionHead1Token = await signIn('edm-division-head1@test.local', 'manager123');
+    const chancelleryToken = await signIn('edm-chancellery@test.local', 'manager123');
+    const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+
+    const chairDocument = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${chairpersonToken}`)
+      .send({
+        type: 'internal',
+        title: 'Chairperson routing matrix doc',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+    const chairDocumentId = chairDocument.body.id as number;
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${chairDocumentId}/forward`)
+      .set('Authorization', `Bearer ${chairpersonToken}`)
+      .send({ toUserId: firstDeputyUser.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${chairDocumentId}/forward`)
+      .set('Authorization', `Bearer ${firstDeputyToken}`)
+      .send({ toUserId: chairpersonUser.id })
+      .expect(201);
+
+    const managerDocument = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'internal',
+        title: 'Department head routing matrix doc',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+    const managerDocumentId = managerDocument.body.id as number;
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${managerDocumentId}/forward`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ toUserId: departmentHeadUser.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${managerDocumentId}/forward`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ toUserId: divisionHeadDept2User.id })
+      .expect(403);
+
+    const divisionDocument = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'internal',
+        title: 'Division head routing matrix doc',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+    const divisionDocumentId = divisionDocument.body.id as number;
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${divisionDocumentId}/forward`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ toUserId: divisionHeadDept1User.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${divisionDocumentId}/forward`)
+      .set('Authorization', `Bearer ${divisionHead1Token}`)
+      .send({ toUserId: managerDept1.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${divisionDocumentId}/forward`)
+      .set('Authorization', `Bearer ${divisionHead1Token}`)
+      .send({ toUserId: divisionHeadDept2User.id })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${divisionDocumentId}/forward`)
+      .set('Authorization', `Bearer ${chancelleryToken}`)
+      .send({ toUserId: divisionHeadDept2User.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${divisionDocumentId}/forward`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ toUserId: departmentHeadUser.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${divisionDocumentId}/forward`)
+      .set('Authorization', `Bearer ${departmentHeadToken}`)
+      .send({ toUserId: managerDept1.id })
+      .expect(201);
   });
 });

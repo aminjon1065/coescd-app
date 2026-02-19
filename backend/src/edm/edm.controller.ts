@@ -44,6 +44,11 @@ import {
   UpdateSavedFilterDto,
 } from './dto/saved-filters.dto';
 import {
+  AssignDocumentResponsibleDto,
+  CreateDocumentReplyDto,
+  ForwardEdmDocumentDto,
+} from './dto/document-history.dto';
+import {
   CreateDocumentTemplateDto,
   GetDocumentTemplatesQueryDto,
   UpdateDocumentTemplateDto,
@@ -484,6 +489,51 @@ export class EdmController {
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
   findAudit(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
     return this.edmService.findAudit(id, actor);
+  }
+
+  @Get('documents/:id/history')
+  @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  findHistory(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
+    return this.edmService.findHistory(id, actor);
+  }
+
+  @Post('documents/:id/forward')
+  @Permissions(Permission.DOCUMENTS_ROUTE_EXECUTE)
+  forwardDocument(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ForwardEdmDocumentDto,
+    @ActiveUser() actor: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.edmService.forwardDocument(id, dto, actor, getRequestMeta(request));
+  }
+
+  @Post('documents/:id/responsible')
+  @Permissions(Permission.DOCUMENTS_UPDATE)
+  assignResponsible(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AssignDocumentResponsibleDto,
+    @ActiveUser() actor: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.edmService.assignResponsible(id, dto, actor, getRequestMeta(request));
+  }
+
+  @Post('documents/:id/replies')
+  @Permissions(Permission.DOCUMENTS_READ)
+  createReply(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateDocumentReplyDto,
+    @ActiveUser() actor: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.edmService.createReply(id, dto, actor, getRequestMeta(request));
+  }
+
+  @Get('documents/:id/replies')
+  @Permissions(Permission.DOCUMENTS_READ)
+  listReplies(@Param('id', ParseIntPipe) id: number, @ActiveUser() actor: ActiveUserData) {
+    return this.edmService.listReplies(id, actor);
   }
 
   @Get('documents/:id/files')

@@ -161,6 +161,8 @@ npm run migration:revert
 - `docs/architecture/edm-functional-spec-v1.md` — бизнес-спека EDM v1 (routes/delegation/numbering/audit)
 - `docs/architecture/edm-schema-v1.md` — DB-схема EDM v1 (documents/routes/stages/actions/delegations)
 - `docs/architecture/edm-api-contract-v1.md` — API contract EDM v1 (commands/queries/errors)
+- `docs/architecture/edm-org-routing-model-v1.md` — орг-иерархия и матрица маршрутизации документов (chair/deputies/departments/divisions/chancellery)
+- `docs/role-permissions-lock-2026-02-19.md` — зафиксированный role+permission baseline на спринт
 - `docs/rbac.md` — RBAC/ABAC и auth hardening
 - `docs/migrations.md` — процесс миграций
 - `docs/implementation-plan.md` — phased plan to production (`1 admin -> 200+ users`)
