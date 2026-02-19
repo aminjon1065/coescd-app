@@ -579,8 +579,9 @@ describe('EDM (e2e)', () => {
     expect(rejectedByOverride.body.status).toBe('rejected');
   });
 
-  it('denies override for non-admin user', async () => {
+  it('allows override for department head creator and denies regular user', async () => {
     const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+    const regularToken = await signIn('edm-regular1@test.local', 'operator123');
 
     const candidate = await request(app.getHttpServer())
       .post('/edm/documents')
@@ -614,7 +615,43 @@ describe('EDM (e2e)', () => {
       .set('Authorization', `Bearer ${managerToken}`)
       .send({
         overrideAction: 'force_approve',
-        reason: 'Should not be allowed',
+        reason: 'Department head creator override',
+      })
+      .expect(201);
+
+    const secondCandidate = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'internal',
+        title: 'EDM override forbidden for regular test',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${secondCandidate.body.id}/submit`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        completionPolicy: 'sequential',
+        stages: [
+          {
+            orderNo: 1,
+            stageType: 'approve',
+            assigneeType: 'user',
+            assigneeUserId: regularDept1.id,
+          },
+        ],
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${secondCandidate.body.id}/override`)
+      .set('Authorization', `Bearer ${regularToken}`)
+      .send({
+        overrideAction: 'force_reject',
+        reason: 'Should not be allowed for regular',
       })
       .expect(403);
   });
