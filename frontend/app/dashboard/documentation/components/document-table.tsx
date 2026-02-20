@@ -96,6 +96,7 @@ export function DocumentTable({
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [savedFilters, setSavedFilters] = useState<IEdmSavedFilter[]>([]);
+  const [savedFiltersAvailable, setSavedFiltersAvailable] = useState(true);
   const [selectedSavedFilterId, setSelectedSavedFilterId] = useState<string>('all');
   const [savedFilterName, setSavedFilterName] = useState('');
   const [saveAsDefault, setSaveAsDefault] = useState(false);
@@ -127,7 +128,7 @@ export function DocumentTable({
   );
 
   const fetchSavedFilters = useCallback(async () => {
-    if (isQueueSource) {
+    if (isQueueSource || !savedFiltersAvailable) {
       return;
     }
     try {
@@ -137,15 +138,31 @@ export function DocumentTable({
       const payload = response.data;
       const items = payload ? extractListItems(payload) : [];
       setSavedFilters(items);
+      setSavedFiltersAvailable(true);
       const defaultFilter = items.find((item) => item.isDefault);
       if (defaultFilter) {
         setSelectedSavedFilterId(String(defaultFilter.id));
         applyCriteria(defaultFilter.criteria ?? {});
       }
     } catch (err) {
-      console.error('Failed to load saved EDM filters', err);
+      if (!axios.isAxiosError(err)) {
+        console.error('Failed to load saved EDM filters', err);
+        return;
+      }
+
+      try {
+        const fallbackResponse = await api.get<EdmSavedFiltersResponse>('/edm/saved-filters');
+        const fallbackPayload = fallbackResponse.data;
+        const fallbackItems = fallbackPayload ? extractListItems(fallbackPayload) : [];
+        setSavedFilters(fallbackItems);
+        setSavedFiltersAvailable(true);
+      } catch (fallbackErr) {
+        console.error('Saved EDM filters endpoint is unavailable', fallbackErr);
+        setSavedFilters([]);
+        setSavedFiltersAvailable(false);
+      }
     }
-  }, [applyCriteria, isQueueSource]);
+  }, [applyCriteria, isQueueSource, savedFiltersAvailable]);
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -206,10 +223,10 @@ export function DocumentTable({
       return;
     }
     void fetchDocuments();
-    if (!isQueueSource) {
+    if (!isQueueSource && savedFiltersAvailable) {
       void fetchSavedFilters();
     }
-  }, [accessToken, fetchDocuments, fetchSavedFilters, isQueueSource]);
+  }, [accessToken, fetchDocuments, fetchSavedFilters, isQueueSource, savedFiltersAvailable]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / limit)), [limit, total]);
 
@@ -252,7 +269,7 @@ export function DocumentTable({
   );
 
   const saveNewFilter = async () => {
-    if (isQueueSource) {
+    if (isQueueSource || !savedFiltersAvailable) {
       return;
     }
     if (!savedFilterName.trim()) {
@@ -282,7 +299,7 @@ export function DocumentTable({
   };
 
   const updateSelectedFilter = async () => {
-    if (isQueueSource || selectedSavedFilterId === 'all') {
+    if (isQueueSource || !savedFiltersAvailable || selectedSavedFilterId === 'all') {
       return;
     }
     setSavingFilter(true);
@@ -302,7 +319,7 @@ export function DocumentTable({
   };
 
   const deleteSelectedFilter = async () => {
-    if (isQueueSource || selectedSavedFilterId === 'all') {
+    if (isQueueSource || !savedFiltersAvailable || selectedSavedFilterId === 'all') {
       return;
     }
     setDeletingFilter(true);
@@ -458,7 +475,7 @@ export function DocumentTable({
             ) : null}
           </div>
 
-          {!isQueueSource ? (
+          {!isQueueSource && savedFiltersAvailable ? (
             <div className="grid gap-3 rounded-lg border p-3 md:grid-cols-2 lg:grid-cols-6">
               <Select
                 value={selectedSavedFilterId}
