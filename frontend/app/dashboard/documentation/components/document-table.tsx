@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select';
 import { CreateDocumentDialog } from './create-document-dialog';
 import { DocumentationLang } from '../i18n';
+import { can } from '@/features/authz/can';
 
 type EdmDocumentsResponse = ListResponse<IEdmDocument> | IEdmDocument[];
 type EdmSavedFiltersResponse = IEdmSavedFilter[] | ListResponse<IEdmSavedFilter>;
@@ -48,6 +49,8 @@ interface Props {
   title: string;
   emptyText?: string;
   lang?: DocumentationLang;
+  allowCreate?: boolean;
+  lockCreateType?: boolean;
   presetType?: EdmDocumentType;
   defaultDocType?: EdmDocumentType;
   source?: 'documents' | 'queue' | 'mailbox';
@@ -69,7 +72,7 @@ const labels = {
     inRoute: 'На маршруте',
     approved: 'Утверждено',
     archived: 'Архив',
-    newCard: 'Новая карточка',
+    createDocument: 'Создать документ',
     search: 'Поиск по номеру, заголовку, теме',
     status: 'Статус',
     type: 'Тип',
@@ -127,7 +130,7 @@ const labels = {
     inRoute: 'Дар масир',
     approved: 'Тасдиқшуда',
     archived: 'Бойгонӣ',
-    newCard: 'Корти нав',
+    createDocument: 'Эҷоди ҳуҷҷат',
     search: 'Ҷустуҷӯ аз рӯйи рақам, сарлавҳа, мавзӯъ',
     status: 'Ҳолат',
     type: 'Навъ',
@@ -178,6 +181,8 @@ export function DocumentTable({
   title,
   emptyText,
   lang = 'ru',
+  allowCreate = false,
+  lockCreateType = false,
   presetType,
   defaultDocType,
   source = 'documents',
@@ -205,7 +210,7 @@ export function DocumentTable({
     department_confidential: t.confidentialityDepartment,
     restricted: t.confidentialityRestricted,
   } as const;
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [documents, setDocuments] = useState<IEdmDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -228,7 +233,10 @@ export function DocumentTable({
   const [deletingFilter, setDeletingFilter] = useState(false);
   const isQueueSource = source === 'queue';
   const isMailboxSource = source === 'mailbox';
-  const showCreateAction = source === 'documents';
+  const canCreateDocuments = can(user, {
+    anyPermissions: ['documents.create'],
+  });
+  const showCreateAction = canCreateDocuments && (source === 'documents' || allowCreate);
 
   useEffect(() => {
     if (presetType) {
@@ -539,7 +547,7 @@ export function DocumentTable({
           {showCreateAction ? (
             <Button onClick={() => setDialogOpen(true)} size="sm">
               <PlusIcon className="mr-2 h-4 w-4" />
-              {t.newCard}
+              {t.createDocument}
             </Button>
           ) : null}
         </CardHeader>
@@ -809,6 +817,7 @@ export function DocumentTable({
           onOpenChange={setDialogOpen}
           onCreated={fetchDocuments}
           defaultType={defaultDocType}
+          lockType={lockCreateType}
           lang={lang}
         />
       ) : null}

@@ -27,6 +27,8 @@ export default function SentDocumentsPage() {
       <DocumentTable
         title={lang === 'tj' ? 'Ҳуҷҷатҳои фиристодашуда' : 'Отправленные документы'}
         lang={lang}
+        allowCreate
+        lockCreateType
         source="mailbox"
         mailboxType="outgoing"
         defaultDocType="outgoing"

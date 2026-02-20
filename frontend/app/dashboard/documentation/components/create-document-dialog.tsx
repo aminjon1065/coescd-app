@@ -29,6 +29,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
   defaultType?: EdmDocumentType;
+  lockType?: boolean;
   lang?: DocumentationLang;
 }
 
@@ -36,7 +37,7 @@ const labels = {
   ru: {
     loadDepartmentsError: 'Не удалось загрузить департаменты',
     createError: 'Не удалось создать документ',
-    title: 'Новая карточка документа',
+    title: 'Создать документ',
     documentTitle: 'Заголовок',
     documentTitlePlaceholder: 'Служебная записка о...',
     subject: 'Тема',
@@ -64,7 +65,7 @@ const labels = {
   tj: {
     loadDepartmentsError: 'Боркунии департаментҳо муяссар нашуд',
     createError: 'Эҷоди ҳуҷҷат муяссар нашуд',
-    title: 'Корти нави ҳуҷҷат',
+    title: 'Эҷоди ҳуҷҷат',
     documentTitle: 'Сарлавҳа',
     documentTitlePlaceholder: 'Ёддошти хизматӣ дар бораи...',
     subject: 'Мавзӯъ',
@@ -96,6 +97,7 @@ export function CreateDocumentDialog({
   onOpenChange,
   onCreated,
   defaultType,
+  lockType = false,
   lang = 'ru',
 }: Props) {
   const t = labels[lang];
@@ -174,7 +176,7 @@ export function CreateDocumentDialog({
         title,
         subject: subject || undefined,
         summary: summary || undefined,
-        type,
+        type: lockType && defaultType ? defaultType : type,
         confidentiality,
         departmentId: Number(departmentId),
         dueAt: dueAt ? new Date(`${dueAt}T23:59:59.999Z`).toISOString() : undefined,
@@ -230,22 +232,23 @@ export function CreateDocumentDialog({
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t.documentType}</Label>
-              <Select value={type} onValueChange={(value: EdmDocumentType) => setType(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="incoming">{t.incoming}</SelectItem>
-                  <SelectItem value="outgoing">{t.outgoing}</SelectItem>
-                  <SelectItem value="internal">{t.internal}</SelectItem>
-                  <SelectItem value="order">{t.order}</SelectItem>
-                  <SelectItem value="resolution">{t.resolution}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+            {!lockType ? (
+              <div className="space-y-2">
+                <Label>{t.documentType}</Label>
+                <Select value={type} onValueChange={(value: EdmDocumentType) => setType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="incoming">{t.incoming}</SelectItem>
+                    <SelectItem value="outgoing">{t.outgoing}</SelectItem>
+                    <SelectItem value="internal">{t.internal}</SelectItem>
+                    <SelectItem value="order">{t.order}</SelectItem>
+                    <SelectItem value="resolution">{t.resolution}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <div className="space-y-2">
               <Label>{t.confidentiality}</Label>
               <Select

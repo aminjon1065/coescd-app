@@ -165,6 +165,8 @@ export default function DocumentationPage() {
               <DocumentTable
                 title={staffLabels.outgoingTitle}
                 lang={lang}
+                allowCreate
+                lockCreateType
                 source="mailbox"
                 mailboxType="outgoing"
                 defaultDocType="outgoing"
