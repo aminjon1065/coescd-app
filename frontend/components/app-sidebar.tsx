@@ -34,6 +34,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }),
     [user],
   );
+  const adaptedRoutes = useMemo(() => {
+    const role = String(user?.role ?? '');
+    const isPrivilegedEdmUser = role === 'admin' || role === 'chancellery';
+
+    return visibleRoutes.map((route) => {
+      if (!isPrivilegedEdmUser && route.url === '/dashboard') {
+        return { ...route, title: 'Рабочий стол' };
+      }
+
+      if (!isPrivilegedEdmUser && route.url === '/dashboard/documentation') {
+        return {
+          ...route,
+          title: 'Обмен документами',
+          items: [
+            { title: 'Полученные', url: '/dashboard/documentation' },
+            { title: 'На контроле', url: '/dashboard/documentation/approvals' },
+            { title: 'Отправленные', url: '/dashboard/documentation/sent' },
+          ],
+        };
+      }
+
+      return route;
+    });
+  }, [user?.role, visibleRoutes]);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -42,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/*<TeamSwitcher teams={data.teams} />*/}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={visibleRoutes} />
+        <NavMain items={adaptedRoutes} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>

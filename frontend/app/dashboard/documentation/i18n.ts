@@ -1,4 +1,4 @@
-export type DocumentationLang = 'ru' | 'tg';
+﻿export type DocumentationLang = 'ru' | 'tj';
 
 export const documentationI18n = {
   ru: {
@@ -24,7 +24,7 @@ export const documentationI18n = {
     denied:
       'Раздел СЭД доступен пользователям с правом чтения документов.',
   },
-  tg: {
+  tj: {
     language: 'Забон',
     tabs: {
       incoming: 'Воридот',
@@ -48,3 +48,5 @@ export const documentationI18n = {
       'Бахши СЭД барои корбарони дорои ҳуқуқи хондани ҳуҷҷатҳо дастрас аст.',
   },
 } as const;
+
+

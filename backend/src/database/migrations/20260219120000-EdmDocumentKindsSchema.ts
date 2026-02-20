@@ -4,6 +4,14 @@ export class EdmDocumentKindsSchema20260219120000 implements MigrationInterface 
   name = 'EdmDocumentKindsSchema20260219120000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const hasUserTable = await queryRunner.hasTable('user');
+    const hasUsersTable = await queryRunner.hasTable('users');
+    const usersTableName = hasUserTable ? 'user' : hasUsersTable ? 'users' : null;
+
+    if (!usersTableName) {
+      throw new Error('Cannot apply migration: neither "user" nor "users" table exists');
+    }
+
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "edm_document_kinds" (
         "id" SERIAL NOT NULL,
@@ -23,13 +31,13 @@ export class EdmDocumentKindsSchema20260219120000 implements MigrationInterface 
     await queryRunner.query(`
       ALTER TABLE "edm_document_kinds"
       ADD CONSTRAINT "FK_edm_document_kinds_created_by"
-      FOREIGN KEY ("created_by_id") REFERENCES "users"("id")
+      FOREIGN KEY ("created_by_id") REFERENCES "${usersTableName}"("id")
       ON DELETE SET NULL ON UPDATE NO ACTION
     `);
     await queryRunner.query(`
       ALTER TABLE "edm_document_kinds"
       ADD CONSTRAINT "FK_edm_document_kinds_updated_by"
-      FOREIGN KEY ("updated_by_id") REFERENCES "users"("id")
+      FOREIGN KEY ("updated_by_id") REFERENCES "${usersTableName}"("id")
       ON DELETE SET NULL ON UPDATE NO ACTION
     `);
 

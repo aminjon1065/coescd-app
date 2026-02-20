@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
@@ -63,7 +63,7 @@ const labels = {
     saving: 'Сохранение...',
     enabled: 'Активен',
   },
-  tg: {
+  tj: {
     title: 'Навъҳои ҳуҷҷат',
     newKind: 'Навъи нав',
     search: 'Ҷустуҷӯ аз рӯйи рамз ё ном',
@@ -360,3 +360,5 @@ export function DocumentKindsManager({ lang = 'ru' }: Props) {
     </Card>
   );
 }
+
+

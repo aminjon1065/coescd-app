@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -22,26 +22,83 @@ import api from '@/lib/axios';
 import { edmApi } from '@/lib/edm';
 import { IDepartment } from '@/interfaces/IDepartment';
 import { EdmDocumentType, IEdmDocumentKind } from '@/interfaces/IEdmDocument';
+import { DocumentationLang } from '../i18n';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
   defaultType?: EdmDocumentType;
+  lang?: DocumentationLang;
 }
 
-const confidentialityOptions = [
-  { value: 'public_internal', label: 'Внутренний доступ' },
-  { value: 'department_confidential', label: 'Конфиденциально (департамент)' },
-  { value: 'restricted', label: 'Ограниченный доступ' },
-] as const;
+const labels = {
+  ru: {
+    loadDepartmentsError: 'Не удалось загрузить департаменты',
+    createError: 'Не удалось создать документ',
+    title: 'Новая карточка документа',
+    documentTitle: 'Заголовок',
+    documentTitlePlaceholder: 'Служебная записка о...',
+    subject: 'Тема',
+    subjectPlaceholder: 'Краткая тема',
+    summary: 'Краткое содержание',
+    summaryPlaceholder: 'Краткое описание документа',
+    documentType: 'Тип документа',
+    incoming: 'Входящий',
+    outgoing: 'Исходящий',
+    internal: 'Внутренний',
+    order: 'Приказ',
+    resolution: 'Резолюция',
+    confidentiality: 'Уровень доступа',
+    accessInternal: 'Внутренний доступ',
+    accessDepartment: 'Конфиденциально (департамент)',
+    accessRestricted: 'Ограниченный доступ',
+    kind: 'Тип (справочник)',
+    noKind: 'Без типа',
+    department: 'Департамент',
+    selectDepartment: 'Выберите департамент',
+    dueDate: 'Срок исполнения',
+    creating: 'Создание...',
+    create: 'Создать',
+  },
+  tj: {
+    loadDepartmentsError: 'Боркунии департаментҳо муяссар нашуд',
+    createError: 'Эҷоди ҳуҷҷат муяссар нашуд',
+    title: 'Корти нави ҳуҷҷат',
+    documentTitle: 'Сарлавҳа',
+    documentTitlePlaceholder: 'Ёддошти хизматӣ дар бораи...',
+    subject: 'Мавзӯъ',
+    subjectPlaceholder: 'Мавзӯи кӯтоҳ',
+    summary: 'Мазмуни кӯтоҳ',
+    summaryPlaceholder: 'Тавсифи кӯтоҳи ҳуҷҷат',
+    documentType: 'Навъи ҳуҷҷат',
+    incoming: 'Воридот',
+    outgoing: 'Содирот',
+    internal: 'Дохилӣ',
+    order: 'Фармон',
+    resolution: 'Қатънома',
+    confidentiality: 'Сатҳи дастрасӣ',
+    accessInternal: 'Дастрасии дохилӣ',
+    accessDepartment: 'Маҳрамона (департамент)',
+    accessRestricted: 'Дастрасии маҳдуд',
+    kind: 'Навъ (феҳрист)',
+    noKind: 'Бе навъ',
+    department: 'Департамент',
+    selectDepartment: 'Департаментро интихоб кунед',
+    dueDate: 'Муҳлати иҷро',
+    creating: 'Дар ҳоли эҷод...',
+    create: 'Эҷод',
+  },
+} as const;
 
 export function CreateDocumentDialog({
   open,
   onOpenChange,
   onCreated,
   defaultType,
+  lang = 'ru',
 }: Props) {
+  const t = labels[lang];
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
   const [summary, setSummary] = useState('');
@@ -78,7 +135,7 @@ export function CreateDocumentDialog({
       })
       .catch((err) => {
         console.error('Failed to load departments', err);
-        setError('Не удалось загрузить департаменты');
+        setError(t.loadDepartmentsError);
       });
 
     void edmApi
@@ -87,7 +144,7 @@ export function CreateDocumentDialog({
       .catch((err) => {
         console.error('Failed to load document kinds', err);
       });
-  }, [departmentId, open]);
+  }, [departmentId, open, t.loadDepartmentsError]);
 
   useEffect(() => {
     if (defaultType) {
@@ -128,7 +185,7 @@ export function CreateDocumentDialog({
       onCreated();
     } catch (err) {
       console.error('Failed to create EDM document', err);
-      setError('Не удалось создать документ');
+      setError(t.createError);
     } finally {
       setSubmitting(false);
     }
@@ -138,59 +195,59 @@ export function CreateDocumentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Новая карточка документа</DialogTitle>
+          <DialogTitle>{t.title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Заголовок</Label>
+            <Label htmlFor="title">{t.documentTitle}</Label>
             <Input
               id="title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Служебная записка о..."
+              placeholder={t.documentTitlePlaceholder}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">Тема</Label>
+            <Label htmlFor="subject">{t.subject}</Label>
             <Input
               id="subject"
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
-              placeholder="Краткая тема"
+              placeholder={t.subjectPlaceholder}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="summary">Краткое содержание</Label>
+            <Label htmlFor="summary">{t.summary}</Label>
             <Textarea
               id="summary"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder="Краткое описание документа"
+              placeholder={t.summaryPlaceholder}
             />
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Тип документа</Label>
+              <Label>{t.documentType}</Label>
               <Select value={type} onValueChange={(value: EdmDocumentType) => setType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="incoming">Входящий</SelectItem>
-                  <SelectItem value="outgoing">Исходящий</SelectItem>
-                  <SelectItem value="internal">Внутренний</SelectItem>
-                  <SelectItem value="order">Приказ</SelectItem>
-                  <SelectItem value="resolution">Резолюция</SelectItem>
+                  <SelectItem value="incoming">{t.incoming}</SelectItem>
+                  <SelectItem value="outgoing">{t.outgoing}</SelectItem>
+                  <SelectItem value="internal">{t.internal}</SelectItem>
+                  <SelectItem value="order">{t.order}</SelectItem>
+                  <SelectItem value="resolution">{t.resolution}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Уровень доступа</Label>
+              <Label>{t.confidentiality}</Label>
               <Select
                 value={confidentiality}
                 onValueChange={(
@@ -201,11 +258,9 @@ export function CreateDocumentDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {confidentialityOptions.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="public_internal">{t.accessInternal}</SelectItem>
+                  <SelectItem value="department_confidential">{t.accessDepartment}</SelectItem>
+                  <SelectItem value="restricted">{t.accessRestricted}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -213,13 +268,13 @@ export function CreateDocumentDialog({
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Тип (справочник)</Label>
+              <Label>{t.kind}</Label>
               <Select value={documentKindId} onValueChange={setDocumentKindId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Без типа" />
+                  <SelectValue placeholder={t.noKind} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Без типа</SelectItem>
+                  <SelectItem value="none">{t.noKind}</SelectItem>
                   {documentKinds.map((kind) => (
                     <SelectItem key={kind.id} value={String(kind.id)}>
                       {kind.name}
@@ -230,10 +285,10 @@ export function CreateDocumentDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Департамент</Label>
+              <Label>{t.department}</Label>
               <Select value={departmentId} onValueChange={setDepartmentId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Выберите департамент" />
+                  <SelectValue placeholder={t.selectDepartment} />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((department) => (
@@ -247,7 +302,7 @@ export function CreateDocumentDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dueAt">Срок исполнения</Label>
+            <Label htmlFor="dueAt">{t.dueDate}</Label>
             <Input
               id="dueAt"
               type="date"
@@ -259,10 +314,12 @@ export function CreateDocumentDialog({
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? 'Создание...' : 'Создать'}
+            {submitting ? t.creating : t.create}
           </Button>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
+
+

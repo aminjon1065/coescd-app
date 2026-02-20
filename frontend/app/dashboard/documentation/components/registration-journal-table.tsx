@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
@@ -47,7 +47,7 @@ const labels = {
     next: 'Вперед',
     loadError: 'Не удалось загрузить журнал регистрации',
   },
-  tg: {
+  tj: {
     title: 'Дафтари бақайдгирӣ',
     search: 'Рақами бақайдгирӣ',
     allTypes: 'Ҳама намудҳо',
@@ -307,3 +307,5 @@ export function RegistrationJournalTable({ lang = 'ru' }: Props) {
     </Card>
   );
 }
+
+
