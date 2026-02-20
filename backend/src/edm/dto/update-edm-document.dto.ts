@@ -1,5 +1,6 @@
 import {
   IsIn,
+  IsInt,
   IsISO8601,
   IsOptional,
   IsString,
@@ -48,4 +49,8 @@ export class UpdateEdmDocumentDto {
   @IsOptional()
   @IsISO8601()
   dueAt?: string;
+
+  @IsOptional()
+  @IsInt()
+  documentKindId?: number | null;
 }

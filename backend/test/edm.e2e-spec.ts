@@ -679,6 +679,207 @@ describe('EDM (e2e)', () => {
     ).toBe(true);
   });
 
+  it('provides incoming/outgoing mailboxes for EDM users', async () => {
+    const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+
+    const incomingDoc = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'incoming',
+        title: 'Mailbox incoming sample',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+
+    const outgoingDoc = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'outgoing',
+        title: 'Mailbox outgoing sample',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+
+    const incomingMailbox = await request(app.getHttpServer())
+      .get('/edm/mailboxes/incoming')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(
+      incomingMailbox.body.items.some(
+        (item: { id: number; type: string }) =>
+          item.id === incomingDoc.body.id && item.type === 'incoming',
+      ),
+    ).toBe(true);
+    expect(
+      incomingMailbox.body.items.every(
+        (item: { type: string }) => item.type === 'incoming',
+      ),
+    ).toBe(true);
+
+    const outgoingMailbox = await request(app.getHttpServer())
+      .get('/edm/mailboxes/outgoing')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(
+      outgoingMailbox.body.items.some(
+        (item: { id: number; type: string }) =>
+          item.id === outgoingDoc.body.id && item.type === 'outgoing',
+      ),
+    ).toBe(true);
+    expect(
+      outgoingMailbox.body.items.every(
+        (item: { type: string }) => item.type === 'outgoing',
+      ),
+    ).toBe(true);
+  });
+
+  it('allows chancellery to edit non-draft incoming/outgoing and records edited history', async () => {
+    const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+    const chancelleryToken = await signIn('edm-chancellery@test.local', 'manager123');
+
+    const createResponse = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'outgoing',
+        title: 'Outgoing editable by chancellery',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+      })
+      .expect(201);
+    const documentId = createResponse.body.id as number;
+
+    await request(app.getHttpServer())
+      .post(`/edm/documents/${documentId}/submit`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        completionPolicy: 'sequential',
+        stages: [
+          {
+            orderNo: 1,
+            stageType: 'review',
+            assigneeType: 'user',
+            assigneeUserId: regularDept1.id,
+          },
+        ],
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/edm/documents/${documentId}`)
+      .set('Authorization', `Bearer ${chancelleryToken}`)
+      .send({
+        title: 'Outgoing edited by chancellery',
+      })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch(`/edm/documents/${documentId}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        title: 'Manager cannot edit non-draft',
+      })
+      .expect(409);
+
+    const historyResponse = await request(app.getHttpServer())
+      .get(`/edm/documents/${documentId}/history`)
+      .set('Authorization', `Bearer ${chancelleryToken}`)
+      .query({
+        eventTypes: 'edited',
+      })
+      .expect(200);
+
+    expect(historyResponse.body.length).toBeGreaterThan(0);
+    expect(
+      historyResponse.body.some(
+        (event: { eventType: string; actorUser?: { id: number }; meta?: { updatedFields?: string[] } }) =>
+          event.eventType === 'edited' &&
+          event.actorUser?.id === chancelleryUser.id &&
+          Array.isArray(event.meta?.updatedFields) &&
+          event.meta?.updatedFields?.includes('title'),
+      ),
+    ).toBe(true);
+  });
+
+  it('supports document kinds catalog managed by chancellery', async () => {
+    const chancelleryToken = await signIn('edm-chancellery@test.local', 'manager123');
+    const managerToken = await signIn('edm-manager1@test.local', 'manager123');
+    const regularToken = await signIn('edm-regular1@test.local', 'operator123');
+
+    await request(app.getHttpServer())
+      .post('/edm/document-kinds')
+      .set('Authorization', `Bearer ${regularToken}`)
+      .send({
+        code: 'regular_forbidden_kind',
+        name: 'Regular Forbidden Kind',
+      })
+      .expect(403);
+
+    const createKindResponse = await request(app.getHttpServer())
+      .post('/edm/document-kinds')
+      .set('Authorization', `Bearer ${chancelleryToken}`)
+      .send({
+        code: 'contract_letter',
+        name: 'Contract Letter',
+        description: 'Outgoing contract communication',
+      })
+      .expect(201);
+    const documentKindId = createKindResponse.body.id as number;
+    expect(documentKindId).toBeDefined();
+    expect(createKindResponse.body.code).toBe('contract_letter');
+
+    const activeKinds = await request(app.getHttpServer())
+      .get('/edm/document-kinds')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(
+      activeKinds.body.some((item: { id: number }) => item.id === documentKindId),
+    ).toBe(true);
+
+    const createDocResponse = await request(app.getHttpServer())
+      .post('/edm/documents')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        type: 'outgoing',
+        title: 'Document with kind',
+        confidentiality: 'department_confidential',
+        departmentId: dept1Id,
+        documentKindId,
+      })
+      .expect(201);
+    expect(createDocResponse.body.documentKind?.id).toBe(documentKindId);
+
+    await request(app.getHttpServer())
+      .patch(`/edm/document-kinds/${documentKindId}`)
+      .set('Authorization', `Bearer ${chancelleryToken}`)
+      .send({
+        name: 'Contract Letter Updated',
+        isActive: false,
+      })
+      .expect(200);
+
+    const activeKindsAfterDeactivate = await request(app.getHttpServer())
+      .get('/edm/document-kinds')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .query({ onlyActive: true })
+      .expect(200);
+    expect(
+      activeKindsAfterDeactivate.body.some(
+        (item: { id: number }) => item.id === documentKindId,
+      ),
+    ).toBe(false);
+
+    const kindById = await request(app.getHttpServer())
+      .get(`/edm/document-kinds/${documentKindId}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    expect(kindById.body.isActive).toBe(false);
+  });
+
   it('allows delegated on-behalf stage action and records onBehalfOf in audit', async () => {
     const managerToken = await signIn('edm-manager1@test.local', 'manager123');
     const regularToken = await signIn('edm-regular1@test.local', 'operator123');

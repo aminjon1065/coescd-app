@@ -4,6 +4,7 @@ import { useAuth } from '@/context/auth-context';
 import {
   IEdmAuditEvent,
   IEdmDocument,
+  IEdmDocumentKind,
   IEdmFileAttachment,
   IEdmHistoryEvent,
   IEdmReply,
@@ -29,6 +30,8 @@ export function useEdmDocumentDetail(rawId: string | string[] | undefined) {
   const [stageCommentById, setStageCommentById] = useState<Record<number, string>>({});
   const [replyText, setReplyText] = useState('');
   const [replySending, setReplySending] = useState(false);
+  const [documentKinds, setDocumentKinds] = useState<IEdmDocumentKind[]>([]);
+  const [savingDocumentKind, setSavingDocumentKind] = useState(false);
 
   const documentId = useMemo(() => {
     const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -48,6 +51,17 @@ export function useEdmDocumentDetail(rawId: string | string[] | undefined) {
       setLoading(false);
     }
   }, [documentId]);
+
+  const fetchDocumentKinds = useCallback(async () => {
+    try {
+      const response = await api.get<IEdmDocumentKind[]>('/edm/document-kinds', {
+        params: { onlyActive: true },
+      });
+      setDocumentKinds(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error('Failed to load document kinds', err);
+    }
+  }, []);
 
   const fetchTimelineBlocks = useCallback(async () => {
     if (!documentId) {
@@ -106,9 +120,17 @@ export function useEdmDocumentDetail(rawId: string | string[] | undefined) {
       return;
     }
     void fetchDocument();
+    void fetchDocumentKinds();
     void fetchTimelineBlocks();
     void fetchAttachments();
-  }, [accessToken, documentId, fetchAttachments, fetchDocument, fetchTimelineBlocks]);
+  }, [
+    accessToken,
+    documentId,
+    fetchAttachments,
+    fetchDocument,
+    fetchDocumentKinds,
+    fetchTimelineBlocks,
+  ]);
 
   const archiveDocument = async () => {
     if (!document) {
@@ -230,6 +252,26 @@ export function useEdmDocumentDetail(rawId: string | string[] | undefined) {
     }));
   };
 
+  const updateDocumentKind = async (documentKindId: number | null) => {
+    if (!document) {
+      return;
+    }
+    setSavingDocumentKind(true);
+    setError(null);
+    try {
+      await api.patch(`/edm/documents/${document.id}`, {
+        documentKindId,
+      });
+      await fetchDocument();
+      await fetchTimelineBlocks();
+    } catch (err) {
+      console.error('Failed to update document kind', err);
+      setError('Failed to update document kind');
+    } finally {
+      setSavingDocumentKind(false);
+    }
+  };
+
   const formatFileSize = (sizeBytes: string) => {
     const size = Number(sizeBytes);
     if (!Number.isFinite(size) || size <= 0) {
@@ -263,6 +305,8 @@ export function useEdmDocumentDetail(rawId: string | string[] | undefined) {
     stageCommentById,
     replyText,
     replySending,
+    documentKinds,
+    savingDocumentKind,
     setSelectedFileId,
     setReplyText,
     updateStageComment,
@@ -270,6 +314,7 @@ export function useEdmDocumentDetail(rawId: string | string[] | undefined) {
     submitToRoute,
     sendReply,
     executeStageAction,
+    updateDocumentKind,
     linkSelectedFile,
     unlinkFile,
     formatFileSize,

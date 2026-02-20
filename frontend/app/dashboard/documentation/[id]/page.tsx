@@ -5,10 +5,19 @@ import { format } from 'date-fns';
 import { ArrowLeftIcon } from 'lucide-react';
 import { useEdmDocumentDetail } from './hooks/use-edm-document-detail';
 import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
+import { useAuth } from '@/context/auth-context';
+import { can } from '@/features/authz/can';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { EdmDocumentStatus, EdmDocumentType } from '@/interfaces/IEdmDocument';
 import { RouteActionsCard } from './components/route-actions-card';
 import { AttachmentsCard } from './components/attachments-card';
@@ -17,26 +26,26 @@ import { AuditCard } from './components/audit-card';
 import { RepliesCard } from './components/replies-card';
 
 const statusLabel: Record<EdmDocumentStatus, string> = {
-  draft: 'Р§РµСЂРЅРѕРІРёРє',
-  in_route: 'РќР° РјР°СЂС€СЂСѓС‚Рµ',
-  approved: 'РЈС‚РІРµСЂР¶РґРµРЅ',
-  rejected: 'РћС‚РєР»РѕРЅРµРЅ',
-  returned_for_revision: 'РќР° РґРѕСЂР°Р±РѕС‚РєРµ',
-  archived: 'РђСЂС…РёРІ',
+  draft: 'Черновик',
+  in_route: 'На маршруте',
+  approved: 'Утвержден',
+  rejected: 'Отклонен',
+  returned_for_revision: 'На доработке',
+  archived: 'Архив',
 };
 
 const typeLabel: Record<EdmDocumentType, string> = {
-  incoming: 'Р’С…РѕРґСЏС‰РёР№',
-  outgoing: 'РСЃС…РѕРґСЏС‰РёР№',
-  internal: 'Р’РЅСѓС‚СЂРµРЅРЅРёР№',
-  order: 'РџСЂРёРєР°Р·',
-  resolution: 'Р РµР·РѕР»СЋС†РёСЏ',
+  incoming: 'Входящий',
+  outgoing: 'Исходящий',
+  internal: 'Внутренний',
+  order: 'Приказ',
+  resolution: 'Резолюция',
 };
 
 const confidentialityLabel = {
-  public_internal: 'Р’РЅСѓС‚СЂРµРЅРЅРёР№ РґРѕСЃС‚СѓРї',
-  department_confidential: 'РљРѕРЅС„РёРґРµРЅС†РёР°Р»СЊРЅРѕ (РґРµРїР°СЂС‚Р°РјРµРЅС‚)',
-  restricted: 'РћРіСЂР°РЅРёС‡РµРЅРЅС‹Р№ РґРѕСЃС‚СѓРї',
+  public_internal: 'Внутренний доступ',
+  department_confidential: 'Конфиденциально (департамент)',
+  restricted: 'Ограниченный доступ',
 } as const;
 
 const statusBadgeClass: Record<EdmDocumentStatus, string> = {
@@ -52,7 +61,7 @@ export default function DocumentDetailPage() {
   return (
     <ProtectedRouteGate
       policyKey="dashboard.documents.detail"
-      deniedDescription="РљР°СЂС‚РѕС‡РєР° РґРѕРєСѓРјРµРЅС‚Р° РґРѕСЃС‚СѓРїРЅР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏРј СЃ РїСЂР°РІРѕРј С‡С‚РµРЅРёСЏ РґРѕРєСѓРјРµРЅС‚РѕРІ."
+      deniedDescription="Карточка документа доступна пользователям с правом чтения документов."
     >
       <DocumentDetailContent />
     </ProtectedRouteGate>
@@ -62,6 +71,7 @@ export default function DocumentDetailPage() {
 function DocumentDetailContent() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const {
     document,
     auditEvents,
@@ -81,6 +91,8 @@ function DocumentDetailContent() {
     stageCommentById,
     replyText,
     replySending,
+    documentKinds,
+    savingDocumentKind,
     setSelectedFileId,
     setReplyText,
     updateStageComment,
@@ -88,10 +100,15 @@ function DocumentDetailContent() {
     submitToRoute,
     sendReply,
     executeStageAction,
+    updateDocumentKind,
     linkSelectedFile,
     unlinkFile,
     formatFileSize,
   } = useEdmDocumentDetail(id);
+
+  const canUpdateDocument = can(user, {
+    anyPermissions: ['documents.update'],
+  });
 
   if (loading) {
     return (
@@ -112,9 +129,9 @@ function DocumentDetailContent() {
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <p className="text-sm text-red-600">{error ?? 'Р”РѕРєСѓРјРµРЅС‚ РЅРµ РЅР°Р№РґРµРЅ'}</p>
+          <p className="text-sm text-red-600">{error ?? 'Документ не найден'}</p>
           <Button variant="outline" className="mt-4" onClick={() => router.back()}>
-            РќР°Р·Р°Рґ
+            Назад
           </Button>
         </CardContent>
       </Card>
@@ -125,7 +142,7 @@ function DocumentDetailContent() {
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/documentation')}>
         <ArrowLeftIcon className="mr-2 h-4 w-4" />
-        РќР°Р·Р°Рґ Рє Р¶СѓСЂРЅР°Р»Сѓ
+        Назад к журналу
       </Button>
 
       <Card>
@@ -133,7 +150,7 @@ function DocumentDetailContent() {
           <div>
             <CardTitle>{document.title}</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Р РµРі. РЅРѕРјРµСЂ: {document.externalNumber ?? `EDM-${document.id}`}
+              Рег. номер: {document.externalNumber ?? `EDM-${document.id}`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -147,42 +164,73 @@ function DocumentDetailContent() {
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-xs uppercase text-muted-foreground">РРЅРёС†РёР°С‚РѕСЂ</p>
-              <p className="text-sm font-medium">{document.creator?.name ?? 'вЂ”'}</p>
-              <p className="text-xs text-muted-foreground">{document.creator?.email ?? 'вЂ”'}</p>
+              <p className="text-xs uppercase text-muted-foreground">Инициатор</p>
+              <p className="text-sm font-medium">{document.creator?.name ?? '—'}</p>
+              <p className="text-xs text-muted-foreground">{document.creator?.email ?? '—'}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-muted-foreground">Р”РµРїР°СЂС‚Р°РјРµРЅС‚</p>
-              <p className="text-sm font-medium">{document.department?.name ?? 'вЂ”'}</p>
+              <p className="text-xs uppercase text-muted-foreground">Департамент</p>
+              <p className="text-sm font-medium">{document.department?.name ?? '—'}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-muted-foreground">РЎРѕР·РґР°РЅ</p>
+              <p className="text-xs uppercase text-muted-foreground">Document Kind</p>
+              {canUpdateDocument ? (
+                <div className="mt-1 flex items-center gap-2">
+                  <Select
+                    value={document.documentKind?.id ? String(document.documentKind.id) : 'none'}
+                    onValueChange={(value) =>
+                      void updateDocumentKind(value === 'none' ? null : Number(value))
+                    }
+                    disabled={savingDocumentKind}
+                  >
+                    <SelectTrigger className="w-[240px]">
+                      <SelectValue placeholder="No kind" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No kind</SelectItem>
+                      {documentKinds.map((kind) => (
+                        <SelectItem key={kind.id} value={String(kind.id)}>
+                          {kind.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {savingDocumentKind ? (
+                    <span className="text-xs text-muted-foreground">Saving...</span>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-sm font-medium">{document.documentKind?.name ?? '—'}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs uppercase text-muted-foreground">Создан</p>
               <p className="text-sm">{format(new Date(document.createdAt), 'dd.MM.yyyy HH:mm')}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-muted-foreground">РЎСЂРѕРє</p>
+              <p className="text-xs uppercase text-muted-foreground">Срок</p>
               <p className="text-sm">
-                {document.dueAt ? format(new Date(document.dueAt), 'dd.MM.yyyy') : 'РќРµ Р·Р°РґР°РЅ'}
+                {document.dueAt ? format(new Date(document.dueAt), 'dd.MM.yyyy') : 'Не задан'}
               </p>
             </div>
           </div>
 
           <div>
-            <p className="text-xs uppercase text-muted-foreground">РўРµРјР°</p>
-            <p className="text-sm">{document.subject || 'вЂ”'}</p>
+            <p className="text-xs uppercase text-muted-foreground">Тема</p>
+            <p className="text-sm">{document.subject || '—'}</p>
           </div>
 
           <div>
-            <p className="text-xs uppercase text-muted-foreground">РљСЂР°С‚РєРѕРµ СЃРѕРґРµСЂР¶Р°РЅРёРµ</p>
+            <p className="text-xs uppercase text-muted-foreground">Краткое содержание</p>
             <p className="text-sm whitespace-pre-wrap">
-              {document.summary || 'РЎРѕРґРµСЂР¶Р°РЅРёРµ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚'}
+              {document.summary || 'Содержание отсутствует'}
             </p>
           </div>
 
           <div>
-            <p className="text-xs uppercase text-muted-foreground">Р РµР·РѕР»СЋС†РёСЏ</p>
+            <p className="text-xs uppercase text-muted-foreground">Резолюция</p>
             <p className="text-sm whitespace-pre-wrap">
-              {document.resolutionText || 'Р РµР·РѕР»СЋС†РёСЏ РЅРµ Р·Р°РґР°РЅР°'}
+              {document.resolutionText || 'Резолюция не задана'}
             </p>
           </div>
         </CardContent>

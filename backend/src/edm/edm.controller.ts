@@ -53,6 +53,11 @@ import {
   GetDocumentHistoryQueryDto,
 } from './dto/document-audit-query.dto';
 import {
+  CreateDocumentKindDto,
+  GetDocumentKindsQueryDto,
+  UpdateDocumentKindDto,
+} from './dto/document-kind.dto';
+import {
   CreateDocumentTemplateDto,
   GetDocumentTemplatesQueryDto,
   UpdateDocumentTemplateDto,
@@ -62,6 +67,47 @@ import { EdmDashboardQueryDto, EdmReportsQueryDto } from './dto/reports.dto';
 @Controller('edm')
 export class EdmController {
   constructor(private readonly edmService: EdmService) {}
+
+  @Post('document-kinds')
+  @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  createDocumentKind(
+    @Body() dto: CreateDocumentKindDto,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
+    return this.edmService.createDocumentKind(dto, actor);
+  }
+
+  @Get('document-kinds')
+  @Permissions(Permission.DOCUMENTS_TEMPLATES_READ)
+  listDocumentKinds(@Query() query: GetDocumentKindsQueryDto) {
+    return this.edmService.listDocumentKinds(query);
+  }
+
+  @Get('document-kinds/:id')
+  @Permissions(Permission.DOCUMENTS_TEMPLATES_READ)
+  findDocumentKind(@Param('id', ParseIntPipe) id: number) {
+    return this.edmService.findDocumentKind(id);
+  }
+
+  @Patch('document-kinds/:id')
+  @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  updateDocumentKind(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateDocumentKindDto,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
+    return this.edmService.updateDocumentKind(id, dto, actor);
+  }
+
+  @Delete('document-kinds/:id')
+  @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  async deleteDocumentKind(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+  ) {
+    await this.edmService.deleteDocumentKind(id, actor);
+    return { deleted: true };
+  }
 
   @Post('document-templates')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
@@ -508,6 +554,24 @@ export class EdmController {
     @Query() query: GetEdmQueueQueryDto,
   ) {
     return this.edmService.listQueue('my-approvals', actor, query);
+  }
+
+  @Get('mailboxes/incoming')
+  @Permissions(Permission.DOCUMENTS_READ)
+  incomingMailbox(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetEdmQueueQueryDto,
+  ) {
+    return this.edmService.listMailbox('incoming', actor, query);
+  }
+
+  @Get('mailboxes/outgoing')
+  @Permissions(Permission.DOCUMENTS_READ)
+  outgoingMailbox(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetEdmQueueQueryDto,
+  ) {
+    return this.edmService.listMailbox('outgoing', actor, query);
   }
 
   @Get('documents/:id/route')

@@ -19,8 +19,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import api from '@/lib/axios';
+import { edmApi } from '@/lib/edm';
 import { IDepartment } from '@/interfaces/IDepartment';
-import { EdmDocumentType } from '@/interfaces/IEdmDocument';
+import { EdmDocumentType, IEdmDocumentKind } from '@/interfaces/IEdmDocument';
 
 interface Props {
   open: boolean;
@@ -50,6 +51,8 @@ export function CreateDocumentDialog({
   >('department_confidential');
   const [departmentId, setDepartmentId] = useState<string>('');
   const [dueAt, setDueAt] = useState('');
+  const [documentKinds, setDocumentKinds] = useState<IEdmDocumentKind[]>([]);
+  const [documentKindId, setDocumentKindId] = useState<string>('none');
   const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +67,7 @@ export function CreateDocumentDialog({
       return;
     }
     setError(null);
+
     void api
       .get<IDepartment[]>('/department')
       .then((res) => {
@@ -74,7 +78,14 @@ export function CreateDocumentDialog({
       })
       .catch((err) => {
         console.error('Failed to load departments', err);
-        setError('Не удалось загрузить список департаментов');
+        setError('Не удалось загрузить департаменты');
+      });
+
+    void edmApi
+      .listDocumentKinds({ onlyActive: true })
+      .then((items) => setDocumentKinds(items))
+      .catch((err) => {
+        console.error('Failed to load document kinds', err);
       });
   }, [departmentId, open]);
 
@@ -91,6 +102,7 @@ export function CreateDocumentDialog({
     setType(defaultType ?? 'incoming');
     setConfidentiality('department_confidential');
     setDueAt('');
+    setDocumentKindId('none');
     setDepartmentId(defaultDepartmentId);
     setError(null);
   };
@@ -109,13 +121,14 @@ export function CreateDocumentDialog({
         confidentiality,
         departmentId: Number(departmentId),
         dueAt: dueAt ? new Date(`${dueAt}T23:59:59.999Z`).toISOString() : undefined,
+        documentKindId: documentKindId === 'none' ? undefined : Number(documentKindId),
       });
       onOpenChange(false);
       resetForm();
       onCreated();
     } catch (err) {
       console.error('Failed to create EDM document', err);
-      setError('Не удалось создать документ. Проверьте обязательные поля и права доступа.');
+      setError('Не удалось создать документ');
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +147,7 @@ export function CreateDocumentDialog({
               id="title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Например: Служебная записка о ..."
+              placeholder="Служебная записка о..."
               required
             />
           </div>
@@ -145,7 +158,7 @@ export function CreateDocumentDialog({
               id="subject"
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
-              placeholder="Короткая тема документа"
+              placeholder="Краткая тема"
             />
           </div>
 
@@ -155,7 +168,7 @@ export function CreateDocumentDialog({
               id="summary"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder="Суть документа в 2-3 предложениях"
+              placeholder="Краткое описание документа"
             />
           </div>
 
@@ -177,7 +190,7 @@ export function CreateDocumentDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Режим доступа</Label>
+              <Label>Уровень доступа</Label>
               <Select
                 value={confidentiality}
                 onValueChange={(
@@ -200,6 +213,23 @@ export function CreateDocumentDialog({
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-2">
+              <Label>Тип (справочник)</Label>
+              <Select value={documentKindId} onValueChange={setDocumentKindId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Без типа" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Без типа</SelectItem>
+                  {documentKinds.map((kind) => (
+                    <SelectItem key={kind.id} value={String(kind.id)}>
+                      {kind.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label>Департамент</Label>
               <Select value={departmentId} onValueChange={setDepartmentId}>
                 <SelectTrigger>
@@ -214,22 +244,22 @@ export function CreateDocumentDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dueAt">Срок исполнения</Label>
-              <Input
-                id="dueAt"
-                type="date"
-                value={dueAt}
-                onChange={(event) => setDueAt(event.target.value)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="dueAt">Срок исполнения</Label>
+            <Input
+              id="dueAt"
+              type="date"
+              value={dueAt}
+              onChange={(event) => setDueAt(event.target.value)}
+            />
           </div>
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? 'Создание...' : 'Создать карточку'}
+            {submitting ? 'Создание...' : 'Создать'}
           </Button>
         </form>
       </DialogContent>

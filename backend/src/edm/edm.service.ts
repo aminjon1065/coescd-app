@@ -73,6 +73,7 @@ import {
 import { EdmDashboardQueryDto, EdmReportsQueryDto } from './dto/reports.dto';
 import { EdmDocumentTimelineEvent } from './entities/edm-document-timeline-event.entity';
 import { EdmDocumentReply } from './entities/edm-document-reply.entity';
+import { EdmDocumentKind } from './entities/edm-document-kind.entity';
 import {
   AssignDocumentResponsibleDto,
   CreateDocumentReplyDto,
@@ -82,6 +83,11 @@ import {
   GetDocumentAuditQueryDto,
   GetDocumentHistoryQueryDto,
 } from './dto/document-audit-query.dto';
+import {
+  CreateDocumentKindDto,
+  GetDocumentKindsQueryDto,
+  UpdateDocumentKindDto,
+} from './dto/document-kind.dto';
 
 @Injectable()
 export class EdmService {
@@ -120,6 +126,8 @@ export class EdmService {
     private readonly timelineRepo: Repository<EdmDocumentTimelineEvent>,
     @InjectRepository(EdmDocumentReply)
     private readonly replyRepo: Repository<EdmDocumentReply>,
+    @InjectRepository(EdmDocumentKind)
+    private readonly documentKindRepo: Repository<EdmDocumentKind>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Department)
@@ -211,6 +219,111 @@ export class EdmService {
   ): Promise<void> {
     const filter = await this.findOwnedSavedFilter(filterId, actor.sub);
     await this.savedFilterRepo.remove(filter);
+  }
+
+  async createDocumentKind(
+    dto: CreateDocumentKindDto,
+    actor: ActiveUserData,
+  ): Promise<EdmDocumentKind> {
+    const actorUser = await this.userRepo.findOneBy({ id: actor.sub });
+    if (!actorUser) {
+      throw new NotFoundException('Actor not found');
+    }
+
+    const normalizedCode = dto.code.trim().toLowerCase();
+    const existing = await this.documentKindRepo.findOne({
+      where: { code: normalizedCode },
+    });
+    if (existing) {
+      throw new ConflictException('Document kind code already exists');
+    }
+
+    const created = this.documentKindRepo.create({
+      code: normalizedCode,
+      name: dto.name.trim(),
+      description: dto.description?.trim() ?? null,
+      isActive: dto.isActive ?? true,
+      createdBy: actorUser,
+      updatedBy: null,
+    });
+    return this.documentKindRepo.save(created);
+  }
+
+  async listDocumentKinds(query: GetDocumentKindsQueryDto): Promise<EdmDocumentKind[]> {
+    const qb = this.documentKindRepo
+      .createQueryBuilder('kind')
+      .leftJoinAndSelect('kind.createdBy', 'createdBy')
+      .leftJoinAndSelect('kind.updatedBy', 'updatedBy')
+      .orderBy('kind.name', 'ASC');
+
+    if (query.onlyActive ?? true) {
+      qb.andWhere('kind.isActive = true');
+    }
+
+    if (query.q) {
+      const search = `%${query.q.toLowerCase()}%`;
+      qb.andWhere(
+        new Brackets((searchQb) => {
+          searchQb
+            .where('LOWER(kind.name) LIKE :search', { search })
+            .orWhere('LOWER(kind.code) LIKE :search', { search });
+        }),
+      );
+    }
+
+    return qb.getMany();
+  }
+
+  async findDocumentKind(kindId: number): Promise<EdmDocumentKind> {
+    const kind = await this.documentKindRepo.findOne({
+      where: { id: kindId },
+      relations: {
+        createdBy: true,
+        updatedBy: true,
+      },
+    });
+    if (!kind) {
+      throw new NotFoundException('Document kind not found');
+    }
+    return kind;
+  }
+
+  async updateDocumentKind(
+    kindId: number,
+    dto: UpdateDocumentKindDto,
+    actor: ActiveUserData,
+  ): Promise<EdmDocumentKind> {
+    const kind = await this.findDocumentKind(kindId);
+
+    if (dto.code !== undefined) {
+      const normalizedCode = dto.code.trim().toLowerCase();
+      const existing = await this.documentKindRepo.findOne({
+        where: { code: normalizedCode },
+      });
+      if (existing && existing.id !== kind.id) {
+        throw new ConflictException('Document kind code already exists');
+      }
+      kind.code = normalizedCode;
+    }
+    if (dto.name !== undefined) {
+      kind.name = dto.name.trim();
+    }
+    if (dto.description !== undefined) {
+      kind.description = dto.description?.trim() ?? null;
+    }
+    if (dto.isActive !== undefined) {
+      kind.isActive = dto.isActive;
+    }
+
+    kind.updatedBy = (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
+    return this.documentKindRepo.save(kind);
+  }
+
+  async deleteDocumentKind(kindId: number, actor: ActiveUserData): Promise<void> {
+    const kind = await this.findDocumentKind(kindId);
+    kind.isActive = false;
+    kind.updatedBy = (await this.userRepo.findOneBy({ id: actor.sub })) ?? null;
+    await this.documentKindRepo.save(kind);
   }
 
   async createDocumentTemplate(
@@ -389,9 +502,10 @@ export class EdmService {
       throw new BadRequestException('Document title is required');
     }
 
-    const [creator, department] = await Promise.all([
+    const [creator, department, documentKind] = await Promise.all([
       this.userRepo.findOneBy({ id: actor.sub }),
       this.departmentRepo.findOneBy({ id: dto.departmentId }),
+      this.resolveDocumentKindOrNull(dto.documentKindId),
     ]);
 
     if (!creator) {
@@ -419,6 +533,7 @@ export class EdmService {
         resolvedConfidentiality as EdmDocument['confidentiality'],
       department,
       creator,
+      documentKind,
       dueAt: resolvedDueAt ? new Date(resolvedDueAt) : null,
       externalNumber: null,
       currentRoute: null,
@@ -455,33 +570,80 @@ export class EdmService {
     const document = await this.getDocumentOrFail(id);
     this.assertDocumentScope(actor, document);
 
-    if (document.status !== 'draft') {
-      throw new ConflictException('Only draft documents are editable');
+    const canChancelleryEditRegistered =
+      actor.role === Role.Chancellery &&
+      ['incoming', 'outgoing'].includes(document.type) &&
+      document.status !== 'archived';
+
+    if (document.status !== 'draft' && !canChancelleryEditRegistered) {
+      throw new ConflictException(
+        'Only draft documents are editable (except chancellery for incoming/outgoing)',
+      );
     }
+
+    const updatedFields: string[] = [];
+    const statusBeforeUpdate = document.status;
 
     if (dto.type) {
       document.type = dto.type;
+      updatedFields.push('type');
     }
     if (dto.title) {
       document.title = dto.title;
+      updatedFields.push('title');
     }
     if (dto.subject !== undefined) {
       document.subject = dto.subject ?? null;
+      updatedFields.push('subject');
     }
     if (dto.summary !== undefined) {
       document.summary = dto.summary ?? null;
+      updatedFields.push('summary');
     }
     if (dto.resolutionText !== undefined) {
       document.resolutionText = dto.resolutionText ?? null;
+      updatedFields.push('resolutionText');
     }
     if (dto.confidentiality) {
       document.confidentiality = dto.confidentiality;
+      updatedFields.push('confidentiality');
     }
     if (dto.dueAt !== undefined) {
       document.dueAt = dto.dueAt ? new Date(dto.dueAt) : null;
+      updatedFields.push('dueAt');
+    }
+    if (dto.documentKindId !== undefined) {
+      document.documentKind = await this.resolveDocumentKindOrNull(dto.documentKindId);
+      updatedFields.push('documentKindId');
     }
 
-    return this.edmDocumentRepo.save(document);
+    const saved = await this.edmDocumentRepo.save(document);
+
+    if (updatedFields.length) {
+      const actorUser = await this.userRepo.findOneBy({ id: actor.sub });
+      if (actorUser) {
+        await this.recordTimelineEvent({
+          document: saved,
+          eventType: 'edited',
+          actorUser,
+          fromUser: actorUser,
+          toUser: null,
+          fromRole: actor.role,
+          toRole: null,
+          responsibleUser: null,
+          parentEvent: null,
+          threadId: `doc-${saved.id}-main`,
+          commentText: null,
+          meta: {
+            updatedFields,
+            statusBeforeUpdate,
+            statusAfterUpdate: saved.status,
+          },
+        });
+      }
+    }
+
+    return saved;
   }
 
   async createRouteTemplate(
@@ -2110,6 +2272,7 @@ export class EdmService {
       .createQueryBuilder('document')
       .leftJoinAndSelect('document.creator', 'creator')
       .leftJoinAndSelect('document.department', 'department')
+      .leftJoinAndSelect('document.documentKind', 'documentKind')
       .leftJoinAndSelect('document.currentRoute', 'currentRoute')
       .orderBy('document.createdAt', 'DESC');
 
@@ -2126,6 +2289,11 @@ export class EdmService {
     }
     if (criteria.creatorId) {
       qb.andWhere('creator.id = :creatorId', { creatorId: criteria.creatorId });
+    }
+    if (criteria.documentKindId) {
+      qb.andWhere('documentKind.id = :documentKindId', {
+        documentKindId: criteria.documentKindId,
+      });
     }
     if (criteria.externalNumber) {
       qb.andWhere('document.externalNumber = :externalNumber', {
@@ -2231,6 +2399,7 @@ export class EdmService {
       .createQueryBuilder('document')
       .leftJoinAndSelect('document.creator', 'creator')
       .leftJoinAndSelect('document.department', 'department')
+      .leftJoinAndSelect('document.documentKind', 'documentKind')
       .leftJoinAndSelect('document.currentRoute', 'currentRoute')
       .where('document.deletedAt IS NULL')
       .orderBy('document.updatedAt', 'DESC');
@@ -2253,6 +2422,58 @@ export class EdmService {
       qb.andWhere('document.status = :inRouteStatus', {
         inRouteStatus: 'in_route',
       });
+    }
+
+    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async listMailbox(
+    mailbox: 'incoming' | 'outgoing',
+    actor: ActiveUserData,
+    query: { page?: number; limit?: number; q?: string },
+  ) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
+    const offset = (page - 1) * limit;
+
+    const qb = this.edmDocumentRepo
+      .createQueryBuilder('document')
+      .leftJoinAndSelect('document.creator', 'creator')
+      .leftJoinAndSelect('document.department', 'department')
+      .leftJoinAndSelect('document.documentKind', 'documentKind')
+      .leftJoinAndSelect('document.currentRoute', 'currentRoute')
+      .where('document.deletedAt IS NULL')
+      .orderBy('document.updatedAt', 'DESC');
+
+    if (query.q) {
+      qb.andWhere('LOWER(document.title) LIKE :search', {
+        search: `%${query.q.toLowerCase()}%`,
+      });
+    }
+
+    qb.andWhere('document.type = :mailboxType', {
+      mailboxType: mailbox,
+    });
+
+    if (mailbox === 'incoming') {
+      this.applyDocumentListScope(qb, actor);
+    } else if (!this.isGlobalEdmRole(actor.role)) {
+      qb.andWhere(
+        new Brackets((scopeQb) => {
+          scopeQb.where('creator.id = :actorId', { actorId: actor.sub });
+          if (this.isDepartmentManagerRole(actor.role) && actor.departmentId) {
+            scopeQb.orWhere('department.id = :departmentId', {
+              departmentId: actor.departmentId,
+            });
+          }
+        }),
+      );
     }
 
     const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
@@ -3197,6 +3418,7 @@ export class EdmService {
       relations: {
         creator: { department: true },
         department: true,
+        documentKind: true,
         currentRoute: true,
       },
     });
@@ -3206,6 +3428,22 @@ export class EdmService {
     }
 
     return document;
+  }
+
+  private async resolveDocumentKindOrNull(
+    documentKindId: number | null | undefined,
+  ): Promise<EdmDocumentKind | null> {
+    if (documentKindId === undefined || documentKindId === null) {
+      return null;
+    }
+
+    const kind = await this.documentKindRepo.findOne({
+      where: { id: documentKindId },
+    });
+    if (!kind || !kind.isActive) {
+      throw new NotFoundException('Document kind not found');
+    }
+    return kind;
   }
 
   private assertDocumentScope(
@@ -3932,6 +4170,7 @@ export class EdmService {
       type: pick('type'),
       departmentId: pick('departmentId'),
       creatorId: pick('creatorId'),
+      documentKindId: pick('documentKindId'),
       externalNumber: pick('externalNumber'),
       q: pick('q'),
       fromDate: pick('fromDate'),

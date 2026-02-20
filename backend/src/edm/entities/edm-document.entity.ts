@@ -12,6 +12,7 @@ import { Department } from '../../department/entities/department.entity';
 import { User } from '../../users/entities/user.entity';
 import { EdmDocumentRoute } from './edm-document-route.entity';
 import { EdmStageAction } from './edm-stage-action.entity';
+import { EdmDocumentKind } from './edm-document-kind.entity';
 
 export type EdmDocumentType =
   | 'incoming'
@@ -67,6 +68,10 @@ export class EdmDocument {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'creator_id' })
   creator: User;
+
+  @ManyToOne(() => EdmDocumentKind, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'document_kind_id' })
+  documentKind: EdmDocumentKind | null;
 
   @ManyToOne(() => EdmDocumentRoute, { nullable: true })
   @JoinColumn({ name: 'current_route_id' })

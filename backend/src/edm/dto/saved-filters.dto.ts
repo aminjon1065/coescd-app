@@ -46,6 +46,11 @@ export class SavedDocumentsCriteriaDto {
   creatorId?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  documentKindId?: number;
+
+  @IsOptional()
   @IsString()
   externalNumber?: string;
 

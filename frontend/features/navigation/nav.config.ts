@@ -82,6 +82,14 @@ export const navItems: NavItem[] = [
         title: 'My Approvals',
         url: '/dashboard/documentation/approvals',
       },
+      {
+        title: 'Registration Journal',
+        url: '/dashboard/documentation/registry',
+      },
+      {
+        title: 'Document Kinds',
+        url: '/dashboard/documentation/types',
+      },
     ],
   },
   {

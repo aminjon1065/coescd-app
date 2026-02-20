@@ -11,6 +11,7 @@ import { User } from '../../users/entities/user.entity';
 
 export type EdmDocumentTimelineEventType =
   | 'created'
+  | 'edited'
   | 'forwarded'
   | 'responsible_assigned'
   | 'responsible_reassigned'

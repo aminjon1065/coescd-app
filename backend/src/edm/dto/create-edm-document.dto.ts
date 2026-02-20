@@ -59,4 +59,8 @@ export class CreateEdmDocumentDto {
 
   @IsOptional()
   templateValues?: Record<string, string>;
+
+  @IsOptional()
+  @IsInt()
+  documentKindId?: number | null;
 }

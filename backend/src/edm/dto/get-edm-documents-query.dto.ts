@@ -38,6 +38,11 @@ export class GetEdmDocumentsQueryDto extends PaginationQueryDto {
   creatorId?: number;
 
   @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  documentKindId?: number;
+
+  @IsOptional()
   @IsString()
   externalNumber?: string;
 

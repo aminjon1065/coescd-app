@@ -7,11 +7,12 @@ export default function SentDocumentsPage() {
   return (
     <ProtectedRouteGate
       policyKey="dashboard.documents"
-      deniedDescription="Журнал документов доступен пользователям с правом чтения документов."
+      deniedDescription="Documents section is available for users with documents read permission."
     >
       <DocumentTable
-        title="Канцелярский журнал: исходящие"
-        presetType="outgoing"
+        title="Outgoing Mailbox"
+        source="mailbox"
+        mailboxType="outgoing"
         defaultDocType="outgoing"
       />
     </ProtectedRouteGate>

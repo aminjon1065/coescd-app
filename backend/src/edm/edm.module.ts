@@ -21,6 +21,7 @@ import { EdmDocumentTemplate } from './entities/edm-document-template.entity';
 import { EdmDocumentTemplateField } from './entities/edm-document-template-field.entity';
 import { EdmDocumentTimelineEvent } from './entities/edm-document-timeline-event.entity';
 import { EdmDocumentReply } from './entities/edm-document-reply.entity';
+import { EdmDocumentKind } from './entities/edm-document-kind.entity';
 import { FileEntity } from '../files/entities/file.entity';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
 import { FileAccessAuditEntity } from '../files/entities/file-access-audit.entity';
@@ -46,6 +47,7 @@ import { ScopeService } from '../iam/authorization/scope.service';
       EdmDocumentTemplateField,
       EdmDocumentTimelineEvent,
       EdmDocumentReply,
+      EdmDocumentKind,
       User,
       Department,
       Task,

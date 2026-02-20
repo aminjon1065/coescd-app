@@ -21,6 +21,25 @@ export type EdmDocumentConfidentiality =
   | 'department_confidential'
   | 'restricted';
 
+export type EdmHistoryEventType =
+  | 'created'
+  | 'edited'
+  | 'forwarded'
+  | 'responsible_assigned'
+  | 'responsible_reassigned'
+  | 'reply_sent'
+  | 'route_action'
+  | 'override'
+  | 'archived';
+
+export type EdmAuditActionType =
+  | 'approved'
+  | 'rejected'
+  | 'returned_for_revision'
+  | 'commented'
+  | 'override_approved'
+  | 'override_rejected';
+
 export interface IEdmRouteStageAction {
   id: number;
   action: string;
@@ -63,6 +82,7 @@ export interface IEdmDocument {
   confidentiality: EdmDocumentConfidentiality;
   department: IDepartment;
   creator: IUser;
+  documentKind?: IEdmDocumentKind | null;
   dueAt: string | null;
   approvedAt: string | null;
   rejectedAt: string | null;
@@ -74,7 +94,7 @@ export interface IEdmDocument {
 
 export interface IEdmHistoryEvent {
   id: number;
-  eventType: string;
+  eventType: EdmHistoryEventType;
   commentText?: string | null;
   threadId?: string | null;
   createdAt: string;
@@ -86,7 +106,7 @@ export interface IEdmHistoryEvent {
 
 export interface IEdmAuditEvent {
   id: number;
-  action: string;
+  action: EdmAuditActionType;
   commentText?: string | null;
   reasonCode?: string | null;
   createdAt: string;
@@ -142,4 +162,89 @@ export interface IEdmFileAttachment {
   updatedAt: string;
   owner?: IUser | null;
   department?: IDepartment | null;
+}
+
+export interface IEdmDocumentKind {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: IUser | null;
+  updatedBy?: IUser | null;
+}
+
+export interface IEdmHistoryQuery {
+  eventTypes?: EdmHistoryEventType[];
+  actorUserId?: number;
+  fromUserId?: number;
+  toUserId?: number;
+  responsibleUserId?: number;
+  threadId?: string;
+  fromDate?: string;
+  toDate?: string;
+  q?: string;
+}
+
+export interface IEdmAuditQuery {
+  actions?: EdmAuditActionType[];
+  actorUserId?: number;
+  onBehalfOfUserId?: number;
+  stageId?: number;
+  reasonCode?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface IEdmQueueQuery {
+  page?: number;
+  limit?: number;
+  q?: string;
+}
+
+export interface IEdmDocumentKindCreateDto {
+  code: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface IEdmDocumentKindUpdateDto {
+  code?: string;
+  name?: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export interface IEdmDocumentKindsQuery {
+  q?: string;
+  onlyActive?: boolean;
+}
+
+export type EdmRegistrationJournalType = 'incoming' | 'outgoing';
+export type EdmRegistrationStatus = 'registered' | 'cancelled';
+
+export interface IEdmRegistrationJournalRecord {
+  id: number;
+  journalType: EdmRegistrationJournalType;
+  registrationNumber: string;
+  status: EdmRegistrationStatus;
+  registeredAt: string;
+  cancelledAt: string | null;
+  createdBy?: IUser | null;
+  updatedBy?: IUser | null;
+  document: IEdmDocument;
+}
+
+export interface IEdmRegistrationJournalQuery {
+  page?: number;
+  limit?: number;
+  journalType?: EdmRegistrationJournalType;
+  status?: EdmRegistrationStatus;
+  registrationNumber?: string;
+  departmentId?: number;
+  fromDate?: string;
+  toDate?: string;
 }

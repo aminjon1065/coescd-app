@@ -12,6 +12,7 @@ import { EdmStageActionType } from '../entities/edm-stage-action.entity';
 
 const timelineEventTypes: EdmDocumentTimelineEventType[] = [
   'created',
+  'edited',
   'forwarded',
   'responsible_assigned',
   'responsible_reassigned',

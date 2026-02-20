@@ -26,6 +26,7 @@ import { Disaster } from '../src/analytics/disasters/entities/disaster.entity';
 import { DisasterType } from '../src/analytics/disasterTypes/entities/disaster-type.entity';
 import { DisasterCategory } from '../src/analytics/disasterCategories/entities/category.entity';
 import { EdmDocument } from '../src/edm/entities/edm-document.entity';
+import { EdmDocumentKind } from '../src/edm/entities/edm-document-kind.entity';
 import { EdmDocumentRoute } from '../src/edm/entities/edm-document-route.entity';
 import { EdmRouteStage } from '../src/edm/entities/edm-route-stage.entity';
 import { EdmAlert } from '../src/edm/entities/edm-alert.entity';
@@ -96,6 +97,7 @@ describe('Reports My Dashboard (e2e)', () => {
               DisasterType,
               DisasterCategory,
               EdmDocument,
+              EdmDocumentKind,
               EdmDocumentRoute,
               EdmRouteStage,
               EdmStageAction,
