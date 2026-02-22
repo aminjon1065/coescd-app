@@ -226,7 +226,7 @@ export class FilesService {
       .createQueryBuilder('file')
       .leftJoinAndSelect('file.owner', 'owner')
       .leftJoinAndSelect('file.department', 'department')
-      .orderBy('file.createdAt', 'DESC');
+      .orderBy('file.createdAt', query.sortOrder === 'asc' ? 'ASC' : 'DESC');
 
     if (query.status) {
       qb.where('file.status = :status', { status: query.status });

@@ -60,7 +60,7 @@ export class TaskService {
       .leftJoinAndSelect('creator.department', 'creatorDepartment')
       .leftJoinAndSelect('task.receiver', 'receiver')
       .leftJoinAndSelect('receiver.department', 'receiverDepartment')
-      .orderBy('task.createdAt', 'DESC');
+      .orderBy('task.createdAt', query.sortOrder === 'asc' ? 'ASC' : 'DESC');
 
     if (query.status) {
       qb.andWhere('task.status = :status', { status: query.status });

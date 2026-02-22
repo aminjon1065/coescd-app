@@ -100,7 +100,7 @@ export class UsersService {
       .leftJoinAndSelect('user.department', 'department')
       .leftJoinAndSelect('department.parent', 'departmentParent')
       .leftJoinAndSelect('department.chief', 'departmentChief')
-      .orderBy('user.createdAt', 'DESC');
+      .orderBy('user.createdAt', query.sortOrder === 'asc' ? 'ASC' : 'DESC');
 
     if (actor.role === Role.Manager && actor.departmentId) {
       qb.andWhere('department.id = :departmentId', {

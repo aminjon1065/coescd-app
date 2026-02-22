@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class PaginationQueryDto {
   @IsOptional()
@@ -14,6 +14,10 @@ export class PaginationQueryDto {
   @Min(1)
   @Max(200)
   limit?: number;
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortOrder?: 'asc' | 'desc';
 }
 
 export type PaginatedResponse<T> = {

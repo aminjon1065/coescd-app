@@ -63,7 +63,7 @@ export class DisastersService {
       .leftJoinAndSelect('disaster.type', 'type')
       .leftJoinAndSelect('type.category', 'category')
       .leftJoinAndSelect('disaster.department', 'department')
-      .orderBy('disaster.createdAt', 'DESC');
+      .orderBy('disaster.createdAt', query.sortOrder === 'asc' ? 'ASC' : 'DESC');
 
     if (query.status) {
       qb.andWhere('disaster.status = :status', { status: query.status });

@@ -329,4 +329,56 @@ export class ReportsService {
 
     return result;
   }
+
+  async getIncidentsTrend(
+    fromDate: Date,
+    toDate: Date,
+  ): Promise<{ date: string; count: number }[]> {
+    return this.disasterRepo
+      .createQueryBuilder('disaster')
+      .select("TO_CHAR(disaster.createdAt, 'YYYY-MM-DD')", 'date')
+      .addSelect('COUNT(*)::int', 'count')
+      .where('disaster.createdAt >= :fromDate', { fromDate })
+      .andWhere('disaster.createdAt <= :toDate', { toDate })
+      .groupBy("TO_CHAR(disaster.createdAt, 'YYYY-MM-DD')")
+      .orderBy('date', 'ASC')
+      .getRawMany<{ date: string; count: number }>();
+  }
+
+  async getTasksByDepartment(): Promise<
+    {
+      departmentId: number;
+      name: string;
+      total: number;
+      new: number;
+      inProgress: number;
+      completed: number;
+    }[]
+  > {
+    return this.taskRepo
+      .createQueryBuilder('task')
+      .leftJoin('task.receiver', 'receiver')
+      .leftJoin('receiver.department', 'department')
+      .select('department.id', 'departmentId')
+      .addSelect('department.name', 'name')
+      .addSelect('COUNT(task.id)::int', 'total')
+      .addSelect(
+        `SUM(CASE WHEN task.status = 'new' THEN 1 ELSE 0 END)::int`,
+        'new',
+      )
+      .addSelect(
+        `SUM(CASE WHEN task.status = 'in_progress' THEN 1 ELSE 0 END)::int`,
+        'inProgress',
+      )
+      .addSelect(
+        `SUM(CASE WHEN task.status = 'completed' THEN 1 ELSE 0 END)::int`,
+        'completed',
+      )
+      .where('department.id IS NOT NULL')
+      .groupBy('department.id')
+      .addGroupBy('department.name')
+      .orderBy('total', 'DESC')
+      .limit(10)
+      .getRawMany();
+  }
 }

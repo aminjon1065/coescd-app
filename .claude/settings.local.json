@@ -16,7 +16,16 @@
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/files/dto/get-files-query.dto.ts << 'EOF'\nimport { IsIn, IsOptional, IsString } from 'class-validator';\nimport { PaginationQueryDto } from '../../common/http/pagination-query.dto';\n\nexport class GetFilesQueryDto extends PaginationQueryDto {\n  @IsOptional\\(\\)\n  @IsString\\(\\)\n  q?: string;\n\n  @IsOptional\\(\\)\n  @IsIn\\(['active', 'deleted']\\)\n  status?: 'active' | 'deleted';\n}\nEOF)",
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/department/dto/get-departments-query.dto.ts << 'EOF'\nimport { IsIn, IsOptional, IsString } from 'class-validator';\nimport { PaginationQueryDto } from '../../common/http/pagination-query.dto';\nimport { DepartmentEnum } from '../enums/department.enum';\n\nexport class GetDepartmentsQueryDto extends PaginationQueryDto {\n  @IsOptional\\(\\)\n  @IsIn\\(Object.values\\(DepartmentEnum\\)\\)\n  type?: DepartmentEnum;\n\n  @IsOptional\\(\\)\n  @IsString\\(\\)\n  q?: string;\n}\nEOF)",
       "Bash(npx tsc:*)",
-      "Bash(/Users/aminjon/Desktop/coescd-app/frontend/interfaces/IFile.ts << 'EOF'\nimport { IUser } from './IUser';\nimport { IDepartment } from './IDepartment';\n\nexport type FileStatus = 'active' | 'quarantined' | 'deleted';\n\nexport interface IFile {\n  id: number;\n  originalName: string;\n  storageKey: string;\n  bucket: string;\n  mimeType: string;\n  sizeBytes: string;\n  checksumSha256: string;\n  owner: IUser;\n  department: IDepartment | null;\n  status: FileStatus;\n  deletedAt: string | null;\n  createdAt: string;\n  updatedAt: string;\n}\nEOF)"
+      "Bash(/Users/aminjon/Desktop/coescd-app/frontend/interfaces/IFile.ts << 'EOF'\nimport { IUser } from './IUser';\nimport { IDepartment } from './IDepartment';\n\nexport type FileStatus = 'active' | 'quarantined' | 'deleted';\n\nexport interface IFile {\n  id: number;\n  originalName: string;\n  storageKey: string;\n  bucket: string;\n  mimeType: string;\n  sizeBytes: string;\n  checksumSha256: string;\n  owner: IUser;\n  department: IDepartment | null;\n  status: FileStatus;\n  deletedAt: string | null;\n  createdAt: string;\n  updatedAt: string;\n}\nEOF)",
+      "Bash(grep:*)",
+      "Bash(xargs:*)",
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/entities/gis-layer.entity.ts:*)",
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/entities/gis-feature.entity.ts:*)",
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/create-gis-layer.dto.ts:*)",
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/update-gis-layer.dto.ts:*)",
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/create-gis-feature.dto.ts:*)",
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/update-gis-feature.dto.ts:*)",
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/get-gis-features-query.dto.ts:*)"
     ]
   }
 }
