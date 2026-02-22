@@ -3,6 +3,7 @@ import type { AppZone } from '@/lib/zones';
 export type ZoneNavRoute = {
   url: string;
   requiredAnyPermissions?: string[];
+  requiredAllPermissions?: string[];
 };
 
 export type ZoneNavigationGroup = {

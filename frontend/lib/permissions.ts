@@ -4,6 +4,7 @@ export const Permission = {
   ACCESS_CONTROL: 'access_control',
   ACCESS_CONTROL_MANAGE: 'access_control.manage',
   CHAT_READ: 'chat.read',
+  CALLS_READ: 'calls.read',
   USERS_READ: 'users.read',
   USERS_CREATE: 'users.create',
   USERS_UPDATE: 'users.update',

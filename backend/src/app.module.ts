@@ -13,6 +13,8 @@ import { FilesModule } from './files/files.module';
 import { OpsModule } from './ops/ops.module';
 import { EdmModule } from './edm/edm.module';
 import { GisModule } from './gis/gis.module';
+import { ChatModule } from './chat/chat.module';
+import { CallsModule } from './calls/calls.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
 
@@ -50,6 +52,8 @@ import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
     OpsModule,
     EdmModule,
     GisModule,
+    ChatModule,
+    CallsModule,
   ],
   controllers: [AppController],
   providers: [AppService, EdmAlertsScheduler],

@@ -67,6 +67,17 @@ export class UsersController {
     });
   }
 
+  /**
+   * Lightweight directory for Chat/Calls — available to any user with chat.read.
+   * Returns minimal public info (id, name, position, avatar, department).
+   * Must be declared before :id route to avoid shadowing.
+   */
+  @Get('directory')
+  @Permissions(Permission.CHAT_READ)
+  getDirectory(@ActiveUser() user: ActiveUserData) {
+    return this.usersService.getDirectory(user.sub);
+  }
+
   @Get()
   @Permissions(Permission.USERS_READ)
   @Policies(new UserScopePolicy())

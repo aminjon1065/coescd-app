@@ -6,6 +6,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { PageBreadcrumbs } from '@/components/page-breadcrumbs';
+import { CallsProvider } from '@/context/calls-context';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
 
@@ -22,7 +23,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {children}
+          <CallsProvider>
+            {children}
+          </CallsProvider>
         </div>
         {/*<div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />*/}
       </SidebarInset>

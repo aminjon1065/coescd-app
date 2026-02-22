@@ -17,10 +17,11 @@ import { navItems, type NavItem } from '@/features/navigation/nav.config';
 import { adminZoneNavigation } from '@/features/zones/admin/navigation';
 import { analyticsZoneNavigation } from '@/features/zones/analytics/navigation';
 import { operationsZoneNavigation } from '@/features/zones/operations/navigation';
+import { communicationZoneNavigation } from '@/features/zones/communication/navigation';
 import { hasAnyPermission, hasPermission, Permission, setPermissionSubject } from '@/lib/permissions';
 import { APP_ZONE_LABELS, resolveVisibleZones } from '@/lib/zones';
 
-const ZONE_NAV_GROUPS = [operationsZoneNavigation, analyticsZoneNavigation, adminZoneNavigation];
+const ZONE_NAV_GROUPS = [operationsZoneNavigation, analyticsZoneNavigation, adminZoneNavigation, communicationZoneNavigation];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();

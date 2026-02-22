@@ -35,6 +35,10 @@ export enum Permission {
   FILES_READ = 'files.read',
   FILES_WRITE = 'files.write',
   FILES_DELETE = 'files.delete',
+  CHAT_READ = 'chat.read',
+  CHAT_WRITE = 'chat.write',
+  CALLS_READ = 'calls.read',
+  CALLS_WRITE = 'calls.write',
 }
 
 export type PermissionType = `${Permission}`;

@@ -45,7 +45,7 @@ export function resolveVisibleZones(user: ZoneUser | null | undefined): AppZone[
     zones.add(AppZone.ANALYTICS);
   }
 
-  if (hasAnyPermission(user, [Permission.CHAT_READ])) {
+  if (hasAnyPermission(user, [Permission.CHAT_READ, Permission.CALLS_READ])) {
     zones.add(AppZone.COMMUNICATION);
   }
 

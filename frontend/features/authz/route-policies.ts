@@ -45,6 +45,15 @@ export const ROUTE_POLICIES = {
   'dashboard.gis': {
     anyPermissions: ['gis.read', 'gis.write', 'analytics.write'],
   },
+  'dashboard.chat': {
+    anyPermissions: ['chat.read'],
+  },
+  'dashboard.calls': {
+    anyPermissions: ['calls.read'],
+  },
+  'dashboard.contacts': {
+    anyPermissions: ['chat.read', 'calls.read'],
+  },
 } as const satisfies Record<string, RoutePolicy>;
 
 export type RoutePolicyKey = keyof typeof ROUTE_POLICIES;

@@ -35,6 +35,10 @@ export const PERMISSIONS = [
   'files.read',
   'files.write',
   'files.delete',
+  'chat.read',
+  'chat.write',
+  'calls.read',
+  'calls.write',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

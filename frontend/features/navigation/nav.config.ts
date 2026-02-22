@@ -2,10 +2,13 @@ import {
   BookOpen,
   Building2Icon,
   ClipboardListIcon,
+  ContactRound,
   FileChartColumnIcon,
   FolderOpenIcon,
   ListTodoIcon,
   MapPinnedIcon,
+  MessageCircleIcon,
+  PhoneIcon,
   PieChart,
   ShieldCheckIcon,
   UsersRoundIcon,
@@ -30,6 +33,9 @@ export type NavItem = {
 };
 
 const gisPolicy = getRoutePolicy('dashboard.gis');
+const chatPolicy = getRoutePolicy('dashboard.chat');
+const callsPolicy = getRoutePolicy('dashboard.calls');
+const contactsPolicy = getRoutePolicy('dashboard.contacts');
 const usersPolicy = getRoutePolicy('dashboard.users');
 const accessPolicy = getRoutePolicy('dashboard.access');
 const departmentsPolicy = getRoutePolicy('dashboard.departments');
@@ -105,6 +111,27 @@ export const navItems: NavItem[] = [
     icon: MapPinnedIcon,
     policyKey: 'dashboard.gis',
     requiredAnyPermissions: gisPolicy.anyPermissions,
+  },
+  {
+    title: 'Контакты',
+    url: '/dashboard/contacts',
+    icon: ContactRound,
+    policyKey: 'dashboard.contacts',
+    requiredAnyPermissions: contactsPolicy.anyPermissions,
+  },
+  {
+    title: 'Чат',
+    url: '/dashboard/chat',
+    icon: MessageCircleIcon,
+    policyKey: 'dashboard.chat',
+    requiredAnyPermissions: chatPolicy.anyPermissions,
+  },
+  {
+    title: 'Звонки',
+    url: '/dashboard/calls',
+    icon: PhoneIcon,
+    policyKey: 'dashboard.calls',
+    requiredAnyPermissions: callsPolicy.anyPermissions,
   },
   {
     title: 'Staff',

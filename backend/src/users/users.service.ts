@@ -149,6 +149,50 @@ export class UsersService {
     };
   }
 
+  /**
+   * Lightweight user directory used by Chat / Calls features.
+   * Returns all active users except the caller — minimal fields only.
+   * Accessible to any user with `chat.read` or `calls.read` permission.
+   */
+  async getDirectory(excludeUserId: number): Promise<
+    Array<{
+      id: number;
+      name: string;
+      email: string;
+      position: string | null;
+      avatar: string | null;
+      department: { id: number; name: string } | null;
+    }>
+  > {
+    const users = await this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.department', 'department')
+      .where('user.isActive = :isActive', { isActive: true })
+      .andWhere('user.id != :excludeId', { excludeId: excludeUserId })
+      .orderBy('user.name', 'ASC')
+      .select([
+        'user.id',
+        'user.name',
+        'user.email',
+        'user.position',
+        'user.avatar',
+        'department.id',
+        'department.name',
+      ])
+      .getMany();
+
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      position: u.position ?? null,
+      avatar: u.avatar ?? null,
+      department: u.department
+        ? { id: u.department.id, name: u.department.name }
+        : null,
+    }));
+  }
+
   async findOne(id: number, actor: ActiveUserData) {
     const user = await this.userRepository.findOne({
       where: { id },
