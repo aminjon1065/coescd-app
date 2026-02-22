@@ -25,6 +25,7 @@ import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { SafeUserDto } from './dto/safe-user.dto';
 import { RolePermissionsService } from '../authorization/role-permissions.service';
+import { PermissionType } from '../authorization/permission.type';
 
 @Injectable()
 export class AuthenticationService {
@@ -86,12 +87,7 @@ export class AuthenticationService {
   }
 
   async generateTokens(user: User) {
-    const effectivePermissions =
-      this.rolePermissionsService.resolveUserPermissions(
-        user.role,
-        user.permissions,
-        user.businessRole,
-      );
+    const effectivePermissions = this.buildEffectivePermissions(user);
     const refreshTokenId = randomUUID();
     const [accessToken, refreshToken] = await Promise.all([
       this.signToken<Partial<ActiveUserData>>(
@@ -116,7 +112,7 @@ export class AuthenticationService {
     return {
       accessToken,
       refreshToken,
-      user: this.toSafeUser(user),
+      user: this.toSafeUser(user, effectivePermissions),
     };
   }
 
@@ -189,7 +185,11 @@ export class AuthenticationService {
         orgUnit: true,
       },
     });
-    return this.toSafeUser(user);
+    return this.toSafeUser(user, this.buildEffectivePermissions(user));
+  }
+
+  async getMe(userId: number) {
+    return this.getUserById(userId);
   }
 
   async changePassword(
@@ -220,14 +220,21 @@ export class AuthenticationService {
     await this.refreshTokenIdsStorage.invalidate(userId);
   }
 
-  private toSafeUser(user: User): SafeUserDto {
+  private toSafeUser(
+    user: User,
+    effectivePermissions: PermissionType[] = this.buildEffectivePermissions(user),
+  ): SafeUserDto {
     const safeUser = plainToInstance(SafeUserDto, user);
-    safeUser.permissions = this.rolePermissionsService.resolveUserPermissions(
+    safeUser.permissions = effectivePermissions;
+    return safeUser;
+  }
+
+  private buildEffectivePermissions(user: User): PermissionType[] {
+    return this.rolePermissionsService.resolveUserPermissions(
       user.role,
       user.permissions,
       user.businessRole,
     );
-    return safeUser;
   }
 
   private async signToken<T extends object>(

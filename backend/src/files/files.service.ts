@@ -20,6 +20,8 @@ import {
   CreatePresignedUploadDto,
 } from './dto/create-presigned-upload.dto';
 import { getFilesRuntimeConfig } from './files.config';
+import { GetFilesQueryDto } from './dto/get-files-query.dto';
+import { PaginatedResponse } from '../common/http/pagination-query.dto';
 
 @Injectable()
 export class FilesService {
@@ -212,18 +214,38 @@ export class FilesService {
     return created;
   }
 
-  async findAll(actor: ActiveUserData) {
+  async findAll(
+    actor: ActiveUserData,
+    query: GetFilesQueryDto = {},
+  ): Promise<PaginatedResponse<FileEntity>> {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
+    const offset = (page - 1) * limit;
+
     const qb = this.fileRepository
       .createQueryBuilder('file')
       .leftJoinAndSelect('file.owner', 'owner')
       .leftJoinAndSelect('file.department', 'department')
-      .where('file.status != :deletedStatus', { deletedStatus: 'deleted' })
       .orderBy('file.createdAt', 'DESC');
+
+    if (query.status) {
+      qb.where('file.status = :status', { status: query.status });
+    } else {
+      qb.where('file.status != :deletedStatus', { deletedStatus: 'deleted' });
+    }
+
+    if (query.q) {
+      const search = `%${query.q.toLowerCase()}%`;
+      qb.andWhere('LOWER(file.originalName) LIKE :q', { q: search });
+    }
+
     this.scopeService.applyFileScope(qb, actor, {
       ownerAlias: 'owner',
       departmentAlias: 'department',
     });
-    return qb.getMany();
+
+    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return { items, total, page, limit };
   }
 
   async findOne(id: number, actor: ActiveUserData) {

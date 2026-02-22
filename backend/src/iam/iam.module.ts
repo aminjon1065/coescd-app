@@ -44,6 +44,7 @@ import { PermissionProfile } from './authorization/entities/permission-profile.e
 import { BusinessRolePermissionProfile } from './authorization/entities/business-role-permission-profile.entity';
 import { DelegationContextService } from './authentication/delegation-context.service';
 import { DelegationValidationMiddleware } from './authentication/middleware/delegation-validation.middleware';
+import { EnterpriseIamSeed } from './seeds/enterprise.seed';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { DelegationValidationMiddleware } from './authentication/middleware/dele
     DocumentScopePolicyHandler,
     TaskScopePolicyHandler,
     IamSeedService,
+    EnterpriseIamSeed,
     ScopeResolverService,
     ScopeService,
     AuthRateLimitService,

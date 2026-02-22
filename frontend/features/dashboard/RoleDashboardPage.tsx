@@ -56,7 +56,7 @@ export function RoleDashboardPage({ forcedRole }: RoleDashboardPageProps) {
     }
 
     if (user.role !== forcedRole) {
-      router.replace(ROLE_DASHBOARD_PATH[user.role]);
+      router.replace(ROLE_DASHBOARD_PATH[user.role] ?? '/dashboard');
     }
   }, [forcedRole, loading, router, user]);
 
@@ -65,7 +65,7 @@ export function RoleDashboardPage({ forcedRole }: RoleDashboardPageProps) {
       return;
     }
 
-    router.replace(ROLE_DASHBOARD_PATH[user.role]);
+    router.replace(ROLE_DASHBOARD_PATH[user.role] ?? '/dashboard');
   }, [forcedRole, loading, pathname, router, user]);
 
   const role = useMemo<Role | null>(() => {

@@ -4,6 +4,7 @@ export enum Role {
   Deputy = 'deputy',
   DepartmentHead = 'department_head',
   DivisionHead = 'division_head',
+  Analyst = 'analyst',
   Chancellery = 'chancellery',
   Employee = 'employee',
   Regular = 'regular',

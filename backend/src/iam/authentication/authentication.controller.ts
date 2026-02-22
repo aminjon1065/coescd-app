@@ -288,6 +288,6 @@ export class AuthenticationController {
 
   @Get('me')
   async me(@ActiveUser('sub') userId: number) {
-    return this.authService.getUserById(userId);
+    return this.authService.getMe(userId);
   }
 }

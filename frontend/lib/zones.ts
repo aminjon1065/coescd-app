@@ -11,7 +11,7 @@ export interface ZoneUser {
   permissions?: string[] | null;
 }
 
-export function resolveZones(user: ZoneUser | null | undefined): AppZone[] {
+export function resolveVisibleZones(user: ZoneUser | null | undefined): AppZone[] {
   const zones = new Set<AppZone>();
 
   if (
@@ -24,7 +24,14 @@ export function resolveZones(user: ZoneUser | null | undefined): AppZone[] {
     zones.add(AppZone.OPERATIONS);
   }
 
-  if (hasAnyPermission(user, [Permission.USERS_READ, Permission.DEPARTMENTS_READ, Permission.ACCESS_CONTROL])) {
+  if (
+    hasAnyPermission(user, [
+      Permission.USERS_READ,
+      Permission.DEPARTMENTS_READ,
+      Permission.DOCUMENTS_AUDIT_READ,
+      Permission.ACCESS_CONTROL_MANAGE,
+    ])
+  ) {
     zones.add(AppZone.ADMIN);
   }
 
@@ -43,6 +50,10 @@ export function resolveZones(user: ZoneUser | null | undefined): AppZone[] {
   }
 
   return [AppZone.OPERATIONS, AppZone.ANALYTICS, AppZone.ADMIN, AppZone.COMMUNICATION].filter((zone) => zones.has(zone));
+}
+
+export function resolveZones(user: ZoneUser | null | undefined): AppZone[] {
+  return resolveVisibleZones(user);
 }
 
 export const APP_ZONE_LABELS: Record<AppZone, string> = {

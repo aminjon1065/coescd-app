@@ -4,13 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, IsNull, Repository } from 'typeorm';
 import { Department } from './entities/department.entity';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { User } from '../users/entities/user.entity';
 import { DepartmentEnum } from './enums/department.enum';
-import { IsNull } from 'typeorm';
+import { GetDepartmentsQueryDto } from './dto/get-departments-query.dto';
+import { PaginatedResponse } from '../common/http/pagination-query.dto';
 
 @Injectable()
 export class DepartmentService {
@@ -46,12 +47,31 @@ export class DepartmentService {
     return await this.departmentRepository.save(department);
   }
 
-  async findAll(type?: DepartmentEnum) {
-    const where = type ? { type } : {};
-    return this.departmentRepository.find({
-      where,
-      relations: ['parent', 'chief', 'children'],
-    });
+  async findAll(
+    query: GetDepartmentsQueryDto = {},
+  ): Promise<PaginatedResponse<Department>> {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(200, Math.max(1, Number(query.limit ?? 50)));
+    const offset = (page - 1) * limit;
+
+    const qb = this.departmentRepository
+      .createQueryBuilder('department')
+      .leftJoinAndSelect('department.parent', 'parent')
+      .leftJoinAndSelect('department.chief', 'chief')
+      .leftJoinAndSelect('department.children', 'children')
+      .orderBy('department.name', 'ASC');
+
+    if (query.type) {
+      qb.andWhere('department.type = :type', { type: query.type });
+    }
+
+    if (query.q) {
+      const search = `%${query.q.toLowerCase()}%`;
+      qb.andWhere('LOWER(department.name) LIKE :q', { q: search });
+    }
+
+    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return { items, total, page, limit };
   }
 
   async findOne(id: number) {

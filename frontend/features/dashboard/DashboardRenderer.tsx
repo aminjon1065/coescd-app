@@ -115,7 +115,7 @@ function buildWidgetModel(dashboard: DashboardResponse, widgetId: DashboardWidge
 }
 
 export function DashboardRenderer({ dashboard, role, permissions }: DashboardRendererProps) {
-  const preset = dashboardByRole[role];
+  const preset = dashboardByRole[role] ?? [];
   const widgets = preset
     .filter((widget) =>
       can(

@@ -6,12 +6,14 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { DepartmentService } from './department.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../iam/authorization/permission.type';
+import { GetDepartmentsQueryDto } from './dto/get-departments-query.dto';
 
 @Controller('department')
 export class DepartmentController {
@@ -25,8 +27,8 @@ export class DepartmentController {
 
   @Permissions(Permission.DEPARTMENTS_READ)
   @Get()
-  findAll() {
-    return this.departmentService.findAll();
+  findAll(@Query() query: GetDepartmentsQueryDto) {
+    return this.departmentService.findAll(query);
   }
 
   @Permissions(Permission.DEPARTMENTS_READ)

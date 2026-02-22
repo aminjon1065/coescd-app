@@ -154,6 +154,15 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, PermissionType[]> = {
     Permission.GIS_READ,
     Permission.FILES_READ,
   ],
+  [Role.Analyst]: [
+    Permission.ANALYTICS_READ,
+    Permission.REPORTS_READ,
+    Permission.REPORTS_GENERATE,
+    Permission.DOCUMENTS_READ,
+    Permission.DOCUMENTS_AUDIT_READ,
+    Permission.GIS_READ,
+    Permission.FILES_READ,
+  ],
   [Role.Manager]: [
     Permission.USERS_READ,
     Permission.DEPARTMENTS_READ,

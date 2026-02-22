@@ -2,6 +2,7 @@ import type { Permission as AuthzPermission } from '@/features/authz/permissions
 
 export const Permission = {
   ACCESS_CONTROL: 'access_control',
+  ACCESS_CONTROL_MANAGE: 'access_control.manage',
   CHAT_READ: 'chat.read',
   USERS_READ: 'users.read',
   USERS_CREATE: 'users.create',
@@ -48,8 +49,17 @@ type PermissionSubject = {
   permissions?: string[] | null;
 } | null | undefined;
 
-export function hasPermission(subject: PermissionSubject, permission: string): boolean {
-  return Boolean(subject?.permissions?.includes(permission));
+let activePermissionSubject: PermissionSubject = null;
+
+export function setPermissionSubject(subject: PermissionSubject): void {
+  activePermissionSubject = subject ?? null;
+}
+
+export function hasPermission(permission: string): boolean {
+  if (!activePermissionSubject?.permissions) {
+    return false;
+  }
+  return activePermissionSubject.permissions.includes(permission);
 }
 
 export function hasAnyPermission(subject: PermissionSubject, permissions: readonly string[]): boolean {

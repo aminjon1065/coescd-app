@@ -17,15 +17,21 @@ import { navItems, type NavItem } from '@/features/navigation/nav.config';
 import { adminZoneNavigation } from '@/features/zones/admin/navigation';
 import { analyticsZoneNavigation } from '@/features/zones/analytics/navigation';
 import { operationsZoneNavigation } from '@/features/zones/operations/navigation';
-import { hasAllPermissions, hasAnyPermission, Permission } from '@/lib/permissions';
-import { APP_ZONE_LABELS, resolveZones } from '@/lib/zones';
+import { hasAnyPermission, hasPermission, Permission, setPermissionSubject } from '@/lib/permissions';
+import { APP_ZONE_LABELS, resolveVisibleZones } from '@/lib/zones';
 
 const ZONE_NAV_GROUPS = [operationsZoneNavigation, analyticsZoneNavigation, adminZoneNavigation];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
+  if (!user || !user.permissions) {
+    return null;
+  }
+
+  setPermissionSubject(user);
+
   const routeByUrl = useMemo(() => new Map(navItems.map((item) => [item.url, item])), []);
-  const zones = useMemo(() => resolveZones(user), [user]);
+  const zones = useMemo(() => resolveVisibleZones(user), [user]);
 
   const adaptRoute = React.useCallback((route: NavItem): NavItem => {
     const isPrivilegedEdmUser = hasAnyPermission(user, [
@@ -62,17 +68,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           const items = group.routes
             .filter((routeDef) => {
               if (routeDef.requiredAnyPermissions?.length) {
-                return hasAnyPermission(user, routeDef.requiredAnyPermissions);
+                return routeDef.requiredAnyPermissions.some((permission) => hasPermission(permission));
+              }
+              if (routeDef.requiredAllPermissions?.length) {
+                return routeDef.requiredAllPermissions.every((permission) => hasPermission(permission));
               }
               return true;
             })
             .map((routeDef) => routeByUrl.get(routeDef.url))
             .filter((route): route is NavItem => Boolean(route))
             .filter((route) => {
-              if (route.requiredAnyPermissions?.length && !hasAnyPermission(user, route.requiredAnyPermissions)) {
+              if (route.requiredAnyPermissions?.length && !route.requiredAnyPermissions.some((permission) => hasPermission(permission))) {
                 return false;
               }
-              if (route.requiredAllPermissions?.length && !hasAllPermissions(user, route.requiredAllPermissions)) {
+              if (route.requiredAllPermissions?.length && !route.requiredAllPermissions.every((permission) => hasPermission(permission))) {
                 return false;
               }
               return true;

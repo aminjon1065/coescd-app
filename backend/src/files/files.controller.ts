@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
   Res,
   StreamableFile,
@@ -27,6 +28,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
 import { getFilesRuntimeConfig } from './files.config';
 import { getRequestMeta } from '../common/http/request-meta.util';
+import { GetFilesQueryDto } from './dto/get-files-query.dto';
 
 function createUploadInterceptorOptions() {
   const config = getFilesRuntimeConfig();
@@ -97,8 +99,11 @@ export class FilesController {
 
   @Get()
   @Permissions(Permission.FILES_READ)
-  findAll(@ActiveUser() actor: ActiveUserData) {
-    return this.filesService.findAll(actor);
+  findAll(
+    @ActiveUser() actor: ActiveUserData,
+    @Query() query: GetFilesQueryDto,
+  ) {
+    return this.filesService.findAll(actor, query);
   }
 
   @Get(':id')

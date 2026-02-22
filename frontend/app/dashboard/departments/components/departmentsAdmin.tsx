@@ -73,15 +73,16 @@ export default function DepartmentsAdmin() {
 
   const loadData = async () => {
     const [departmentsRes, usersRes] = await Promise.all([
-      api.get<IDepartment[]>('/department'),
+      api.get<ListResponse<IDepartment> | IDepartment[]>('/department'),
       api.get<ListResponse<IUser> | IUser[]>('/users'),
     ]);
 
-    setDepartments(departmentsRes.data);
+    const departmentsPayload = extractListItems(departmentsRes.data);
+    setDepartments(departmentsPayload);
     setUsers(extractListItems(usersRes.data));
     setRowState((prev) => {
       const next = { ...prev };
-      for (const department of departmentsRes.data) {
+      for (const department of departmentsPayload) {
         next[department.id] = next[department.id] ?? {
           name: department.name,
           type: department.type,
