@@ -1,7 +1,5 @@
-import { Role } from '@/enums/RoleEnum';
-import { RoleDashboardPage } from '@/features/dashboard/RoleDashboardPage';
+import { AdminDashboard } from '@/features/zones/admin/dashboard/AdminDashboard';
 
 export default function AdminDashboardPage() {
-  return <RoleDashboardPage forcedRole={Role.Admin} />;
+  return <AdminDashboard />;
 }
-

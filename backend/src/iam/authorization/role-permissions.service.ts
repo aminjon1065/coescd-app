@@ -5,6 +5,8 @@ import { Role } from '../../users/enums/role.enum';
 import { Permission, PermissionType } from './permission.type';
 import { RolePermissionProfile } from './entities/role-permission-profile.entity';
 import { DEFAULT_ROLE_PERMISSIONS } from './role-permissions.map';
+import { PermissionProfile } from './entities/permission-profile.entity';
+import { BusinessRolePermissionProfile } from './entities/business-role-permission-profile.entity';
 
 type RolePermissionsMatrix = Record<Role, PermissionType[]>;
 const ALL_ROLES = Object.values(Role) as Role[];
@@ -17,14 +19,20 @@ export class RolePermissionsService implements OnModuleInit {
       [...(DEFAULT_ROLE_PERMISSIONS[role] ?? [])],
     ]),
   ) as RolePermissionsMatrix;
+  private businessRoleMatrix = new Map<string, PermissionType[]>();
 
   constructor(
     @InjectRepository(RolePermissionProfile)
     private readonly rolePermissionsRepository: Repository<RolePermissionProfile>,
+    @InjectRepository(PermissionProfile)
+    private readonly permissionProfilesRepository: Repository<PermissionProfile>,
+    @InjectRepository(BusinessRolePermissionProfile)
+    private readonly businessRolePermissionProfilesRepository: Repository<BusinessRolePermissionProfile>,
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.hydrateFromDatabase();
+    await this.hydrateBusinessRoleProfiles();
   }
 
   getMatrix(): {
@@ -46,10 +54,22 @@ export class RolePermissionsService implements OnModuleInit {
   resolveUserPermissions(
     role: Role,
     customPermissions: PermissionType[] = [],
+    businessRole?: string | null,
   ): PermissionType[] {
     return [
-      ...new Set([...this.getRolePermissions(role), ...customPermissions]),
+      ...new Set([
+        ...this.getRolePermissions(role),
+        ...this.getBusinessRolePermissions(businessRole),
+        ...customPermissions,
+      ]),
     ];
+  }
+
+  getBusinessRolePermissions(businessRole?: string | null): PermissionType[] {
+    if (!businessRole) {
+      return [];
+    }
+    return [...(this.businessRoleMatrix.get(businessRole) ?? [])];
   }
 
   async updateMatrix(
@@ -120,6 +140,39 @@ export class RolePermissionsService implements OnModuleInit {
         ),
       ]),
     ) as RolePermissionsMatrix;
+  }
+
+  private async hydrateBusinessRoleProfiles(): Promise<void> {
+    try {
+      const mappings = await this.businessRolePermissionProfilesRepository.find({
+        relations: {
+          businessRole: true,
+          permissionProfile: true,
+        },
+        order: {
+          priority: 'ASC',
+          id: 'ASC',
+        },
+      });
+
+      const next = new Map<string, PermissionType[]>();
+      for (const mapping of mappings) {
+        const roleCode = mapping.businessRole?.code;
+        if (!roleCode) {
+          continue;
+        }
+
+        const merged = [
+          ...(next.get(roleCode) ?? []),
+          ...(mapping.permissionProfile?.permissions ?? []),
+        ];
+        next.set(roleCode, this.sanitizePermissions(merged));
+      }
+      this.businessRoleMatrix = next;
+    } catch {
+      // Migration-safe startup fallback before new tables exist.
+      this.businessRoleMatrix = new Map();
+    }
   }
 
   private sanitizePermissions(

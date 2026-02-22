@@ -6,6 +6,7 @@ import { Permission } from './permission.type';
 import { Document } from '../../document/entities/document.entity';
 import { FileEntity } from '../../files/entities/file.entity';
 import { Task } from '../../task/entities/task.entity';
+import { ScopeResolverService } from './scope-resolver.service';
 
 function makeActor(
   role: Role,
@@ -26,7 +27,9 @@ describe('ScopeService', () => {
   let service: ScopeService;
 
   beforeEach(() => {
-    service = new ScopeService();
+    service = new ScopeService({
+      canAccess: () => false,
+    } as unknown as ScopeResolverService);
   });
 
   it('allows manager for document-file link inside own department', () => {

@@ -12,10 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { extractListItems, ListResponse } from '@/lib/list-response';
-
-const ROLES: Role[] = [Role.Admin, Role.Manager, Role.Regular];
-
-type RolePermissionsMatrix = Record<Role, string[]>;
+import { RoleMatrix, type RolePermissionsMatrix } from '@/features/zones/admin/RoleMatrix';
 
 type AuthorizationMatrixResponse = {
   permissions: string[];
@@ -36,19 +33,8 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function permissionGroupKey(permission: string): string {
-  const [prefix] = permission.split('.');
-  return prefix ?? 'other';
-}
-
 function titleCase(input: string): string {
   return input.charAt(0).toUpperCase() + input.slice(1);
-}
-
-function roleLabel(role: Role): string {
-  if (role === Role.Admin) return 'Admin';
-  if (role === Role.Manager) return 'Manager';
-  return 'Regular';
 }
 
 export default function AccessControlAdmin() {
@@ -70,7 +56,8 @@ export default function AccessControlAdmin() {
   const groupedPermissions = useMemo(() => {
     const source = matrix?.permissions ?? [];
     return source.reduce<Record<string, string[]>>((acc, permission) => {
-      const key = permissionGroupKey(permission);
+      const [prefix] = permission.split('.');
+      const key = prefix ?? 'other';
       if (!acc[key]) acc[key] = [];
       acc[key].push(permission);
       return acc;
@@ -123,7 +110,7 @@ export default function AccessControlAdmin() {
     });
   };
 
-  const onToggleRolePermission = (role: Role, permission: string, checked: boolean) => {
+  const onToggleRolePermission = (role: string, permission: string, checked: boolean) => {
     setMatrix((prev) => {
       if (!prev) return prev;
       const roleSet = new Set(prev.rolePermissions[role] ?? []);
@@ -209,48 +196,12 @@ export default function AccessControlAdmin() {
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Role Permissions Matrix</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 text-sm font-medium">
-            <div>Permission</div>
-            {ROLES.map((role) => (
-              <div key={role}>{roleLabel(role)}</div>
-            ))}
-          </div>
-
-          {matrix.permissions.map((permission) => (
-            <div
-              key={permission}
-              className="grid grid-cols-[2fr_1fr_1fr_1fr] items-center gap-2 rounded border p-2 text-sm"
-            >
-              <div className="font-mono">{permission}</div>
-              {ROLES.map((role) => {
-                const checked = matrix.rolePermissions[role]?.includes(permission) ?? false;
-                return (
-                  <label key={`${permission}-${role}`} className="inline-flex items-center gap-2">
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(value) =>
-                        onToggleRolePermission(role, permission, Boolean(value))
-                      }
-                    />
-                    <Badge variant={checked ? 'default' : 'secondary'}>
-                      {checked ? 'Yes' : 'No'}
-                    </Badge>
-                  </label>
-                );
-              })}
-            </div>
-          ))}
-
-          <Button onClick={onSaveMatrix} disabled={isSavingMatrix}>
-            {isSavingMatrix ? 'Saving...' : 'Save Role Matrix'}
-          </Button>
-        </CardContent>
-      </Card>
+      <RoleMatrix
+        matrix={matrix}
+        isSaving={isSavingMatrix}
+        onToggleRolePermission={onToggleRolePermission}
+        onSave={onSaveMatrix}
+      />
 
       <Card>
         <CardHeader>

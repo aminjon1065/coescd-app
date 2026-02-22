@@ -10,9 +10,17 @@ describe('AccessTokenGuard', () => {
     const jwtService = {} as JwtService;
     const userRepository = {} as never;
     const jwtConfiguration = {} as never;
+    const delegationContextService = {
+      applyDelegationToRequest: jest.fn(),
+    } as never;
 
     expect(
-      new AccessTokenGuard(jwtService, userRepository, jwtConfiguration),
+      new AccessTokenGuard(
+        jwtService,
+        userRepository,
+        jwtConfiguration,
+        delegationContextService,
+      ),
     ).toBeDefined();
   });
 });

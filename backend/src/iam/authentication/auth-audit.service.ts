@@ -7,6 +7,8 @@ interface AuthAuditEntry {
   action: string;
   success: boolean;
   userId?: number | null;
+  actorUserId?: number | null;
+  onBehalfOfUserId?: number | null;
   email?: string | null;
   ip?: string | null;
   userAgent?: string | null;
@@ -26,6 +28,8 @@ export class AuthAuditService {
         action: entry.action,
         success: entry.success,
         userId: entry.userId ?? null,
+        actorUserId: entry.actorUserId ?? entry.userId ?? null,
+        onBehalfOfUserId: entry.onBehalfOfUserId ?? null,
         email: entry.email ?? null,
         ip: entry.ip ?? null,
         userAgent: entry.userAgent ?? null,

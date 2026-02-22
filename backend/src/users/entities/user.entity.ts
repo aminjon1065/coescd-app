@@ -14,6 +14,7 @@ import {
   PermissionType,
 } from '../../iam/authorization/permission.type';
 import { Department } from '../../department/entities/department.entity';
+import { OrgUnit } from '../../iam/entities/org-unit.entity';
 
 @Entity()
 export class User {
@@ -38,9 +39,18 @@ export class User {
   role: Role;
   @Column({ enum: Permission, default: [], type: 'json' })
   permissions: PermissionType[];
+  @Column({ name: 'business_role', type: 'varchar', nullable: true })
+  @IsOptional()
+  businessRole: string | null;
+  @Column({ name: 'org_unit_id', type: 'int', nullable: true })
+  @IsOptional()
+  orgUnitId: number | null;
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
   department: Department | null;
+  @ManyToOne(() => OrgUnit, { nullable: true })
+  @JoinColumn({ name: 'org_unit_id' })
+  orgUnit: OrgUnit | null;
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at' })

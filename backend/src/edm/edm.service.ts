@@ -43,6 +43,7 @@ import { FileAttachmentsService } from '../files/file-attachments.service';
 import { FileEntity } from '../files/entities/file.entity';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
 import { ScopeService } from '../iam/authorization/scope.service';
+import { ScopeResolverService } from '../iam/authorization/scope-resolver.service';
 import { EdmRouteTemplate } from './entities/edm-route-template.entity';
 import { EdmRouteTemplateStage } from './entities/edm-route-template-stage.entity';
 import { EdmRegistrationJournal } from './entities/edm-registration-journal.entity';
@@ -135,6 +136,7 @@ export class EdmService {
     private readonly dataSource: DataSource,
     private readonly fileAttachmentsService: FileAttachmentsService,
     private readonly scopeService: ScopeService,
+    private readonly scopeResolver: ScopeResolverService,
   ) {}
 
   async createSavedFilter(
@@ -3247,6 +3249,15 @@ export class EdmService {
     actor: ActiveUserData,
     template: EdmDocumentTemplate,
   ): void {
+    if (
+      template.scopeType === 'department' &&
+      this.scopeResolver.canAccess(actor, {
+        resourceType: 'edm_document',
+        departmentId: template.department?.id ?? null,
+      })
+    ) {
+      return;
+    }
     if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
@@ -3263,6 +3274,16 @@ export class EdmService {
     actor: ActiveUserData,
     template: EdmDocumentTemplate,
   ): void {
+    if (
+      this.isDepartmentManagerRole(actor.role) &&
+      template.scopeType === 'department' &&
+      this.scopeResolver.canAccess(actor, {
+        resourceType: 'edm_document',
+        departmentId: template.department?.id ?? null,
+      })
+    ) {
+      return;
+    }
     if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
@@ -3450,6 +3471,9 @@ export class EdmService {
     actor: ActiveUserData,
     document: EdmDocument,
   ): void {
+    if (this.scopeResolver.canAccess(actor, document)) {
+      return;
+    }
     if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
@@ -3472,17 +3496,32 @@ export class EdmService {
     qb: ReturnType<Repository<EdmDocument>['createQueryBuilder']>,
     actor: ActiveUserData,
   ): void {
-    if (this.isGlobalEdmRole(actor.role)) {
+    if (
+      this.isGlobalEdmRole(actor.role) ||
+      actor.delegationContext?.scopeType === 'global'
+    ) {
       return;
     }
+    const delegatedDepartmentId = actor.delegationContext?.scopeDepartmentId;
+    const onBehalfOfUserId = actor.onBehalfOfUserId ?? null;
 
     qb.andWhere(
       new Brackets((scopeQb) => {
         scopeQb.where('creator.id = :actorId', { actorId: actor.sub });
+        if (onBehalfOfUserId) {
+          scopeQb.orWhere('creator.id = :onBehalfOfUserId', {
+            onBehalfOfUserId,
+          });
+        }
 
         if (this.isDepartmentManagerRole(actor.role) && actor.departmentId) {
           scopeQb.orWhere('department.id = :departmentId', {
             departmentId: actor.departmentId,
+          });
+        }
+        if (delegatedDepartmentId && delegatedDepartmentId !== actor.departmentId) {
+          scopeQb.orWhere('department.id = :delegatedDepartmentId', {
+            delegatedDepartmentId,
           });
         }
       }),
@@ -3531,6 +3570,10 @@ export class EdmService {
     }
     if (
       !this.isGlobalEdmRole(actor.role) &&
+      !this.scopeResolver.canAccess(actor, {
+        resourceType: 'edm_document',
+        departmentId: department.id,
+      }) &&
       actor.departmentId !== department.id
     ) {
       throw new ForbiddenException('Template department is outside your scope');
@@ -3542,6 +3585,15 @@ export class EdmService {
     actor: ActiveUserData,
     template: EdmRouteTemplate,
   ): void {
+    if (
+      template.scopeType === 'department' &&
+      this.scopeResolver.canAccess(actor, {
+        resourceType: 'edm_document',
+        departmentId: template.department?.id ?? null,
+      })
+    ) {
+      return;
+    }
     if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
@@ -3561,6 +3613,16 @@ export class EdmService {
     actor: ActiveUserData,
     template: EdmRouteTemplate,
   ): void {
+    if (
+      this.isDepartmentManagerRole(actor.role) &&
+      template.scopeType === 'department' &&
+      this.scopeResolver.canAccess(actor, {
+        resourceType: 'edm_document',
+        departmentId: template.department?.id ?? null,
+      })
+    ) {
+      return;
+    }
     if (this.isGlobalEdmRole(actor.role)) {
       return;
     }
@@ -4204,6 +4266,18 @@ export class EdmService {
       return true;
     }
     if (creatorId && creatorId === actor.sub) {
+      return true;
+    }
+    if (creatorId && actor.onBehalfOfUserId && creatorId === actor.onBehalfOfUserId) {
+      return true;
+    }
+    if (
+      departmentId &&
+      this.scopeResolver.canAccess(actor, {
+        resourceType: 'edm_document',
+        departmentId,
+      })
+    ) {
       return true;
     }
     return (

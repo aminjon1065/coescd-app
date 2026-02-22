@@ -5,14 +5,15 @@ import { DocumentController } from './document.controller';
 import { Document } from './entities/document.entity';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
-import { ScopeService } from '../iam/authorization/scope.service';
 import { FileEntity } from '../files/entities/file.entity';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
 import { FileAccessAuditEntity } from '../files/entities/file-access-audit.entity';
 import { FileAttachmentsService } from '../files/file-attachments.service';
+import { IamModule } from '../iam/iam.module';
 
 @Module({
   imports: [
+    IamModule,
     TypeOrmModule.forFeature([
       Document,
       User,
@@ -23,7 +24,7 @@ import { FileAttachmentsService } from '../files/file-attachments.service';
     ]),
   ],
   controllers: [DocumentController],
-  providers: [DocumentService, ScopeService, FileAttachmentsService],
+  providers: [DocumentService, FileAttachmentsService],
   exports: [TypeOrmModule],
 })
 export class DocumentModule {}

@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Department } from '../../department/entities/department.entity';
+import { OrgUnit } from '../../iam/entities/org-unit.entity';
 
 export type DelegationScopeType = 'department' | 'global';
 export type DelegationStatus = 'active' | 'revoked' | 'expired';
@@ -31,6 +32,13 @@ export class IamDelegation {
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'scope_department_id' })
   scopeDepartment: Department | null;
+
+  @Column({ name: 'scope_org_unit_id', type: 'int', nullable: true })
+  scopeOrgUnitId: number | null;
+
+  @ManyToOne(() => OrgUnit, { nullable: true })
+  @JoinColumn({ name: 'scope_org_unit_id' })
+  scopeOrgUnit: OrgUnit | null;
 
   @Column({ name: 'permission_subset', type: 'jsonb' })
   permissionSubset: string[];

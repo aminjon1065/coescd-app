@@ -6,9 +6,12 @@ import { User } from '../../users/entities/user.entity';
 import { Document } from '../../document/entities/document.entity';
 import { Task } from '../../task/entities/task.entity';
 import { FileEntity } from '../../files/entities/file.entity';
+import { ScopeResolverService } from './scope-resolver.service';
 
 @Injectable()
 export class ScopeService {
+  constructor(private readonly scopeResolver: ScopeResolverService) {}
+
   isAdmin(actor: ActiveUserData): boolean {
     return actor.role === Role.Admin;
   }
@@ -18,6 +21,9 @@ export class ScopeService {
   }
 
   assertUserScope(actor: ActiveUserData, targetUser: User): void {
+    if (this.scopeResolver.canAccess(actor, targetUser)) {
+      return;
+    }
     if (this.isAdmin(actor)) {
       return;
     }
@@ -35,6 +41,9 @@ export class ScopeService {
   }
 
   assertDocumentScope(actor: ActiveUserData, document: Document): void {
+    if (this.scopeResolver.canAccess(actor, document)) {
+      return;
+    }
     if (this.isAdmin(actor)) {
       return;
     }
@@ -57,6 +66,9 @@ export class ScopeService {
   }
 
   assertTaskScope(actor: ActiveUserData, task: Task): void {
+    if (this.scopeResolver.canAccess(actor, task)) {
+      return;
+    }
     if (this.isAdmin(actor)) {
       return;
     }
@@ -80,6 +92,9 @@ export class ScopeService {
   }
 
   assertFileScope(actor: ActiveUserData, file: FileEntity): void {
+    if (this.scopeResolver.canAccess(actor, file)) {
+      return;
+    }
     if (this.isAdmin(actor)) {
       return;
     }
@@ -122,17 +137,29 @@ export class ScopeService {
       departmentAlias: string;
     },
   ): void {
-    if (this.isAdmin(actor)) {
+    if (this.isAdmin(actor) || actor.delegationContext?.scopeType === 'global') {
       return;
     }
+    const delegatedDepartmentId = actor.delegationContext?.scopeDepartmentId;
+    const onBehalfOfUserId = actor.onBehalfOfUserId ?? null;
     qb.andWhere(
       new Brackets((scopeQb) => {
         scopeQb.where(`${aliases.ownerAlias}.id = :userId`, {
           userId: actor.sub,
         });
+        if (onBehalfOfUserId) {
+          scopeQb.orWhere(`${aliases.ownerAlias}.id = :onBehalfOfUserId`, {
+            onBehalfOfUserId,
+          });
+        }
         if (this.isManager(actor) && actor.departmentId) {
           scopeQb.orWhere(`${aliases.departmentAlias}.id = :departmentId`, {
             departmentId: actor.departmentId,
+          });
+        }
+        if (delegatedDepartmentId && delegatedDepartmentId !== actor.departmentId) {
+          scopeQb.orWhere(`${aliases.departmentAlias}.id = :delegatedDepartmentId`, {
+            delegatedDepartmentId,
           });
         }
       }),
@@ -148,9 +175,11 @@ export class ScopeService {
       departmentAlias: string;
     },
   ): void {
-    if (this.isAdmin(actor)) {
+    if (this.isAdmin(actor) || actor.delegationContext?.scopeType === 'global') {
       return;
     }
+    const delegatedDepartmentId = actor.delegationContext?.scopeDepartmentId;
+    const onBehalfOfUserId = actor.onBehalfOfUserId ?? null;
     qb.andWhere(
       new Brackets((scopeQb) => {
         scopeQb
@@ -158,9 +187,23 @@ export class ScopeService {
           .orWhere(`${aliases.receiverAlias}.id = :userId`, {
             userId: actor.sub,
           });
+        if (onBehalfOfUserId) {
+          scopeQb
+            .orWhere(`${aliases.senderAlias}.id = :onBehalfOfUserId`, {
+              onBehalfOfUserId,
+            })
+            .orWhere(`${aliases.receiverAlias}.id = :onBehalfOfUserId`, {
+              onBehalfOfUserId,
+            });
+        }
         if (this.isManager(actor) && actor.departmentId) {
           scopeQb.orWhere(`${aliases.departmentAlias}.id = :departmentId`, {
             departmentId: actor.departmentId,
+          });
+        }
+        if (delegatedDepartmentId && delegatedDepartmentId !== actor.departmentId) {
+          scopeQb.orWhere(`${aliases.departmentAlias}.id = :delegatedDepartmentId`, {
+            delegatedDepartmentId,
           });
         }
       }),
@@ -177,9 +220,11 @@ export class ScopeService {
       receiverDepartmentAlias: string;
     },
   ): void {
-    if (this.isAdmin(actor)) {
+    if (this.isAdmin(actor) || actor.delegationContext?.scopeType === 'global') {
       return;
     }
+    const delegatedDepartmentId = actor.delegationContext?.scopeDepartmentId;
+    const onBehalfOfUserId = actor.onBehalfOfUserId ?? null;
     qb.andWhere(
       new Brackets((scopeQb) => {
         scopeQb
@@ -187,6 +232,15 @@ export class ScopeService {
           .orWhere(`${aliases.receiverAlias}.id = :userId`, {
             userId: actor.sub,
           });
+        if (onBehalfOfUserId) {
+          scopeQb
+            .orWhere(`${aliases.creatorAlias}.id = :onBehalfOfUserId`, {
+              onBehalfOfUserId,
+            })
+            .orWhere(`${aliases.receiverAlias}.id = :onBehalfOfUserId`, {
+              onBehalfOfUserId,
+            });
+        }
         if (this.isManager(actor) && actor.departmentId) {
           scopeQb
             .orWhere(`${aliases.creatorDepartmentAlias}.id = :departmentId`, {
@@ -195,6 +249,21 @@ export class ScopeService {
             .orWhere(`${aliases.receiverDepartmentAlias}.id = :departmentId`, {
               departmentId: actor.departmentId,
             });
+        }
+        if (delegatedDepartmentId && delegatedDepartmentId !== actor.departmentId) {
+          scopeQb
+            .orWhere(
+              `${aliases.creatorDepartmentAlias}.id = :delegatedDepartmentId`,
+              {
+                delegatedDepartmentId,
+              },
+            )
+            .orWhere(
+              `${aliases.receiverDepartmentAlias}.id = :delegatedDepartmentId`,
+              {
+                delegatedDepartmentId,
+              },
+            );
         }
       }),
     );

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { HashingService } from './hashing/hashing.service';
 import { BcryptService } from './hashing/bcrypt.service';
 import { AuthenticationController } from './authentication/authentication.controller';
@@ -36,6 +36,14 @@ import { AuditLogsAdminController } from './audit/audit-logs-admin.controller';
 import { AuditLogsAdminService } from './audit/audit-logs-admin.service';
 import { FileAccessAuditEntity } from '../files/entities/file-access-audit.entity';
 import { UserChangeAuditLog } from '../users/entities/user-change-audit-log.entity';
+import { ScopeResolverService } from './authorization/scope-resolver.service';
+import { OrgUnit } from './entities/org-unit.entity';
+import { IamDelegation } from '../edm/entities/iam-delegation.entity';
+import { BusinessRoleEntity } from './authorization/entities/business-role.entity';
+import { PermissionProfile } from './authorization/entities/permission-profile.entity';
+import { BusinessRolePermissionProfile } from './authorization/entities/business-role-permission-profile.entity';
+import { DelegationContextService } from './authentication/delegation-context.service';
+import { DelegationValidationMiddleware } from './authentication/middleware/delegation-validation.middleware';
 
 @Module({
   imports: [
@@ -45,6 +53,11 @@ import { UserChangeAuditLog } from '../users/entities/user-change-audit-log.enti
       Task,
       AuthAuditLog,
       RolePermissionProfile,
+      PermissionProfile,
+      BusinessRoleEntity,
+      BusinessRolePermissionProfile,
+      OrgUnit,
+      IamDelegation,
       FileAccessAuditEntity,
       UserChangeAuditLog,
     ]),
@@ -66,17 +79,23 @@ import { UserChangeAuditLog } from '../users/entities/user-change-audit-log.enti
     DocumentScopePolicyHandler,
     TaskScopePolicyHandler,
     IamSeedService,
+    ScopeResolverService,
     ScopeService,
     AuthRateLimitService,
     AuthAuditService,
+    DelegationContextService,
     RolePermissionsService,
     AuditLogsAdminService,
   ],
-  exports: [RefreshTokenIdsStorage],
+  exports: [RefreshTokenIdsStorage, ScopeService, ScopeResolverService],
   controllers: [
     AuthenticationController,
     AuthorizationAdminController,
     AuditLogsAdminController,
   ],
 })
-export class IamModule {}
+export class IamModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(DelegationValidationMiddleware).forRoutes('*');
+  }
+}

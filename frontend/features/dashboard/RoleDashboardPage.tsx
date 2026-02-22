@@ -3,26 +3,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  ActivityIcon,
-  AlertTriangleIcon,
-  Building2Icon,
-  ClipboardListIcon,
-  FileIcon,
-  ShieldCheckIcon,
-  UsersIcon,
-} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Protected } from '@/components/Protected';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-context';
 import { Role } from '@/enums/RoleEnum';
-import { can } from '@/features/authz/can';
 import { ROLE_DASHBOARD_PATH } from '@/features/authz/roles';
 import { DashboardRenderer } from '@/features/dashboard/DashboardRenderer';
 import { DashboardResponse } from '@/features/dashboard/types';
 import api from '@/lib/axios';
+import { quickActionsByRole } from '@/lib/dashboard-config';
 
 interface RoleDashboardPageProps {
   forcedRole?: Role;
@@ -160,66 +152,31 @@ export function RoleDashboardPage({ forcedRole }: RoleDashboardPageProps) {
           <CardTitle>Быстрые действия</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-          <Button asChild className="w-full justify-start" variant="outline">
-            <Link href="/dashboard/documentation">
-              <FileIcon className="mr-2 h-4 w-4" />
-              СЭД документы
-            </Link>
-          </Button>
-          <Button asChild className="w-full justify-start" variant="outline">
-            <Link href="/dashboard/tasks">
-              <ClipboardListIcon className="mr-2 h-4 w-4" />
-              Задачи
-            </Link>
-          </Button>
-          <Button asChild className="w-full justify-start" variant="outline">
-            <Link href="/dashboard/files">
-              <Building2Icon className="mr-2 h-4 w-4" />
-              Файлы
-            </Link>
-          </Button>
-          <Button asChild className="w-full justify-start" variant="outline">
-            <Link href="/dashboard/analytic">
-              <ActivityIcon className="mr-2 h-4 w-4" />
-              Аналитика
-            </Link>
-          </Button>
+          {(quickActionsByRole[role] ?? []).map((action) => {
+            if (action.analystOnly && !dashboard.actor.isAnalyst) {
+              return null;
+            }
 
-          {can(user, { roles: [Role.Manager, Role.Admin] }) ? (
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/users">
-                <UsersIcon className="mr-2 h-4 w-4" />
-                Работники
-              </Link>
-            </Button>
-          ) : null}
+            const Icon = action.icon;
+            const button = (
+              <Button key={action.key} asChild className="w-full justify-start" variant="outline">
+                <Link href={action.href}>
+                  <Icon className="mr-2 h-4 w-4" />
+                  {action.label}
+                </Link>
+              </Button>
+            );
 
-          {dashboard.actor.isAnalyst ? (
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/gis">
-                <AlertTriangleIcon className="mr-2 h-4 w-4" />
-                Карта ЧС
-              </Link>
-            </Button>
-          ) : null}
+            if (!action.anyPermissions?.length) {
+              return button;
+            }
 
-          {can(user, { roles: [Role.Admin] }) ? (
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/access">
-                <ShieldCheckIcon className="mr-2 h-4 w-4" />
-                Доступы и роли
-              </Link>
-            </Button>
-          ) : null}
-
-          {can(user, { roles: [Role.Admin] }) ? (
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/dashboard/audit-logs">
-                <ShieldCheckIcon className="mr-2 h-4 w-4" />
-                Audit Logs
-              </Link>
-            </Button>
-          ) : null}
+            return (
+              <Protected key={action.key} anyPermissions={action.anyPermissions}>
+                {button}
+              </Protected>
+            );
+          })}
         </CardContent>
       </Card>
     </div>

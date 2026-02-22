@@ -19,6 +19,12 @@ export class AuthAuditLog {
   @Column({ name: 'user_id', type: 'int', nullable: true })
   userId: number | null;
 
+  @Column({ name: 'actor_user_id', type: 'int', nullable: true })
+  actorUserId: number | null;
+
+  @Column({ name: 'on_behalf_of_user_id', type: 'int', nullable: true })
+  onBehalfOfUserId: number | null;
+
   @Column({ type: 'varchar', nullable: true })
   email: string | null;
 

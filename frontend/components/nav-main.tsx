@@ -20,8 +20,9 @@ import {
 import Link from 'next/link';
 
 export function NavMain({
-                          items,
-                        }: {
+  items,
+  label = 'Menu',
+}: {
   items: {
     title: string
     url: string
@@ -31,12 +32,16 @@ export function NavMain({
       title: string
       url: string
     }[]
-  }[]
+  }[];
+  label?: string;
 }) {
   const { state } = useSidebar();
+  if (!items.length) {
+    return null;
+  }
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Menu</SidebarGroupLabel>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           item.items?.length ?

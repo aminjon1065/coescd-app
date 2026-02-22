@@ -16,12 +16,17 @@ import { RegistrationJournalTable } from './components/registration-journal-tabl
 import { DocumentKindsManager } from './components/document-kinds-manager';
 import { DocumentationLang, documentationI18n } from './i18n';
 import { useAuth } from '@/context/auth-context';
+import { hasAnyPermission, Permission } from '@/lib/permissions';
 
 export default function DocumentationPage() {
   const { user } = useAuth();
   const [lang, setLang] = useState<DocumentationLang>('ru');
-  const role = String(user?.role ?? '');
-  const isPrivilegedEdmUser = role === 'admin' || role === 'chancellery';
+  const isPrivilegedEdmUser = hasAnyPermission(user, [
+    Permission.DOCUMENTS_REGISTER,
+    Permission.DOCUMENTS_JOURNAL_READ,
+    Permission.DOCUMENTS_TEMPLATES_READ,
+    Permission.DOCUMENTS_ROUTE_TEMPLATES_READ,
+  ]);
   const staffLabels = lang === 'tj'
     ? {
         received: 'Воридшуда',
@@ -179,5 +184,4 @@ export default function DocumentationPage() {
     </ProtectedRouteGate>
   );
 }
-
 

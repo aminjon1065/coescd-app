@@ -14,6 +14,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../../../../users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { ActiveUserData } from '../../../interfaces/activate-user-data.interface';
+import { DelegationContextService } from '../../delegation-context.service';
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
@@ -23,6 +24,7 @@ export class AccessTokenGuard implements CanActivate {
     private readonly userRepository: Repository<User>,
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
+    private readonly delegationContextService: DelegationContextService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -33,8 +35,9 @@ export class AccessTokenGuard implements CanActivate {
       throw new UnauthorizedException('Access token is missing');
     }
 
+    let payload: ActiveUserData;
     try {
-      const payload = await this.jwtService.verifyAsync<ActiveUserData>(
+      payload = await this.jwtService.verifyAsync<ActiveUserData>(
         token,
         this.jwtConfiguration,
       );
@@ -45,11 +48,16 @@ export class AccessTokenGuard implements CanActivate {
       if (!user || !user.isActive) {
         throw new UnauthorizedException('User is disabled');
       }
-      request[REQUEST_USER_KEY] = payload;
-      return true;
     } catch (err) {
       throw new UnauthorizedException('Invalid or expired token');
     }
+
+    request[REQUEST_USER_KEY] =
+      await this.delegationContextService.applyDelegationToRequest(
+        request,
+        payload,
+      );
+    return true;
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {

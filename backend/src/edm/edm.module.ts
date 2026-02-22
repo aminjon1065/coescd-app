@@ -26,10 +26,11 @@ import { FileEntity } from '../files/entities/file.entity';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
 import { FileAccessAuditEntity } from '../files/entities/file-access-audit.entity';
 import { FileAttachmentsService } from '../files/file-attachments.service';
-import { ScopeService } from '../iam/authorization/scope.service';
+import { IamModule } from '../iam/iam.module';
 
 @Module({
   imports: [
+    IamModule,
     TypeOrmModule.forFeature([
       EdmDocument,
       EdmDocumentRoute,
@@ -57,7 +58,7 @@ import { ScopeService } from '../iam/authorization/scope.service';
     ]),
   ],
   controllers: [EdmController],
-  providers: [EdmService, FileAttachmentsService, ScopeService],
+  providers: [EdmService, FileAttachmentsService],
   exports: [EdmService],
 })
 export class EdmModule {}

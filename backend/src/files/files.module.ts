@@ -6,12 +6,13 @@ import { FileEntity } from './entities/file.entity';
 import { FileLinkEntity } from './entities/file-link.entity';
 import { FileAccessAuditEntity } from './entities/file-access-audit.entity';
 import { User } from '../users/entities/user.entity';
-import { ScopeService } from '../iam/authorization/scope.service';
 import { FilesStorageService } from './storage/files-storage.service';
 import { Department } from '../department/entities/department.entity';
+import { IamModule } from '../iam/iam.module';
 
 @Module({
   imports: [
+    IamModule,
     TypeOrmModule.forFeature([
       FileEntity,
       FileLinkEntity,
@@ -21,7 +22,7 @@ import { Department } from '../department/entities/department.entity';
     ]),
   ],
   controllers: [FilesController],
-  providers: [FilesService, ScopeService, FilesStorageService],
+  providers: [FilesService, FilesStorageService],
   exports: [FilesService],
 })
 export class FilesModule {}

@@ -1,11 +1,9 @@
 import { LucideIcon, FileIcon, ClipboardListIcon, ActivityIcon, AlertTriangleIcon } from 'lucide-react';
 import { Role } from '@/enums/RoleEnum';
 import { can } from '@/features/authz/can';
-import { adminDashboardPreset } from '@/features/dashboard/presets/admin';
-import { managerDashboardPreset } from '@/features/dashboard/presets/manager';
-import { regularDashboardPreset } from '@/features/dashboard/presets/regular';
-import { DashboardResponse, DashboardWidgetConfig, DashboardWidgetId } from '@/features/dashboard/types';
+import { DashboardResponse, DashboardWidgetId } from '@/features/dashboard/types';
 import { MetricWidgetCard } from '@/features/dashboard/widgets/MetricWidgetCard';
+import { dashboardByRole } from '@/lib/dashboard-config';
 
 interface DashboardRendererProps {
   dashboard: DashboardResponse;
@@ -18,12 +16,6 @@ type WidgetModel = {
   value: number;
   subtitle?: string;
   icon?: LucideIcon;
-};
-
-const rolePresets: Record<Role, DashboardWidgetConfig[]> = {
-  [Role.Admin]: adminDashboardPreset,
-  [Role.Manager]: managerDashboardPreset,
-  [Role.Regular]: regularDashboardPreset,
 };
 
 function buildWidgetModel(dashboard: DashboardResponse, widgetId: DashboardWidgetId): WidgetModel | null {
@@ -123,7 +115,7 @@ function buildWidgetModel(dashboard: DashboardResponse, widgetId: DashboardWidge
 }
 
 export function DashboardRenderer({ dashboard, role, permissions }: DashboardRendererProps) {
-  const preset = rolePresets[role];
+  const preset = dashboardByRole[role];
   const widgets = preset
     .filter((widget) =>
       can(

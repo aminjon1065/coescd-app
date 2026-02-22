@@ -66,6 +66,7 @@ export class AuthenticationService {
           parent: true,
           chief: true,
         },
+        orgUnit: true,
       },
     });
     if (!user) {
@@ -89,6 +90,7 @@ export class AuthenticationService {
       this.rolePermissionsService.resolveUserPermissions(
         user.role,
         user.permissions,
+        user.businessRole,
       );
     const refreshTokenId = randomUUID();
     const [accessToken, refreshToken] = await Promise.all([
@@ -100,6 +102,9 @@ export class AuthenticationService {
           name: user.name,
           role: user.role,
           departmentId: user.department?.id ?? null,
+          businessRole: user.businessRole ?? null,
+          orgUnitId: user.orgUnit?.id ?? null,
+          orgUnitPath: user.orgUnit?.path ?? null,
           permissions: effectivePermissions,
         },
       ),
@@ -131,6 +136,7 @@ export class AuthenticationService {
             parent: true,
             chief: true,
           },
+          orgUnit: true,
         },
       });
       if (!user.isActive) {
@@ -180,6 +186,7 @@ export class AuthenticationService {
           parent: true,
           chief: true,
         },
+        orgUnit: true,
       },
     });
     return this.toSafeUser(user);
@@ -218,6 +225,7 @@ export class AuthenticationService {
     safeUser.permissions = this.rolePermissionsService.resolveUserPermissions(
       user.role,
       user.permissions,
+      user.businessRole,
     );
     return safeUser;
   }
