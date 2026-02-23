@@ -7,10 +7,11 @@ import { useCalls } from '@/context/calls-context';
 function getInitials(name: string): string {
   return name
     .split(' ')
+    .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0])
+    .map((w) => w[0] ?? '')
     .join('')
-    .toUpperCase();
+    .toUpperCase() || '?';
 }
 
 export function IncomingCallOverlay() {

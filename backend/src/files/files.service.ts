@@ -1,15 +1,19 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { FileEntity } from './entities/file.entity';
 import { FileLinkEntity } from './entities/file-link.entity';
 import { FileAccessAuditEntity } from './entities/file-access-audit.entity';
+import { FileShareEntity } from './entities/file-share.entity';
 import { CreateFileLinkDto } from './dto/create-file-link.dto';
+import { CreateFileShareDto } from './dto/create-file-share.dto';
 import { User } from '../users/entities/user.entity';
+import { Department } from '../department/entities/department.entity';
 import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { ScopeService } from '../iam/authorization/scope.service';
 import { FilesStorageService } from './storage/files-storage.service';
@@ -32,8 +36,12 @@ export class FilesService {
     private readonly fileLinkRepository: Repository<FileLinkEntity>,
     @InjectRepository(FileAccessAuditEntity)
     private readonly fileAccessAuditRepository: Repository<FileAccessAuditEntity>,
+    @InjectRepository(FileShareEntity)
+    private readonly fileShareRepository: Repository<FileShareEntity>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Department)
+    private readonly departmentRepository: Repository<Department>,
     private readonly scopeService: ScopeService,
     private readonly filesStorageService: FilesStorageService,
   ) {}
@@ -239,10 +247,22 @@ export class FilesService {
       qb.andWhere('LOWER(file.originalName) LIKE :q', { q: search });
     }
 
-    this.scopeService.applyFileScope(qb, actor, {
-      ownerAlias: 'owner',
-      departmentAlias: 'department',
-    });
+    // Build share subquery so shared files appear in the list
+    let shareCondition: string;
+    const shareParams: Record<string, unknown> = { shareUserId: actor.sub };
+    if (actor.departmentId) {
+      shareCondition = `EXISTS (SELECT 1 FROM file_shares s WHERE s.file_id = file.id AND (s.shared_with_user_id = :shareUserId OR s.shared_with_department_id = :shareDeptId))`;
+      shareParams.shareDeptId = actor.departmentId;
+    } else {
+      shareCondition = `EXISTS (SELECT 1 FROM file_shares s WHERE s.file_id = file.id AND s.shared_with_user_id = :shareUserId)`;
+    }
+
+    this.scopeService.applyFileScope(
+      qb,
+      actor,
+      { ownerAlias: 'owner', departmentAlias: 'department' },
+      { extraOrCondition: shareCondition, extraOrParams: shareParams },
+    );
 
     const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
     return { items, total, page, limit };
@@ -259,7 +279,21 @@ export class FilesService {
     if (!file) {
       throw new NotFoundException('File not found');
     }
-    this.scopeService.assertFileScope(actor, file);
+
+    // Try normal scope check; fall back to share check
+    try {
+      this.scopeService.assertFileScope(actor, file);
+    } catch (err) {
+      if (
+        err instanceof ForbiddenException &&
+        (await this.isSharedWith(id, actor))
+      ) {
+        // explicit share grants read/download access — allowed
+      } else {
+        throw err;
+      }
+    }
+
     return file;
   }
 
@@ -345,6 +379,15 @@ export class FilesService {
     requestMeta: { ip: string | null; userAgent: string | null },
   ) {
     const file = await this.findOne(id, actor);
+
+    // Only owner or admin can delete
+    if (
+      file.owner?.id !== actor.sub &&
+      !this.scopeService.isAdmin(actor)
+    ) {
+      throw new ForbiddenException('Only the file owner can delete this file');
+    }
+
     if (file.status === 'deleted') {
       return file;
     }
@@ -410,6 +453,204 @@ export class FilesService {
     });
 
     return savedLink;
+  }
+
+  // ── File Sharing ────────────────────────────────────────────────────────────
+
+  async getShares(
+    fileId: number,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ): Promise<FileShareEntity[]> {
+    const file = await this.fileRepository.findOne({
+      where: { id: fileId },
+      relations: { owner: true },
+    });
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+    this.assertShareOwner(file, actor);
+
+    return this.fileShareRepository.find({
+      where: { file: { id: fileId } },
+      relations: {
+        sharedWithUser: true,
+        sharedWithDepartment: true,
+        grantedBy: true,
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async addShare(
+    fileId: number,
+    dto: CreateFileShareDto,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ): Promise<FileShareEntity> {
+    // Exactly one target must be provided
+    const hasUser = dto.sharedWithUserId != null;
+    const hasDept = dto.sharedWithDepartmentId != null;
+    if (hasUser === hasDept) {
+      throw new BadRequestException(
+        'Provide exactly one of sharedWithUserId or sharedWithDepartmentId',
+      );
+    }
+
+    const file = await this.fileRepository.findOne({
+      where: { id: fileId },
+      relations: { owner: true },
+    });
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+    this.assertShareOwner(file, actor);
+
+    const grantor = await this.userRepository.findOneBy({ id: actor.sub });
+    if (!grantor) {
+      throw new NotFoundException('Actor not found');
+    }
+
+    let sharedWithUser: User | null = null;
+    let sharedWithDepartment: Department | null = null;
+
+    if (hasUser) {
+      sharedWithUser = await this.userRepository.findOneBy({
+        id: dto.sharedWithUserId,
+      });
+      if (!sharedWithUser) {
+        throw new NotFoundException(
+          `User ${dto.sharedWithUserId} not found`,
+        );
+      }
+      // Prevent sharing with yourself
+      if (sharedWithUser.id === actor.sub) {
+        throw new BadRequestException('Cannot share a file with yourself');
+      }
+    } else {
+      sharedWithDepartment = await this.departmentRepository.findOneBy({
+        id: dto.sharedWithDepartmentId,
+      });
+      if (!sharedWithDepartment) {
+        throw new NotFoundException(
+          `Department ${dto.sharedWithDepartmentId} not found`,
+        );
+      }
+    }
+
+    // Check for duplicate
+    const whereCondition: FindOptionsWhere<FileShareEntity> = {
+      file: { id: fileId },
+    };
+    if (sharedWithUser) {
+      whereCondition.sharedWithUser = { id: sharedWithUser.id };
+    } else {
+      whereCondition.sharedWithDepartment = { id: sharedWithDepartment!.id };
+    }
+    const existing = await this.fileShareRepository.findOne({
+      where: whereCondition,
+    });
+    if (existing) {
+      throw new BadRequestException('Share already exists');
+    }
+
+    const share = this.fileShareRepository.create({
+      file,
+      sharedWithUser,
+      sharedWithDepartment,
+      grantedBy: grantor,
+    });
+    const saved = await this.fileShareRepository.save(share);
+
+    await this.logAudit({
+      file,
+      actorId: actor.sub,
+      action: 'share',
+      success: true,
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+      reason: sharedWithUser
+        ? `user:${sharedWithUser.id}`
+        : `dept:${sharedWithDepartment!.id}`,
+    });
+
+    return this.fileShareRepository.findOne({
+      where: { id: saved.id },
+      relations: {
+        sharedWithUser: true,
+        sharedWithDepartment: true,
+        grantedBy: true,
+      },
+    }) as Promise<FileShareEntity>;
+  }
+
+  async removeShare(
+    fileId: number,
+    shareId: number,
+    actor: ActiveUserData,
+    requestMeta: { ip: string | null; userAgent: string | null },
+  ): Promise<void> {
+    const file = await this.fileRepository.findOne({
+      where: { id: fileId },
+      relations: { owner: true },
+    });
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+    this.assertShareOwner(file, actor);
+
+    const share = await this.fileShareRepository.findOne({
+      where: { id: shareId, file: { id: fileId } },
+      relations: { sharedWithUser: true, sharedWithDepartment: true },
+    });
+    if (!share) {
+      throw new NotFoundException('Share not found');
+    }
+
+    await this.fileShareRepository.delete(shareId);
+
+    await this.logAudit({
+      file,
+      actorId: actor.sub,
+      action: 'unshare',
+      success: true,
+      ip: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+      reason: share.sharedWithUser
+        ? `user:${share.sharedWithUser.id}`
+        : `dept:${share.sharedWithDepartment?.id}`,
+    });
+  }
+
+  // ── Private Helpers ─────────────────────────────────────────────────────────
+
+  /** Returns true when actor has an explicit share grant for this file. */
+  private async isSharedWith(
+    fileId: number,
+    actor: ActiveUserData,
+  ): Promise<boolean> {
+    const where: FindOptionsWhere<FileShareEntity>[] = [
+      { file: { id: fileId }, sharedWithUser: { id: actor.sub } },
+    ];
+    if (actor.departmentId) {
+      where.push({
+        file: { id: fileId },
+        sharedWithDepartment: { id: actor.departmentId },
+      });
+    }
+    return !!(await this.fileShareRepository.findOne({ where }));
+  }
+
+  /** Throws ForbiddenException unless actor is the file owner or an admin. */
+  private assertShareOwner(file: FileEntity, actor: ActiveUserData): void {
+    if (
+      file.owner?.id !== actor.sub &&
+      !this.scopeService.isAdmin(actor)
+    ) {
+      throw new ForbiddenException(
+        'Only the file owner can manage share permissions',
+      );
+    }
   }
 
   private buildStorageKey(

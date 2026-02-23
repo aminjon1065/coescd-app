@@ -6,6 +6,7 @@ import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 import { useAuth } from '@/context/auth-context';
 import { useCalls } from '@/context/calls-context';
 import api from '@/lib/axios';
+import { hasAnyPermission, Permission } from '@/lib/permissions';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -192,37 +193,42 @@ function ContactsContent() {
 
                 {/* Action buttons */}
                 <div className="mt-3 flex gap-2">
-                  {/* Only show message button if user is not the current user */}
                   {contact.id !== user?.id && (
                     <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 gap-1.5 text-xs"
-                        onClick={() => handleMessage(contact)}
-                        title="Написать сообщение"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" />
-                        Чат
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 text-xs"
-                        onClick={() => handleAudioCall(contact)}
-                        title="Аудио звонок"
-                      >
-                        <Phone className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 text-xs"
-                        onClick={() => handleVideoCall(contact)}
-                        title="Видео звонок"
-                      >
-                        <Video className="h-3.5 w-3.5" />
-                      </Button>
+                      {hasAnyPermission(user, [Permission.CHAT_READ]) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 gap-1.5 text-xs"
+                          onClick={() => handleMessage(contact)}
+                          title="Написать сообщение"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          Чат
+                        </Button>
+                      )}
+                      {hasAnyPermission(user, [Permission.CALLS_READ]) && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-xs"
+                            onClick={() => handleAudioCall(contact)}
+                            title="Аудио звонок"
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-xs"
+                            onClick={() => handleVideoCall(contact)}
+                            title="Видео звонок"
+                          >
+                            <Video className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
                     </>
                   )}
                 </div>

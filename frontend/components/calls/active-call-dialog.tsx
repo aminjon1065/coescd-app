@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, MicOff, Phone, Video, VideoOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useCalls } from '@/context/calls-context';
+import { useAuth } from '@/context/auth-context';
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -27,6 +28,7 @@ function getInitials(name: string): string {
 
 export function ActiveCallDialog() {
   const { activeCall, hangUp, localStreamRef, remoteStreamRef } = useCalls();
+  const { user } = useAuth();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -90,8 +92,9 @@ export function ActiveCallDialog() {
 
   if (!activeCall) return null;
 
+  // Show the OTHER person — whoever is not the current user
   const otherParty =
-    activeCall.initiator?.id !== undefined
+    activeCall.initiator?.id === user?.id
       ? activeCall.receiver
       : activeCall.initiator;
   const otherName = otherParty?.name ?? 'Собеседник';
@@ -102,6 +105,10 @@ export function ActiveCallDialog() {
         className="max-w-none w-screen h-screen p-0 border-0 bg-black/95 flex flex-col [&>button]:hidden"
         aria-describedby={undefined}
       >
+        <DialogTitle className="sr-only">
+          {isConnecting ? 'Вызов…' : `Звонок с ${otherName}`}
+        </DialogTitle>
+
         {/* Remote video */}
         <div className="relative flex-1 overflow-hidden">
           {remoteStreamRef.current ? (

@@ -38,6 +38,11 @@ export function useCallsSocket(
   const isCallerRef = useRef(false);
   const pendingCandidates = useRef<RTCIceCandidateInit[]>([]);
 
+  // Ref mirror of activeCall — avoids stale-closure reads inside socket handlers
+  // (socket handlers are registered once in useEffect([accessToken]) and never
+  //  re-registered, so they must NOT read state directly)
+  const activeCallRef = useRef<ICall | null>(null);
+
   const [connected, setConnected] = useState(false);
   const [incomingCall, setIncomingCall] = useState<ICall | null>(null);
   const [activeCall, setActiveCall] = useState<ICall | null>(null);
@@ -154,12 +159,15 @@ export function useCallsSocket(
 
     // ── call:ringing — caller gets notified the invite was sent ───────────────
     socket.on('call:ringing', (call: ICall) => {
-      setActiveCall({ ...call, status: 'pending' });
+      const pending = { ...call, status: 'pending' as const };
+      activeCallRef.current = pending;
+      setActiveCall(pending);
     });
 
     // ── call:accepted — both parties: start WebRTC ────────────────────────────
     socket.on('call:accepted', async (call: ICall) => {
       setIncomingCall(null);
+      activeCallRef.current = call; // sync ref BEFORE state so call:offer can read it
       setActiveCall(call);
 
       // Caller side: create offer
@@ -182,6 +190,7 @@ export function useCallsSocket(
     // ── call:rejected — caller sees the rejection ─────────────────────────────
     socket.on('call:rejected', (_call: ICall) => {
       closePeerConnection();
+      activeCallRef.current = null;
       setActiveCall(null);
       setIncomingCall(null);
     });
@@ -189,6 +198,7 @@ export function useCallsSocket(
     // ── call:ended — either party hung up ─────────────────────────────────────
     socket.on('call:ended', (_call: ICall) => {
       closePeerConnection();
+      activeCallRef.current = null;
       setActiveCall(null);
       setIncomingCall(null);
     });
@@ -197,10 +207,12 @@ export function useCallsSocket(
     socket.on(
       'call:offer',
       async (data: { callId: number; sdp: RTCSessionDescriptionInit }) => {
-        if (!activeCall && !incomingCall) return; // stale event
+        // Only the receiver handles the offer.  Use ref (not state) to avoid
+        // the classic stale-closure problem — this handler is registered once.
+        if (isCallerRef.current) return;
 
         try {
-          const currentCall = activeCall;
+          const currentCall = activeCallRef.current;
           const hasVideo = currentCall?.hasVideo ?? false;
           const stream = await getUserMediaStream(hasVideo);
           const pc = createPeerConnection(data.callId, hasVideo);

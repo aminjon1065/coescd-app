@@ -30,9 +30,13 @@ export class CallsService {
       }),
     ]);
 
+    if (!receiver) {
+      throw new NotFoundException(`User ${receiverId} not found`);
+    }
+
     const call = this.callRepo.create({
       initiator: initiator ?? undefined,
-      receiver: receiver ?? undefined,
+      receiver,
       hasVideo,
       status: 'pending',
     });

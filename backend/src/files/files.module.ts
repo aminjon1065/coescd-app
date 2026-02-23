@@ -5,6 +5,7 @@ import { FilesService } from './files.service';
 import { FileEntity } from './entities/file.entity';
 import { FileLinkEntity } from './entities/file-link.entity';
 import { FileAccessAuditEntity } from './entities/file-access-audit.entity';
+import { FileShareEntity } from './entities/file-share.entity';
 import { User } from '../users/entities/user.entity';
 import { FilesStorageService } from './storage/files-storage.service';
 import { Department } from '../department/entities/department.entity';
@@ -17,6 +18,7 @@ import { IamModule } from '../iam/iam.module';
       FileEntity,
       FileLinkEntity,
       FileAccessAuditEntity,
+      FileShareEntity,
       User,
       Department,
     ]),

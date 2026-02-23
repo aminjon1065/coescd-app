@@ -17,7 +17,9 @@ export type FileAuditAction =
   | 'delete'
   | 'restore'
   | 'link'
-  | 'unlink';
+  | 'unlink'
+  | 'share'
+  | 'unshare';
 
 @Entity('file_access_audit')
 export class FileAccessAuditEntity {

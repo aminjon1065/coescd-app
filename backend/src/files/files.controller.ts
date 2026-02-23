@@ -18,6 +18,7 @@ import { FilesService } from './files.service';
 import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../iam/authorization/permission.type';
 import { CreateFileLinkDto } from './dto/create-file-link.dto';
+import { CreateFileShareDto } from './dto/create-file-share.dto';
 import {
   CompletePresignedUploadDto,
   CreatePresignedUploadDto,
@@ -171,6 +172,45 @@ export class FilesController {
     return this.filesService.createLink(
       id,
       dto,
+      actor,
+      getRequestMeta(request),
+    );
+  }
+
+  // ── Share Endpoints ─────────────────────────────────────────────────────────
+
+  @Get(':id/shares')
+  @Permissions(Permission.FILES_READ)
+  getShares(
+    @Param('id', ParseIntPipe) id: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.filesService.getShares(id, actor, getRequestMeta(request));
+  }
+
+  @Post(':id/shares')
+  @Permissions(Permission.FILES_WRITE)
+  addShare(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateFileShareDto,
+    @ActiveUser() actor: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.filesService.addShare(id, dto, actor, getRequestMeta(request));
+  }
+
+  @Delete(':id/shares/:shareId')
+  @Permissions(Permission.FILES_WRITE)
+  removeShare(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('shareId', ParseIntPipe) shareId: number,
+    @ActiveUser() actor: ActiveUserData,
+    @Req() request: Request,
+  ) {
+    return this.filesService.removeShare(
+      id,
+      shareId,
       actor,
       getRequestMeta(request),
     );

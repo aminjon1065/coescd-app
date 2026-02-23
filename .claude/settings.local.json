@@ -25,7 +25,8 @@
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/update-gis-layer.dto.ts:*)",
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/create-gis-feature.dto.ts:*)",
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/update-gis-feature.dto.ts:*)",
-      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/get-gis-features-query.dto.ts:*)"
+      "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/get-gis-features-query.dto.ts:*)",
+      "Bash(python3:*)"
     ]
   }
 }

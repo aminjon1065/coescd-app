@@ -6,6 +6,7 @@ import api from '@/lib/axios';
 import { IUser } from '@/interfaces/IUser';
 import { IDepartment } from '@/interfaces/IDepartment';
 import { useAuth } from '@/context/auth-context';
+import { hasAnyPermission, Permission } from '@/lib/permissions';
 import Loading from '@/app/loading';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -70,6 +71,8 @@ export default function UsersTable() {
   const isAdmin = user?.role === Role.Admin;
   const isManager = user?.role === Role.Manager;
   const canReadUsers = isAdmin || isManager;
+  const canCreateUsers = hasAnyPermission(user, [Permission.USERS_CREATE]);
+  const canUpdateUsers = hasAnyPermission(user, [Permission.USERS_UPDATE]);
   const managerDepartmentId = user?.department?.id ?? null;
 
   const loadUsers = useCallback(async () => {
@@ -214,118 +217,120 @@ export default function UsersTable() {
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {isAdmin ? 'Create Staff User' : 'Create Department Employee'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isManager ? (
-            <p className="mb-3 text-xs text-muted-foreground">
-              Department Head can create users only in own department.
-            </p>
-          ) : null}
-          <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={onCreateUser}>
-            <div className="space-y-1">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={createForm.name}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, name: event.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={createForm.email}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, email: event.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={createForm.password}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, password: event.target.value }))
-                }
-                minLength={6}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="position">Position</Label>
-              <Input
-                id="position"
-                value={createForm.position}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, position: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Role</Label>
-              <Select
-                value={createForm.role}
-                onValueChange={(value: Role) =>
-                  setCreateForm((prev) => ({ ...prev, role: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {allowedCreateRoles.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {roleLabel(role)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Department</Label>
-              <Select
-                value={createForm.departmentId || NO_DEPARTMENT_VALUE}
-                onValueChange={(value) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    departmentId: value === NO_DEPARTMENT_VALUE ? '' : value,
-                  }))
-                }
-                disabled={isManager}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="No department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_DEPARTMENT_VALUE}>No department</SelectItem>
-                  {departments.map((department) => (
-                    <SelectItem key={department.id} value={String(department.id)}>
-                      {department.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <Button type="submit" disabled={isCreating}>
-                {isCreating ? 'Creating...' : 'Create User'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      {canCreateUsers && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {isAdmin ? 'Create Staff User' : 'Create Department Employee'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isManager ? (
+              <p className="mb-3 text-xs text-muted-foreground">
+                Department Head can create users only in own department.
+              </p>
+            ) : null}
+            <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={onCreateUser}>
+              <div className="space-y-1">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={createForm.name}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, email: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={createForm.password}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, password: event.target.value }))
+                  }
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="position">Position</Label>
+                <Input
+                  id="position"
+                  value={createForm.position}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, position: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Role</Label>
+                <Select
+                  value={createForm.role}
+                  onValueChange={(value: Role) =>
+                    setCreateForm((prev) => ({ ...prev, role: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allowedCreateRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {roleLabel(role)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Department</Label>
+                <Select
+                  value={createForm.departmentId || NO_DEPARTMENT_VALUE}
+                  onValueChange={(value) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      departmentId: value === NO_DEPARTMENT_VALUE ? '' : value,
+                    }))
+                  }
+                  disabled={isManager}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="No department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_DEPARTMENT_VALUE}>No department</SelectItem>
+                    {departments.map((department) => (
+                      <SelectItem key={department.id} value={String(department.id)}>
+                        {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-2">
+                <Button type="submit" disabled={isCreating}>
+                  {isCreating ? 'Creating...' : 'Create User'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -383,7 +388,9 @@ export default function UsersTable() {
                       <Label className="text-xs">Position</Label>
                       <Input
                         defaultValue={item.position ?? ''}
+                        disabled={!canUpdateUsers}
                         onBlur={(event) => {
+                          if (!canUpdateUsers) return;
                           const nextPosition = event.target.value.trim();
                           if ((item.position ?? '') !== nextPosition) {
                             void onUpdatePosition(item, nextPosition);
@@ -391,7 +398,7 @@ export default function UsersTable() {
                         }}
                       />
                     </div>
-                    {isAdmin ? (
+                    {canUpdateUsers ? (
                       <Button
                         variant="outline"
                         disabled={busyByUserId[item.id]}

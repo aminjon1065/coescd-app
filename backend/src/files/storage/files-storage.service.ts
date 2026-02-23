@@ -1,30 +1,71 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
+  CreateBucketCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { Agent as HttpsAgent } from 'https';
 import { Readable } from 'stream';
 
 @Injectable()
-export class FilesStorageService {
+export class FilesStorageService implements OnModuleInit {
   private readonly client: S3Client;
   private readonly bucket: string;
+  private readonly logger = new Logger(FilesStorageService.name);
 
   constructor() {
+    const endpoint = process.env.S3_ENDPOINT ?? 'http://127.0.0.1:9000';
+    const rejectUnauthorized =
+      (process.env.S3_TLS_REJECT_UNAUTHORIZED ?? 'true') !== 'false';
+
     this.bucket = process.env.S3_BUCKET ?? 'coescd-files';
     this.client = new S3Client({
       region: process.env.S3_REGION ?? 'us-east-1',
-      endpoint: process.env.S3_ENDPOINT ?? 'http://127.0.0.1:9000',
+      endpoint,
       forcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
       credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY ?? 'minioadmin',
         secretAccessKey: process.env.S3_SECRET_KEY ?? 'minioadmin',
       },
+      // Allow self-signed TLS certs (e.g. Herd local dev) when explicitly opted-in
+      ...(!rejectUnauthorized && {
+        requestHandler: new NodeHttpHandler({
+          httpsAgent: new HttpsAgent({ rejectUnauthorized: false }),
+        }),
+      }),
     });
+  }
+
+  /** Auto-create the S3 bucket on startup if it doesn't exist yet. */
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      this.logger.log(`S3 bucket "${this.bucket}" is ready`);
+    } catch (err: unknown) {
+      const status = (err as { $metadata?: { httpStatusCode?: number } })
+        ?.$metadata?.httpStatusCode;
+      if (status === 404 || status === 403) {
+        // 404 = bucket missing, 403 may also indicate no bucket in MinIO
+        this.logger.warn(
+          `S3 bucket "${this.bucket}" not found — creating it now`,
+        );
+        await this.client.send(
+          new CreateBucketCommand({ Bucket: this.bucket }),
+        );
+        this.logger.log(`S3 bucket "${this.bucket}" created successfully`);
+      } else {
+        this.logger.error(
+          `S3 connectivity check failed (endpoint: ${process.env.S3_ENDPOINT ?? 'default'}):`,
+          err,
+        );
+      }
+    }
   }
 
   getBucket(): string {

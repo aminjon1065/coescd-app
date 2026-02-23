@@ -8,6 +8,12 @@ export const ROLE_DASHBOARD_PATH: Record<UserRole, string> = {
   [Role.Regular]: '/dashboard/regular',
 };
 
-export function getRoleDashboardPath(role: UserRole): string {
-  return ROLE_DASHBOARD_PATH[role];
+const DEFAULT_DASHBOARD_PATH = '/dashboard/regular';
+
+export function getRoleDashboardPath(role?: UserRole | null): string {
+  if (!role) {
+    return DEFAULT_DASHBOARD_PATH;
+  }
+
+  return ROLE_DASHBOARD_PATH[role] ?? DEFAULT_DASHBOARD_PATH;
 }

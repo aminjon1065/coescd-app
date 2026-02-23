@@ -26,8 +26,10 @@ export default function LoginPage() {
       setAccessToken(accessToken);
       setUser(user);
       const nextPath = searchParams.get('next');
-      const isSafeNext = Boolean(nextPath && nextPath.startsWith('/'));
-      router.replace(isSafeNext ? nextPath! : getRoleDashboardPath(user.role));
+      const isSafeNext = typeof nextPath === 'string'
+        && nextPath.startsWith('/')
+        && !nextPath.startsWith('//');
+      router.replace(isSafeNext ? nextPath! : getRoleDashboardPath(user?.role));
     } catch {
       setError('Неверный email или пароль');
     } finally {

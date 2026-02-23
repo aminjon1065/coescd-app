@@ -84,43 +84,49 @@ export class CallsGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { receiverId: number; hasVideo?: boolean },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
 
-    const { receiverId, hasVideo = false } = data ?? {};
-    if (!receiverId) throw new WsException('receiverId is required');
-    if (receiverId === user.sub) throw new WsException('Cannot call yourself');
+      const { receiverId, hasVideo = false } = data ?? {};
+      if (!receiverId) throw new WsException('receiverId is required');
+      if (receiverId === user.sub) throw new WsException('Cannot call yourself');
 
-    const call = await this.callsService.createCall(
-      user.sub,
-      receiverId,
-      hasVideo,
-    );
+      const call = await this.callsService.createCall(
+        user.sub,
+        receiverId,
+        hasVideo,
+      );
 
-    // Caller joins the call signaling room immediately
-    await client.join(`call:${call.id}`);
+      // Caller joins the call signaling room immediately
+      await client.join(`call:${call.id}`);
 
-    const callPayload = {
-      id: call.id,
-      initiator: call.initiator
-        ? { id: call.initiator.id, name: call.initiator.name, avatar: call.initiator.avatar }
-        : null,
-      receiver: call.receiver
-        ? { id: call.receiver.id, name: call.receiver.name, avatar: call.receiver.avatar }
-        : null,
-      status: call.status,
-      hasVideo: call.hasVideo,
-      startedAt: null,
-      endedAt: null,
-      durationSec: null,
-      createdAt: call.createdAt,
-    };
+      const callPayload = {
+        id: call.id,
+        initiator: call.initiator
+          ? { id: call.initiator.id, name: call.initiator.name, avatar: call.initiator.avatar }
+          : null,
+        receiver: call.receiver
+          ? { id: call.receiver.id, name: call.receiver.name, avatar: call.receiver.avatar }
+          : null,
+        status: call.status,
+        hasVideo: call.hasVideo,
+        startedAt: null,
+        endedAt: null,
+        durationSec: null,
+        createdAt: call.createdAt,
+      };
 
-    // Notify the receiver
-    this.server.to(`user:${receiverId}`).emit('call:incoming', callPayload);
+      // Notify the receiver
+      this.server.to(`user:${receiverId}`).emit('call:incoming', callPayload);
 
-    // Acknowledge to caller (so they can show "Ringing..." state)
-    client.emit('call:ringing', callPayload);
+      // Acknowledge to caller (so they can show "Ringing..." state)
+      client.emit('call:ringing', callPayload);
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[calls] handleInvite error:', err);
+      throw new WsException('Internal server error');
+    }
   }
 
   // ── call:accept ──────────────────────────────────────────────────────────────
@@ -130,28 +136,34 @@ export class CallsGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { callId: number },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
 
-    const { callId } = data ?? {};
-    if (!callId) throw new WsException('callId is required');
+      const { callId } = data ?? {};
+      if (!callId) throw new WsException('callId is required');
 
-    const existing = await this.callsService.findOne(callId);
-    if (!existing) throw new WsException(`Call #${callId} not found`);
-    if (existing.receiver?.id !== user.sub) throw new WsException('Not the receiver');
-    if (existing.status !== 'pending') throw new WsException('Call is no longer pending');
+      const existing = await this.callsService.findOne(callId);
+      if (!existing) throw new WsException(`Call #${callId} not found`);
+      if (existing.receiver?.id !== user.sub) throw new WsException('Not the receiver');
+      if (existing.status !== 'pending') throw new WsException('Call is no longer pending');
 
-    const call = await this.callsService.updateStatus(callId, 'active', {
-      startedAt: new Date(),
-    });
+      const call = await this.callsService.updateStatus(callId, 'active', {
+        startedAt: new Date(),
+      });
 
-    // Receiver joins the signaling room
-    await client.join(`call:${callId}`);
+      // Receiver joins the signaling room
+      await client.join(`call:${callId}`);
 
-    const callPayload = this.serializeCall(call);
+      const callPayload = this.serializeCall(call);
 
-    // Notify both parties
-    this.server.to(`call:${callId}`).emit('call:accepted', callPayload);
+      // Notify both parties
+      this.server.to(`call:${callId}`).emit('call:accepted', callPayload);
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[calls] handleAccept error:', err);
+      throw new WsException('Internal server error');
+    }
   }
 
   // ── call:reject ──────────────────────────────────────────────────────────────
@@ -161,25 +173,31 @@ export class CallsGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { callId: number },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
 
-    const { callId } = data ?? {};
-    if (!callId) throw new WsException('callId is required');
+      const { callId } = data ?? {};
+      if (!callId) throw new WsException('callId is required');
 
-    const existing = await this.callsService.findOne(callId);
-    if (!existing) throw new WsException(`Call #${callId} not found`);
-    if (existing.receiver?.id !== user.sub) throw new WsException('Not the receiver');
-    if (existing.status !== 'pending') throw new WsException('Call is no longer pending');
+      const existing = await this.callsService.findOne(callId);
+      if (!existing) throw new WsException(`Call #${callId} not found`);
+      if (existing.receiver?.id !== user.sub) throw new WsException('Not the receiver');
+      if (existing.status !== 'pending') throw new WsException('Call is no longer pending');
 
-    const call = await this.callsService.updateStatus(callId, 'rejected');
-    const callPayload = this.serializeCall(call);
+      const call = await this.callsService.updateStatus(callId, 'rejected');
+      const callPayload = this.serializeCall(call);
 
-    // Notify the initiator
-    if (existing.initiator) {
-      this.server.to(`user:${existing.initiator.id}`).emit('call:rejected', callPayload);
+      // Notify the initiator
+      if (existing.initiator) {
+        this.server.to(`user:${existing.initiator.id}`).emit('call:rejected', callPayload);
+      }
+      client.emit('call:rejected', callPayload);
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[calls] handleReject error:', err);
+      throw new WsException('Internal server error');
     }
-    client.emit('call:rejected', callPayload);
   }
 
   // ── call:hangup ──────────────────────────────────────────────────────────────
@@ -189,38 +207,44 @@ export class CallsGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { callId: number },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
 
-    const { callId } = data ?? {};
-    if (!callId) throw new WsException('callId is required');
+      const { callId } = data ?? {};
+      if (!callId) throw new WsException('callId is required');
 
-    const existing = await this.callsService.findOne(callId);
-    if (!existing) throw new WsException(`Call #${callId} not found`);
-    if (!this.callsService.isParticipant(existing, user.sub)) {
-      throw new WsException('Not a participant');
+      const existing = await this.callsService.findOne(callId);
+      if (!existing) throw new WsException(`Call #${callId} not found`);
+      if (!this.callsService.isParticipant(existing, user.sub)) {
+        throw new WsException('Not a participant');
+      }
+      if (existing.status === 'ended' || existing.status === 'rejected') {
+        return; // already done
+      }
+
+      const endedAt = new Date();
+      const durationSec =
+        existing.startedAt
+          ? this.callsService.computeDuration(existing.startedAt)
+          : null;
+
+      // Pending → missed (the other party hung up before answer)
+      const newStatus: 'ended' | 'missed' =
+        existing.status === 'pending' ? 'missed' : 'ended';
+
+      const call = await this.callsService.updateStatus(callId, newStatus, {
+        endedAt,
+        durationSec: durationSec ?? undefined,
+      });
+
+      const callPayload = this.serializeCall(call);
+      this.server.to(`call:${callId}`).emit('call:ended', callPayload);
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[calls] handleHangup error:', err);
+      throw new WsException('Internal server error');
     }
-    if (existing.status === 'ended' || existing.status === 'rejected') {
-      return; // already done
-    }
-
-    const endedAt = new Date();
-    const durationSec =
-      existing.startedAt
-        ? this.callsService.computeDuration(existing.startedAt)
-        : null;
-
-    // Pending → missed (the other party hung up before answer)
-    const newStatus: 'ended' | 'missed' =
-      existing.status === 'pending' ? 'missed' : 'ended';
-
-    const call = await this.callsService.updateStatus(callId, newStatus, {
-      endedAt,
-      durationSec: durationSec ?? undefined,
-    });
-
-    const callPayload = this.serializeCall(call);
-    this.server.to(`call:${callId}`).emit('call:ended', callPayload);
   }
 
   // ── call:offer ───────────────────────────────────────────────────────────────
@@ -230,14 +254,20 @@ export class CallsGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { callId: number; sdp: RTCSessionDescriptionInit },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
-    await this.validateParticipant(data?.callId, user.sub);
-    // Relay to other participant, exclude sender
-    client.to(`call:${data.callId}`).emit('call:offer', {
-      callId: data.callId,
-      sdp: data.sdp,
-    });
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
+      await this.validateParticipant(data?.callId, user.sub);
+      // Relay to other participant, exclude sender
+      client.to(`call:${data.callId}`).emit('call:offer', {
+        callId: data.callId,
+        sdp: data.sdp,
+      });
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[calls] handleOffer error:', err);
+      throw new WsException('Internal server error');
+    }
   }
 
   // ── call:answer ──────────────────────────────────────────────────────────────
@@ -247,13 +277,19 @@ export class CallsGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { callId: number; sdp: RTCSessionDescriptionInit },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
-    await this.validateParticipant(data?.callId, user.sub);
-    client.to(`call:${data.callId}`).emit('call:answer', {
-      callId: data.callId,
-      sdp: data.sdp,
-    });
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
+      await this.validateParticipant(data?.callId, user.sub);
+      client.to(`call:${data.callId}`).emit('call:answer', {
+        callId: data.callId,
+        sdp: data.sdp,
+      });
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[calls] handleAnswer error:', err);
+      throw new WsException('Internal server error');
+    }
   }
 
   // ── call:ice-candidate ───────────────────────────────────────────────────────
@@ -263,13 +299,19 @@ export class CallsGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { callId: number; candidate: RTCIceCandidateInit },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
-    await this.validateParticipant(data?.callId, user.sub);
-    client.to(`call:${data.callId}`).emit('call:ice-candidate', {
-      callId: data.callId,
-      candidate: data.candidate,
-    });
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
+      await this.validateParticipant(data?.callId, user.sub);
+      client.to(`call:${data.callId}`).emit('call:ice-candidate', {
+        callId: data.callId,
+        candidate: data.candidate,
+      });
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[calls] handleIceCandidate error:', err);
+      throw new WsException('Internal server error');
+    }
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────────

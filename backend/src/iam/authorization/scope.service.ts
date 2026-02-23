@@ -136,6 +136,10 @@ export class ScopeService {
       ownerAlias: string;
       departmentAlias: string;
     },
+    options?: {
+      extraOrCondition?: string;
+      extraOrParams?: Record<string, unknown>;
+    },
   ): void {
     if (this.isAdmin(actor) || actor.delegationContext?.scopeType === 'global') {
       return;
@@ -161,6 +165,12 @@ export class ScopeService {
           scopeQb.orWhere(`${aliases.departmentAlias}.id = :delegatedDepartmentId`, {
             delegatedDepartmentId,
           });
+        }
+        if (options?.extraOrCondition) {
+          scopeQb.orWhere(
+            options.extraOrCondition,
+            options.extraOrParams,
+          );
         }
       }),
     );

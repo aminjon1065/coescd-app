@@ -4,6 +4,10 @@ export class AutoMigration1771787904711 implements MigrationInterface {
     name = 'AutoMigration1771787904711'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        // Guard: skip if base tables already exist (DB was set up before migrations)
+        const alreadyExists = await queryRunner.hasTable('departments');
+        if (alreadyExists) return;
+
         await queryRunner.query(`CREATE TABLE "departments" ("id" SERIAL NOT NULL, "name" character varying NOT NULL, "type" "public"."departments_type_enum" NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "parent_id" integer, "chief_id" integer, CONSTRAINT "PK_839517a681a86bb84cbcc6a1e9d" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "org_units" ("id" SERIAL NOT NULL, "name" character varying NOT NULL, "type" character varying NOT NULL, "path" character varying, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "parent_id" integer, CONSTRAINT "PK_b4a19b7f3756560cd75643be5a7" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "user" ("id" SERIAL NOT NULL, "email" character varying NOT NULL, "password" character varying NOT NULL, "avatar" character varying, "name" character varying NOT NULL, "position" character varying, "isVerified" boolean NOT NULL DEFAULT false, "isActive" boolean NOT NULL DEFAULT true, "role" character varying NOT NULL DEFAULT 'regular', "permissions" json NOT NULL DEFAULT '[]', "business_role" character varying, "org_unit_id" integer, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "department_id" integer, CONSTRAINT "UQ_e12875dfb3b1d92d7d7c5377e22" UNIQUE ("email"), CONSTRAINT "PK_cace4a159ff9f2512dd42373760" PRIMARY KEY ("id"))`);

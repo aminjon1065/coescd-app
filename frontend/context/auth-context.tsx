@@ -7,7 +7,6 @@ import Loading from '@/app/loading';
 import { Role } from '@/enums/RoleEnum';
 import { IDepartment } from '@/interfaces/IDepartment';
 import { getRoleDashboardPath } from '@/features/authz/roles';
-import { Permission } from '@/lib/permissions';
 
 interface AuthUser {
   id?: number;
@@ -57,7 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setAccessToken(accessToken);
         setAxiosAccessToken(accessToken);
         if (isPublicRoute) {
-          router.replace(getRoleDashboardPath(user.role));
+          router.replace(getRoleDashboardPath(user?.role));
         }
         setLoading(false);
       } catch {
@@ -92,8 +91,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   if (loading || (!user && !isPublicRoute)) {
     return <Loading />;
   }
-  console.log(user?.permissions);
-  console.log(Permission.USERS_READ)
   return (
     <AuthContext.Provider value={{ user, setUser, accessToken, loading, setAccessToken, logout }}>
       {children}

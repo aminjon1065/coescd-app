@@ -109,64 +109,70 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { room: string; content: string },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) {
-      throw new WsException('Unauthorized');
-    }
-
-    const { room, content } = data ?? {};
-
-    if (!room || !content?.trim()) {
-      throw new WsException('room and content are required');
-    }
-
-    // Validate room format
-    if (!VALID_ROOM_RE.test(room)) {
-      throw new WsException('Invalid room');
-    }
-
-    // Scope check
-    if (room === 'global') {
-      if (!GLOBAL_WRITE_ROLES.has(user.role)) {
-        throw new WsException('Insufficient permissions to write to global room');
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) {
+        throw new WsException('Unauthorized');
       }
-    } else if (room.startsWith('dept:')) {
-      // dept room — user must belong to that dept (or be admin)
-      const deptId = Number(room.replace('dept:', ''));
-      if (user.role !== Role.Admin && user.departmentId !== deptId) {
-        throw new WsException('Cannot write to another department room');
+
+      const { room, content } = data ?? {};
+
+      if (!room || !content?.trim()) {
+        throw new WsException('room and content are required');
       }
-    } else if (room.startsWith('dm:')) {
-      // DM room — user must be one of the two participants
-      const [, idPart] = room.split(':');
-      const [idA, idB] = idPart.split('_').map(Number);
-      if (user.sub !== idA && user.sub !== idB) {
-        throw new WsException('Cannot write to this DM room');
+
+      // Validate room format
+      if (!VALID_ROOM_RE.test(room)) {
+        throw new WsException('Invalid room');
       }
+
+      // Scope check
+      if (room === 'global') {
+        if (!GLOBAL_WRITE_ROLES.has(user.role)) {
+          throw new WsException('Insufficient permissions to write to global room');
+        }
+      } else if (room.startsWith('dept:')) {
+        // dept room — user must belong to that dept (or be admin)
+        const deptId = Number(room.replace('dept:', ''));
+        if (user.role !== Role.Admin && user.departmentId !== deptId) {
+          throw new WsException('Cannot write to another department room');
+        }
+      } else if (room.startsWith('dm:')) {
+        // DM room — user must be one of the two participants
+        const [, idPart] = room.split(':');
+        const [idA, idB] = idPart.split('_').map(Number);
+        if (user.sub !== idA && user.sub !== idB) {
+          throw new WsException('Cannot write to this DM room');
+        }
+      }
+
+      const message = await this.chatService.saveMessage(
+        user.sub,
+        room,
+        content.trim(),
+      );
+
+      // Serialize sender subset
+      const payload = {
+        id: message.id,
+        room: message.room,
+        sender: message.sender
+          ? {
+              id: message.sender.id,
+              name: message.sender.name,
+              avatar: message.sender.avatar,
+            }
+          : null,
+        content: message.content,
+        createdAt: message.createdAt,
+      };
+
+      this.server.to(room).emit('chat:message', payload);
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[chat] handleMessage error:', err);
+      throw new WsException('Internal server error');
     }
-
-    const message = await this.chatService.saveMessage(
-      user.sub,
-      room,
-      content.trim(),
-    );
-
-    // Serialize sender subset
-    const payload = {
-      id: message.id,
-      room: message.room,
-      sender: message.sender
-        ? {
-            id: message.sender.id,
-            name: message.sender.name,
-            avatar: message.sender.avatar,
-          }
-        : null,
-      content: message.content,
-      createdAt: message.createdAt,
-    };
-
-    this.server.to(room).emit('chat:message', payload);
   }
 
   // ── chat:history ────────────────────────────────────────────────────────────
@@ -176,17 +182,23 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { room: string; page?: number; limit?: number },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
 
-    const { room, page = 1, limit = 50 } = data ?? {};
-    if (!room || !VALID_ROOM_RE.test(room)) {
-      throw new WsException('Invalid room');
+      const { room, page = 1, limit = 50 } = data ?? {};
+      if (!room || !VALID_ROOM_RE.test(room)) {
+        throw new WsException('Invalid room');
+      }
+
+      const history = await this.chatService.getHistory(room, page, limit);
+
+      client.emit('chat:history', history);
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[chat] handleHistory error:', err);
+      throw new WsException('Internal server error');
     }
-
-    const history = await this.chatService.getHistory(room, page, limit);
-
-    client.emit('chat:history', history);
   }
 
   // ── chat:join ────────────────────────────────────────────────────────────────
@@ -198,24 +210,30 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { room: string },
   ) {
-    const user = client.data.user as ActiveUserData | undefined;
-    if (!user) throw new WsException('Unauthorized');
+    try {
+      const user = client.data.user as ActiveUserData | undefined;
+      if (!user) throw new WsException('Unauthorized');
 
-    const { room } = data ?? {};
-    if (!room || !VALID_ROOM_RE.test(room)) {
-      throw new WsException('Invalid room');
-    }
-
-    if (room.startsWith('dm:')) {
-      const [, idPart] = room.split(':');
-      const [idA, idB] = idPart.split('_').map(Number);
-      if (user.sub !== idA && user.sub !== idB) {
-        throw new WsException('Not a participant of this DM');
+      const { room } = data ?? {};
+      if (!room || !VALID_ROOM_RE.test(room)) {
+        throw new WsException('Invalid room');
       }
-    }
 
-    await client.join(room);
-    client.emit('chat:joined', { room });
+      if (room.startsWith('dm:')) {
+        const [, idPart] = room.split(':');
+        const [idA, idB] = idPart.split('_').map(Number);
+        if (user.sub !== idA && user.sub !== idB) {
+          throw new WsException('Not a participant of this DM');
+        }
+      }
+
+      await client.join(room);
+      client.emit('chat:joined', { room });
+    } catch (err) {
+      if (err instanceof WsException) throw err;
+      this.logger.error('[chat] handleJoin error:', err);
+      throw new WsException('Internal server error');
+    }
   }
 
   // ── chat:typing ─────────────────────────────────────────────────────────────

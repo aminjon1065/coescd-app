@@ -10,8 +10,10 @@ import {
   DownloadIcon,
   FileIcon,
   SearchIcon,
+  Share2Icon,
   Trash2Icon,
   UploadIcon,
+  Users2Icon,
 } from 'lucide-react';
 import api from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
@@ -20,6 +22,7 @@ import { ListResponse } from '@/lib/list-response';
 import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 import { hasPermission, Permission } from '@/lib/permissions';
 import { format } from 'date-fns';
+import { FileShareDialog } from '@/components/files/FileShareDialog';
 
 function formatBytes(bytes: string | number): string {
   const n = Number(bytes);
@@ -54,6 +57,9 @@ function FilesContent() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** The file whose share dialog is currently open, or null */
+  const [sharingFile, setSharingFile] = useState<IFile | null>(null);
 
   const canWrite = hasPermission(Permission.FILES_WRITE);
   const canDelete = hasPermission(Permission.FILES_DELETE);
@@ -152,103 +158,138 @@ function FilesContent() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <CardTitle>Файлы ({total})</CardTitle>
-        {canWrite && (
-          <div className="flex flex-col items-end gap-1">
-            <Button
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              <UploadIcon className="mr-2 h-4 w-4" />
-              {uploading ? 'Загрузка…' : 'Загрузить'}
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              className="hidden"
-              onChange={handleUpload}
-            />
-            {uploadError && (
-              <p className="text-xs text-destructive">{uploadError}</p>
-            )}
-          </div>
-        )}
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <Input
-            placeholder="Поиск по имени файла…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
-          />
-          <Button type="submit" variant="outline" size="sm">
-            <SearchIcon className="h-4 w-4" />
-          </Button>
-        </form>
-
-        {files.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">Файлы не найдены</p>
-        ) : (
-          <div className="space-y-2">
-            {files.map((file) => (
-              <div
-                key={file.id}
-                className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle>Файлы ({total})</CardTitle>
+          {canWrite && (
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <p className="font-medium truncate max-w-xs">
-                      {file.originalName}
-                    </p>
-                    <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
-                      <span>{mimeLabel(file.mimeType)}</span>
-                      <span>{formatBytes(file.sizeBytes)}</span>
-                      {file.owner && <span>{file.owner.name}</span>}
-                      {file.department && (
-                        <span>{file.department.name}</span>
+                <UploadIcon className="mr-2 h-4 w-4" />
+                {uploading ? 'Загрузка…' : 'Загрузить'}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={handleUpload}
+              />
+              {uploadError && (
+                <p className="text-xs text-destructive">{uploadError}</p>
+              )}
+            </div>
+          )}
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <Input
+              placeholder="Поиск по имени файла…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-sm"
+            />
+            <Button type="submit" variant="outline" size="sm">
+              <SearchIcon className="h-4 w-4" />
+            </Button>
+          </form>
+
+          {files.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">Файлы не найдены</p>
+          ) : (
+            <div className="space-y-2">
+              {files.map((file) => {
+                const isOwner = user && file.owner?.id === user.id;
+                // File was shared with this user: visible but not owned
+                const isShared = !isOwner;
+                return (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium truncate max-w-xs">
+                            {file.originalName}
+                          </p>
+                          {isShared && (
+                            <span title="Файл поделён с вами">
+                              <Users2Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
+                          <span>{mimeLabel(file.mimeType)}</span>
+                          <span>{formatBytes(file.sizeBytes)}</span>
+                          {file.owner && <span>{file.owner.name}</span>}
+                          {file.department && (
+                            <span>{file.department.name}</span>
+                          )}
+                          <span>
+                            {format(new Date(file.createdAt), 'dd.MM.yyyy')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="outline" className="text-xs">
+                        {mimeLabel(file.mimeType)}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Скачать"
+                        onClick={() => handleDownload(file)}
+                      >
+                        <DownloadIcon className="h-4 w-4" />
+                      </Button>
+                      {/* Share button — only for file owner with write permission */}
+                      {canWrite && isOwner && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Настроить доступ"
+                          onClick={() => setSharingFile(file)}
+                        >
+                          <Share2Icon className="h-4 w-4" />
+                        </Button>
                       )}
-                      <span>
-                        {format(new Date(file.createdAt), 'dd.MM.yyyy')}
-                      </span>
+                      {/* Delete button — only for file owner with delete permission */}
+                      {canDelete && isOwner && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Удалить"
+                          onClick={() => handleDelete(file)}
+                        >
+                          <Trash2Icon className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className="text-xs">
-                    {mimeLabel(file.mimeType)}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Скачать"
-                    onClick={() => handleDownload(file)}
-                  >
-                    <DownloadIcon className="h-4 w-4" />
-                  </Button>
-                  {canDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Удалить"
-                      onClick={() => handleDelete(file)}
-                    >
-                      <Trash2Icon className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {/* Share dialog — rendered outside the card to avoid z-index issues */}
+      {sharingFile && (
+        <FileShareDialog
+          file={sharingFile}
+          open={!!sharingFile}
+          onClose={() => setSharingFile(null)}
+        />
+      )}
+    </>
   );
 }

@@ -79,6 +79,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             .map((routeDef) => routeByUrl.get(routeDef.url))
             .filter((route): route is NavItem => Boolean(route))
             .filter((route) => {
+              if (route.roles?.length && !route.roles.includes(user.role as never)) {
+                return false;
+              }
               if (route.requiredAnyPermissions?.length && !route.requiredAnyPermissions.some((permission) => hasPermission(permission))) {
                 return false;
               }
