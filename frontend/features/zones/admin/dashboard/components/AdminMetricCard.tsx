@@ -11,7 +11,7 @@ export function AdminMetricCard({
   title,
   value,
   subtitle,
-  unavailableLabel = 'Not available',
+  unavailableLabel = 'Нет данных',
 }: AdminMetricCardProps) {
   const isUnavailable = value === null || value === undefined;
 

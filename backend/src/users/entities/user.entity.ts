@@ -42,9 +42,6 @@ export class User {
   @Column({ name: 'business_role', type: 'varchar', nullable: true })
   @IsOptional()
   businessRole: string | null;
-  @Column({ name: 'org_unit_id', type: 'int', nullable: true })
-  @IsOptional()
-  orgUnitId: number | null;
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
   department: Department | null;

@@ -79,7 +79,7 @@ export function RoleMatrix({ matrix, isSaving, onToggleRolePermission, onSave }:
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Role Permissions Matrix</CardTitle>
+        <CardTitle>Матрица прав по ролям</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {permissionGroups.map((group) => (
@@ -90,7 +90,7 @@ export function RoleMatrix({ matrix, isSaving, onToggleRolePermission, onSave }:
             <div className="overflow-x-auto rounded border">
               <div className="min-w-max p-2">
                 <div className="grid gap-2 text-sm font-medium" style={{ gridTemplateColumns }}>
-                  <div>Permission</div>
+                  <div>Право</div>
                   {roles.map((role) => (
                     <div key={role}>{labelBusinessRole(role)}</div>
                   ))}
@@ -114,7 +114,7 @@ export function RoleMatrix({ matrix, isSaving, onToggleRolePermission, onSave }:
                             }
                           />
                           <Badge variant={checked ? 'default' : 'secondary'}>
-                            {checked ? 'Yes' : 'No'}
+                            {checked ? 'Да' : 'Нет'}
                           </Badge>
                         </label>
                       );
@@ -127,7 +127,7 @@ export function RoleMatrix({ matrix, isSaving, onToggleRolePermission, onSave }:
         ))}
 
         <Button onClick={onSave} disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Save Role Matrix'}
+          {isSaving ? 'Сохранение...' : 'Сохранить матрицу'}
         </Button>
       </CardContent>
     </Card>

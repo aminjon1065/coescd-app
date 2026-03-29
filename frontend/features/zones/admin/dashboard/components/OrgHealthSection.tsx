@@ -12,13 +12,13 @@ export function OrgHealthSection({ dashboard }: OrgHealthSectionProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Organization Health</CardTitle>
+        <CardTitle>Здоровье организации</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard title="Total departments" value={admin?.totalDepartments} />
-        <AdminMetricCard title="Departments without chief" value={null} unavailableLabel="Backend metric not provided" />
-        <AdminMetricCard title="Root-level departments" value={null} unavailableLabel="Backend metric not provided" />
-        <AdminMetricCard title="Invalid org structures" value={null} unavailableLabel="Backend metric not provided" />
+        <AdminMetricCard title="Всего подразделений" value={admin?.totalDepartments} />
+        <AdminMetricCard title="Без руководителя" value={null} />
+        <AdminMetricCard title="Корневых подразделений" value={null} />
+        <AdminMetricCard title="Нарушения структуры" value={null} />
       </CardContent>
     </Card>
   );

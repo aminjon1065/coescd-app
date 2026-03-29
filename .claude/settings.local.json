@@ -41,7 +41,13 @@
       "Bash(sudo chown:*)",
       "Bash(npm_config_cache=/tmp/npm-fresh-cache npm install @tanstack/react-query @tanstack/react-query-devtools)",
       "Bash(echo \"Exit code: $?\")",
-      "Bash(ls -la /Users/aminjon/Desktop/coescd-app/frontend/app/dashboard/tasks/[id]/)"
+      "Bash(ls -la /Users/aminjon/Desktop/coescd-app/frontend/app/dashboard/tasks/[id]/)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $f ===\")",
+      "Read(//Users/aminjon/Desktop/coescd-app/**)",
+      "Bash(do echo:*)",
+      "Read(//Users/aminjon/Desktop/coescd-app/frontend/features/zones/admin/dashboard/components/**)"
     ]
   }
 }

@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import {
   Select,
   SelectContent,
@@ -266,7 +266,7 @@ export function RegistrationJournalTable({ lang = 'ru' }: Props) {
                     <td className="px-3 py-2">{item.registrationNumber}</td>
                     <td className="px-3 py-2">{journalTypeLabel[item.journalType]}</td>
                     <td className="px-3 py-2">
-                      <Badge variant="outline">{registrationStatusLabel[item.status]}</Badge>
+                      <StatusBadge status={item.status} label={registrationStatusLabel[item.status]} />
                     </td>
                     <td className="px-3 py-2">{item.document?.title ?? '—'}</td>
                     <td className="px-3 py-2">{item.document?.department?.name ?? '—'}</td>

@@ -42,23 +42,23 @@ export function AdminDashboard() {
       permission={Permission.USERS_READ}
       fallback={(
         <AccessDeniedCard
-          title="Access denied"
-          description="Permission users.read is required to view the admin dashboard."
+          title="Доступ запрещён"
+          description="Для просмотра панели администратора требуется право users.read."
         />
       )}
     >
       <div className="space-y-4">
         <Card>
           <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <CardTitle>Admin Control Center</CardTitle>
-            <Badge variant="outline">System zone</Badge>
+            <CardTitle>Панель администратора</CardTitle>
+            <Badge variant="outline">Системная зона</Badge>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
             {loading
-              ? 'Loading...'
+              ? 'Загрузка...'
               : error
-                ? error
-                : `Updated: ${dashboard ? new Date(dashboard.generatedAt).toLocaleString() : 'N/A'}`}
+                ? 'Не удалось загрузить данные панели администратора.'
+                : `Обновлено: ${dashboard ? new Date(dashboard.generatedAt).toLocaleString('ru-RU') : '—'}`}
           </CardContent>
         </Card>
 

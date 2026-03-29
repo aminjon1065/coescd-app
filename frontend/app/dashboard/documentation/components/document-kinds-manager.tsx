@@ -13,7 +13,7 @@ import { can } from '@/features/authz/can';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import {
   Dialog,
   DialogContent,
@@ -269,9 +269,7 @@ export function DocumentKindsManager({ lang = 'ru' }: Props) {
                     <td className="px-3 py-2">{item.name}</td>
                     <td className="px-3 py-2">{item.description ?? '—'}</td>
                     <td className="px-3 py-2">
-                      <Badge variant={item.isActive ? 'default' : 'outline'}>
-                        {item.isActive ? t.active : t.inactive}
-                      </Badge>
+                      <StatusBadge status={item.isActive ? 'active' : 'ended'} label={item.isActive ? t.active : t.inactive} />
                     </td>
                     <td className="px-3 py-2">
                       {canManageKinds ? (

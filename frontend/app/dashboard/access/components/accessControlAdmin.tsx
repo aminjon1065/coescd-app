@@ -174,11 +174,8 @@ export default function AccessControlAdmin() {
   if (!isAdmin) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Access Control</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Access denied. Admin role is required.
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          Доступ запрещён. Требуется роль Администратора.
         </CardContent>
       </Card>
     );
@@ -190,11 +187,11 @@ export default function AccessControlAdmin() {
 
   return (
     <div className="space-y-6">
-      {pageError ? (
-        <Card className="border-red-300">
-          <CardContent className="pt-6 text-sm text-red-600">{pageError}</CardContent>
-        </Card>
-      ) : null}
+      {pageError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+          {pageError}
+        </div>
+      )}
 
       <RoleMatrix
         matrix={matrix}
@@ -205,13 +202,13 @@ export default function AccessControlAdmin() {
 
       <Card>
         <CardHeader>
-          <CardTitle>User Custom Permissions</CardTitle>
+          <CardTitle>Индивидуальные права пользователя</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="max-w-sm">
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select user" />
+                <SelectValue placeholder="Выберите пользователя" />
               </SelectTrigger>
               <SelectContent>
                 {users.map((item) => (
@@ -226,8 +223,8 @@ export default function AccessControlAdmin() {
           {selectedUser ? (
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                Role defaults for <span className="font-medium">{selectedUser.role}</span> are applied automatically.
-                Select only additional permissions below.
+                Права по умолчанию для роли <span className="font-medium">{selectedUser.role}</span> применяются автоматически.
+                Выберите только дополнительные права ниже.
               </div>
 
               {Object.entries(groupedPermissions).map(([groupKey, permissions]) => (
@@ -248,7 +245,7 @@ export default function AccessControlAdmin() {
                             }
                           />
                           <span className="font-mono">{permission}</span>
-                          {isDefault ? <Badge variant="outline">role default</Badge> : null}
+                          {isDefault ? <Badge variant="outline" className="text-xs">по умолчанию</Badge> : null}
                         </label>
                       );
                     })}
@@ -257,11 +254,11 @@ export default function AccessControlAdmin() {
               ))}
 
               <Button onClick={onSaveCustomPermissions} disabled={isSavingCustom}>
-                {isSavingCustom ? 'Saving...' : 'Save Custom Permissions'}
+                {isSavingCustom ? 'Сохранение...' : 'Сохранить права'}
               </Button>
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">No users found.</div>
+            <div className="text-sm text-muted-foreground">Пользователи не найдены.</div>
           )}
         </CardContent>
       </Card>

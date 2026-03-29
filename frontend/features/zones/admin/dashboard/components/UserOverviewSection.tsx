@@ -12,14 +12,14 @@ export function UserOverviewSection({ dashboard }: UserOverviewSectionProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>User & Access Overview</CardTitle>
+        <CardTitle>Пользователи и доступ</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <AdminMetricCard title="Total users" value={admin?.totalUsers} />
-        <AdminMetricCard title="Active users" value={admin?.activeUsers} />
-        <AdminMetricCard title="Disabled users" value={null} unavailableLabel="Backend metric not provided" />
-        <AdminMetricCard title="Users without department" value={null} unavailableLabel="Backend metric not provided" />
-        <AdminMetricCard title="Users with custom permissions" value={null} unavailableLabel="Backend metric not provided" />
+        <AdminMetricCard title="Всего пользователей" value={admin?.totalUsers} />
+        <AdminMetricCard title="Активных пользователей" value={admin?.activeUsers} />
+        <AdminMetricCard title="Отключённых пользователей" value={null} />
+        <AdminMetricCard title="Без подразделения" value={null} />
+        <AdminMetricCard title="С индивидуальными правами" value={null} />
       </CardContent>
     </Card>
   );

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -240,9 +239,9 @@ function FilesContent() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant="outline" className="text-xs">
+                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {mimeLabel(file.mimeType)}
-                      </Badge>
+                      </span>
                       <Button
                         variant="ghost"
                         size="icon"

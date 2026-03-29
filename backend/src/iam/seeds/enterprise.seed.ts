@@ -665,7 +665,6 @@ export class EnterpriseIamSeed {
       const desiredOrgUnitId = spec.orgUnit?.id ?? null;
       if (existingOrgUnitId !== desiredOrgUnitId) {
         existing.orgUnit = spec.orgUnit;
-        existing.orgUnitId = desiredOrgUnitId;
         shouldSave = true;
       }
 
@@ -699,7 +698,6 @@ export class EnterpriseIamSeed {
       role: spec.role,
       department: spec.department ?? undefined,
       orgUnit: spec.orgUnit ?? undefined,
-      orgUnitId: spec.orgUnit?.id ?? null,
       password: passwordHash,
       isVerified: true,
       isActive: true,
