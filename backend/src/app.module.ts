@@ -16,6 +16,7 @@ import { GisModule } from './gis/gis.module';
 import { ChatModule } from './chat/chat.module';
 import { CallsModule } from './calls/calls.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
 
 @Module({
@@ -24,6 +25,7 @@ import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot({ wildcard: false, delimiter: '.', global: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

@@ -2,6 +2,13 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EdmController } from './edm.controller';
 import { EdmService } from './edm.service';
+import { EdmCoreService } from './edm-core.service';
+import { EdmTemplatesService } from './edm-templates.service';
+import { EdmRegistrationService } from './edm-registration.service';
+import { EdmReportsService } from './edm-reports.service';
+import { EdmRouteService } from './edm-route.service';
+import { EdmDocumentService } from './edm-document.service';
+import { EdmEventListener } from './edm-event.listener';
 import { EdmDocument } from './entities/edm-document.entity';
 import { EdmDocumentRoute } from './entities/edm-document-route.entity';
 import { EdmRouteStage } from './entities/edm-route-stage.entity';
@@ -58,7 +65,17 @@ import { IamModule } from '../iam/iam.module';
     ]),
   ],
   controllers: [EdmController],
-  providers: [EdmService, FileAttachmentsService],
+  providers: [
+    EdmService,
+    EdmCoreService,
+    EdmTemplatesService,
+    EdmRegistrationService,
+    EdmReportsService,
+    EdmRouteService,
+    EdmDocumentService,
+    FileAttachmentsService,
+    EdmEventListener,
+  ],
   exports: [EdmService],
 })
 export class EdmModule {}

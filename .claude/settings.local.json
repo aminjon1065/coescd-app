@@ -39,7 +39,8 @@
       "Bash(find /Users/aminjon/Desktop/coescd-app/frontend -name axios*)",
       "Bash(cat /Users/aminjon/Desktop/coescd-app/frontend/app/dashboard/documentation/[id]/hooks/use-edm-document-detail.ts)",
       "Bash(sudo chown:*)",
-      "Bash(npm_config_cache=/tmp/npm-fresh-cache npm install @tanstack/react-query @tanstack/react-query-devtools)"
+      "Bash(npm_config_cache=/tmp/npm-fresh-cache npm install @tanstack/react-query @tanstack/react-query-devtools)",
+      "Bash(echo \"Exit code: $?\")"
     ]
   }
 }

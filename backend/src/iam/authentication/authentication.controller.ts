@@ -112,12 +112,12 @@ export class AuthenticationController {
   ) {
     const ip = this.getRequestIp(request);
     const userAgent = this.getUserAgent(request);
-    this.authRateLimitService.assertSignInAllowed(signInDto.email, ip);
+    await this.authRateLimitService.assertSignInAllowed(signInDto.email, ip);
 
     try {
       const { accessToken, refreshToken, user } =
         await this.authService.signIn(signInDto);
-      this.authRateLimitService.registerSignInSuccess(signInDto.email, ip);
+      await this.authRateLimitService.registerSignInSuccess(signInDto.email, ip);
 
       const csrfToken = randomBytes(24).toString('hex');
       response.cookie(
@@ -138,7 +138,7 @@ export class AuthenticationController {
 
       return { accessToken, user };
     } catch (error) {
-      this.authRateLimitService.registerSignInFailure(signInDto.email, ip);
+      await this.authRateLimitService.registerSignInFailure(signInDto.email, ip);
       await this.authAuditService.log({
         action: 'sign-in',
         success: false,
@@ -160,7 +160,7 @@ export class AuthenticationController {
   ) {
     const ip = this.getRequestIp(request);
     const userAgent = this.getUserAgent(request);
-    this.authRateLimitService.assertRefreshAllowed(ip);
+    await this.authRateLimitService.assertRefreshAllowed(ip);
     this.assertCsrfToken(request);
 
     const refreshToken = request.cookies['refreshToken'];
