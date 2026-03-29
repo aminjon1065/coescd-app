@@ -1,22 +1,30 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { format } from 'date-fns';
-import { PlusIcon, SearchIcon, TrashIcon } from 'lucide-react';
+import { format, isAfter } from 'date-fns';
+import {
+  AlertCircle,
+  ChevronRight,
+  Filter,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import axios from 'axios';
 import api from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { extractListItems, ListResponse } from '@/lib/list-response';
 import {
+  EdmDocumentStatus,
+  EdmDocumentType,
   IEdmDocument,
   IEdmSavedFilter,
   IEdmSavedFilterCriteria,
-  EdmDocumentStatus,
-  EdmDocumentType,
 } from '@/interfaces/IEdmDocument';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,21 +37,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { cn } from '@/lib/utils';
 import { CreateDocumentDialog } from './create-document-dialog';
 import { DocumentationLang } from '../i18n';
 import { can } from '@/features/authz/can';
 
 type EdmDocumentsResponse = ListResponse<IEdmDocument> | IEdmDocument[];
 type EdmSavedFiltersResponse = IEdmSavedFilter[] | ListResponse<IEdmSavedFilter>;
-
-const statusBadgeClass: Record<EdmDocumentStatus, string> = {
-  draft: 'bg-slate-100 text-slate-700 border-slate-300',
-  in_route: 'bg-blue-100 text-blue-700 border-blue-300',
-  approved: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-  rejected: 'bg-red-100 text-red-700 border-red-300',
-  returned_for_revision: 'bg-amber-100 text-amber-700 border-amber-300',
-  archived: 'bg-zinc-100 text-zinc-700 border-zinc-300',
-};
 
 interface Props {
   title: string;
@@ -58,124 +59,178 @@ interface Props {
   mailboxType?: 'incoming' | 'outgoing';
 }
 
-const labels = {
-  ru: {
-    noDocumentsForFilters: 'Документы не найдены по текущим фильтрам',
-    sessionExpired: 'Сессия истекла. Обновите страницу и войдите снова.',
-    noRights: 'У вас недостаточно прав для просмотра журнала документов.',
-    loadFailed: 'Не удалось загрузить журнал документов. Попробуйте позже.',
-    enterFilterName: 'Введите имя фильтра перед сохранением.',
-    saveFilterFailed: 'Не удалось сохранить фильтр.',
-    updateFilterFailed: 'Не удалось обновить выбранный фильтр.',
-    deleteFilterFailed: 'Не удалось удалить выбранный фильтр.',
-    draft: 'Черновики',
-    inRoute: 'На маршруте',
-    approved: 'Утверждено',
-    archived: 'Архив',
-    createDocument: 'Создать документ',
-    search: 'Поиск по номеру, заголовку, теме',
-    status: 'Статус',
-    type: 'Тип',
-    allStatuses: 'Все статусы',
-    allTypes: 'Все типы',
-    statusDraft: 'Черновик',
-    statusInRoute: 'На маршруте',
-    statusApproved: 'Утвержден',
-    statusRejected: 'Отклонен',
-    statusReturned: 'На доработке',
-    statusArchived: 'Архив',
-    typeIncoming: 'Входящий',
-    typeOutgoing: 'Исходящий',
-    typeInternal: 'Внутренний',
-    typeOrder: 'Приказ',
-    typeResolution: 'Резолюция',
-    confidentialityPublic: 'Внутренний',
-    confidentialityDepartment: 'Департамент',
-    confidentialityRestricted: 'Ограниченный',
-    savedFilters: 'Сохраненные фильтры',
-    noSavedFilter: 'Без сохраненного фильтра',
-    filterName: 'Название фильтра',
-    byDefault: 'По умолчанию',
-    saving: 'Сохранение...',
-    saveNew: 'Сохранить новый',
-    updating: 'Обновление...',
-    update: 'Обновить',
-    deleting: 'Удаление...',
-    delete: 'Удалить',
-    totalRecords: 'Всего записей',
-    resetFilters: 'Сбросить фильтры',
-    document: 'Документ',
-    kind: 'Тип (справ.)',
-    access: 'Доступ',
-    department: 'Департамент',
-    initiator: 'Инициатор',
-    dueDate: 'Срок',
-    updatedAt: 'Обновлен',
-    noDescription: 'Без описания',
-    page: 'Страница',
-    of: 'из',
-    back: 'Назад',
-    next: 'Вперед',
-  },
-  tj: {
-    noDocumentsForFilters: 'Ҳуҷҷатҳо бо филтрҳои ҷорӣ ёфт нашуданд',
-    sessionExpired: 'Сессия ба анҷом расид. Саҳифаро навсозӣ кунед ва дубора ворид шавед.',
-    noRights: 'Шумо барои дидани дафтари ҳуҷҷатҳо ҳуқуқи кофӣ надоред.',
-    loadFailed: 'Боркунии дафтари ҳуҷҷатҳо муяссар нашуд. Баъдтар кӯшиш кунед.',
-    enterFilterName: 'Пеш аз захира номи филтрро ворид кунед.',
-    saveFilterFailed: 'Захира кардани филтр муяссар нашуд.',
-    updateFilterFailed: 'Навсозии филтри интихобшуда муяссар нашуд.',
-    deleteFilterFailed: 'Ҳазфи филтри интихобшуда муяссар нашуд.',
-    draft: 'Лоиҳаҳо',
-    inRoute: 'Дар масир',
-    approved: 'Тасдиқшуда',
-    archived: 'Бойгонӣ',
-    createDocument: 'Эҷоди ҳуҷҷат',
-    search: 'Ҷустуҷӯ аз рӯйи рақам, сарлавҳа, мавзӯъ',
-    status: 'Ҳолат',
-    type: 'Навъ',
-    allStatuses: 'Ҳама ҳолатҳо',
-    allTypes: 'Ҳама намудҳо',
-    statusDraft: 'Лоиҳа',
-    statusInRoute: 'Дар масир',
-    statusApproved: 'Тасдиқшуда',
-    statusRejected: 'Радшуда',
-    statusReturned: 'Барои такмил',
-    statusArchived: 'Бойгонӣ',
-    typeIncoming: 'Воридотӣ',
-    typeOutgoing: 'Содиротӣ',
-    typeInternal: 'Дохилӣ',
-    typeOrder: 'Фармон',
-    typeResolution: 'Қатънома',
-    confidentialityPublic: 'Дохилӣ',
-    confidentialityDepartment: 'Департамент',
-    confidentialityRestricted: 'Маҳдуд',
-    savedFilters: 'Филтрҳои захирашуда',
-    noSavedFilter: 'Бе филтри захирашуда',
-    filterName: 'Номи филтр',
-    byDefault: 'Пешфарз',
-    saving: 'Дар ҳоли захира...',
-    saveNew: 'Захираи нав',
-    updating: 'Дар ҳоли навсозӣ...',
-    update: 'Навсозӣ',
-    deleting: 'Дар ҳоли ҳазф...',
-    delete: 'Ҳазф',
-    totalRecords: 'Ҳамагӣ сабтҳо',
-    resetFilters: 'Тозакунии филтрҳо',
-    document: 'Ҳуҷҷат',
-    kind: 'Навъ (феҳрист)',
-    access: 'Дастрасӣ',
-    department: 'Департамент',
-    initiator: 'Ибтикоркунанда',
-    dueDate: 'Муҳлат',
-    updatedAt: 'Навсозӣ шуд',
-    noDescription: 'Бе тавсиф',
-    page: 'Саҳифа',
-    of: 'аз',
-    back: 'Қафо',
-    next: 'Пеш',
-  },
-} as const;
+const TYPE_LABEL: Record<EdmDocumentType, string> = {
+  incoming:   'Входящий',
+  outgoing:   'Исходящий',
+  internal:   'Внутренний',
+  order:      'Приказ',
+  resolution: 'Резолюция',
+};
+
+const CONFIDENTIALITY_LABEL: Record<string, string> = {
+  public_internal:         'Внутренний',
+  department_confidential: 'Департамент',
+  restricted:              'Ограниченный',
+};
+
+// ── Row component ─────────────────────────────────────────────────────────────
+
+function DocumentRow({
+  doc,
+  isApprovalQueue,
+}: {
+  doc: IEdmDocument;
+  isApprovalQueue: boolean;
+}) {
+  const isOverdue =
+    doc.dueAt &&
+    !['approved', 'archived', 'rejected'].includes(doc.status) &&
+    isAfter(new Date(), new Date(doc.dueAt));
+
+  return (
+    <tr className="group border-t hover:bg-muted/30 transition-colors">
+      {/* Number */}
+      <td className="w-[120px] px-3 py-3">
+        <span className="font-mono text-xs font-semibold text-foreground">
+          {doc.externalNumber ?? `EDM-${doc.id}`}
+        </span>
+      </td>
+
+      {/* Title + subject */}
+      <td className="px-3 py-3">
+        <Link
+          href={`/dashboard/documentation/${doc.id}`}
+          className="group/link block"
+        >
+          <p className="font-medium text-sm leading-tight group-hover/link:text-blue-600 transition-colors line-clamp-1">
+            {doc.title}
+          </p>
+          {(doc.subject ?? doc.summary) ? (
+            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+              {doc.subject ?? doc.summary}
+            </p>
+          ) : null}
+        </Link>
+      </td>
+
+      {/* Type */}
+      <td className="hidden px-3 py-3 md:table-cell">
+        <span className="text-xs text-muted-foreground">
+          {TYPE_LABEL[doc.type]}
+        </span>
+      </td>
+
+      {/* Status */}
+      <td className="px-3 py-3">
+        <StatusBadge status={doc.status} />
+      </td>
+
+      {/* Department */}
+      <td className="hidden px-3 py-3 lg:table-cell">
+        <span className="text-xs text-muted-foreground line-clamp-1">
+          {doc.department?.name ?? '—'}
+        </span>
+      </td>
+
+      {/* Creator */}
+      <td className="hidden px-3 py-3 xl:table-cell">
+        <span className="text-xs text-muted-foreground">
+          {doc.creator?.name ?? '—'}
+        </span>
+      </td>
+
+      {/* Due date */}
+      <td className="hidden px-3 py-3 md:table-cell">
+        {doc.dueAt ? (
+          <span
+            className={cn(
+              'text-xs',
+              isOverdue
+                ? 'font-medium text-red-600 dark:text-red-400'
+                : 'text-muted-foreground',
+            )}
+          >
+            {format(new Date(doc.dueAt), 'dd.MM.yyyy')}
+            {isOverdue ? ' !' : ''}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+
+      {/* Updated */}
+      <td className="hidden px-3 py-3 xl:table-cell">
+        <span className="text-xs text-muted-foreground">
+          {format(new Date(doc.updatedAt), 'dd.MM HH:mm')}
+        </span>
+      </td>
+
+      {/* Actions */}
+      <td className="px-3 py-3 text-right">
+        {isApprovalQueue ? (
+          <Button asChild size="sm" variant="outline" className="h-7 gap-1 text-xs">
+            <Link href={`/dashboard/documentation/${doc.id}`}>
+              Рассмотреть
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            asChild
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Link href={`/dashboard/documentation/${doc.id}`}>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+function EmptyState({ message, onReset }: { message: string; onReset: () => void }) {
+  return (
+    <tr>
+      <td colSpan={9} className="px-4 py-16 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <AlertCircle className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm text-muted-foreground">{message}</p>
+          <Button variant="outline" size="sm" onClick={onReset}>
+            <RotateCcw className="mr-2 h-3 w-3" />
+            Сбросить фильтры
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function TableSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <tr key={i} className="border-t">
+          {Array.from({ length: 6 }).map((__, j) => (
+            <td key={j} className="px-3 py-3">
+              <Skeleton className="h-4 w-full" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function DocumentTable({
   title,
@@ -189,34 +244,14 @@ export function DocumentTable({
   queueType,
   mailboxType,
 }: Props) {
-  const t = labels[lang];
-  const statusLabel: Record<EdmDocumentStatus, string> = {
-    draft: t.statusDraft,
-    in_route: t.statusInRoute,
-    approved: t.statusApproved,
-    rejected: t.statusRejected,
-    returned_for_revision: t.statusReturned,
-    archived: t.statusArchived,
-  };
-  const typeLabel: Record<EdmDocumentType, string> = {
-    incoming: t.typeIncoming,
-    outgoing: t.typeOutgoing,
-    internal: t.typeInternal,
-    order: t.typeOrder,
-    resolution: t.typeResolution,
-  };
-  const confidentialityLabel = {
-    public_internal: t.confidentialityPublic,
-    department_confidential: t.confidentialityDepartment,
-    restricted: t.confidentialityRestricted,
-  } as const;
+  // ── State ─────────────────────────────────────────────────────────────────
   const { accessToken, user } = useAuth();
   const [documents, setDocuments] = useState<IEdmDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [limit] = useState(25);
+  const limit = 25;
   const [total, setTotal] = useState(0);
 
   const [q, setQ] = useState('');
@@ -224,6 +259,8 @@ export function DocumentTable({
   const [type, setType] = useState<'all' | EdmDocumentType>(presetType ?? 'all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const [savedFilters, setSavedFilters] = useState<IEdmSavedFilter[]>([]);
   const [savedFiltersAvailable, setSavedFiltersAvailable] = useState(true);
   const [selectedSavedFilterId, setSelectedSavedFilterId] = useState<string>('all');
@@ -231,28 +268,27 @@ export function DocumentTable({
   const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [savingFilter, setSavingFilter] = useState(false);
   const [deletingFilter, setDeletingFilter] = useState(false);
+
   const isQueueSource = source === 'queue';
   const isMailboxSource = source === 'mailbox';
-  const canCreateDocuments = can(user, {
-    anyPermissions: ['documents.create'],
-  });
-  const showCreateAction = canCreateDocuments && (source === 'documents' || allowCreate);
+  const isApprovalQueue = isQueueSource && queueType === 'my-approvals';
+  const canCreate = can(user, { anyPermissions: ['documents.create'] });
+  const showCreate = canCreate && (source === 'documents' || allowCreate);
 
-  useEffect(() => {
-    if (presetType) {
-      setType(presetType);
-    }
-  }, [presetType]);
+  const hasActiveFilters =
+    q.trim() !== '' ||
+    status !== 'all' ||
+    (type !== 'all' && !presetType) ||
+    fromDate !== '' ||
+    toDate !== '';
+
+  // ── Saved filters ──────────────────────────────────────────────────────────
 
   const applyCriteria = useCallback(
     (criteria: IEdmSavedFilterCriteria) => {
       setQ(criteria.q ?? '');
       setStatus(criteria.status ?? 'all');
-      if (presetType) {
-        setType(presetType);
-      } else {
-        setType(criteria.type ?? 'all');
-      }
+      setType(presetType ?? criteria.type ?? 'all');
       setFromDate(criteria.fromDate ? criteria.fromDate.slice(0, 10) : '');
       setToDate(criteria.toDate ? criteria.toDate.slice(0, 10) : '');
       setPage(1);
@@ -261,36 +297,23 @@ export function DocumentTable({
   );
 
   const fetchSavedFilters = useCallback(async () => {
-    if (isQueueSource || !savedFiltersAvailable) {
-      return;
-    }
+    if (isQueueSource || !savedFiltersAvailable) return;
     try {
-      const response = await api.get<EdmSavedFiltersResponse>('/edm/saved-filters', {
+      const res = await api.get<EdmSavedFiltersResponse>('/edm/saved-filters', {
         params: { scope: 'documents' },
       });
-      const payload = response.data;
-      const items = payload ? extractListItems(payload) : [];
+      const items = res.data ? extractListItems(res.data) : [];
       setSavedFilters(items);
-      setSavedFiltersAvailable(true);
-      const defaultFilter = items.find((item) => item.isDefault);
-      if (defaultFilter) {
-        setSelectedSavedFilterId(String(defaultFilter.id));
-        applyCriteria(defaultFilter.criteria ?? {});
+      const def = items.find((f) => f.isDefault);
+      if (def) {
+        setSelectedSavedFilterId(String(def.id));
+        applyCriteria(def.criteria ?? {});
       }
-    } catch (err) {
-      if (!axios.isAxiosError(err)) {
-        console.error('Failed to load saved EDM filters', err);
-        return;
-      }
-
+    } catch {
       try {
-        const fallbackResponse = await api.get<EdmSavedFiltersResponse>('/edm/saved-filters');
-        const fallbackPayload = fallbackResponse.data;
-        const fallbackItems = fallbackPayload ? extractListItems(fallbackPayload) : [];
-        setSavedFilters(fallbackItems);
-        setSavedFiltersAvailable(true);
-      } catch (fallbackErr) {
-        console.error('Saved EDM filters endpoint is unavailable', fallbackErr);
+        const fb = await api.get<EdmSavedFiltersResponse>('/edm/saved-filters');
+        setSavedFilters(fb.data ? extractListItems(fb.data) : []);
+      } catch {
         setSavedFilters([]);
         setSavedFiltersAvailable(false);
       }
@@ -301,108 +324,53 @@ export function DocumentTable({
     setLoading(true);
     setError(null);
     try {
-      const params: Record<string, string | number> = {
-        page,
-        limit,
-      };
-
+      const params: Record<string, string | number> = { page, limit };
       const resolvedType = presetType ?? (type === 'all' ? undefined : type);
-      if (!isQueueSource && !isMailboxSource && resolvedType) {
-        params.type = resolvedType;
-      }
-      if (!isQueueSource && !isMailboxSource && status !== 'all') {
-        params.status = status;
-      }
-      if (q.trim()) {
-        params.q = q.trim();
-      }
-      if (!isQueueSource && !isMailboxSource && fromDate) {
+      if (!isQueueSource && !isMailboxSource && resolvedType) params.type = resolvedType;
+      if (!isQueueSource && !isMailboxSource && status !== 'all') params.status = status;
+      if (q.trim()) params.q = q.trim();
+      if (!isQueueSource && !isMailboxSource && fromDate)
         params.fromDate = new Date(`${fromDate}T00:00:00.000Z`).toISOString();
-      }
-      if (!isQueueSource && !isMailboxSource && toDate) {
+      if (!isQueueSource && !isMailboxSource && toDate)
         params.toDate = new Date(`${toDate}T23:59:59.999Z`).toISOString();
-      }
 
-      const endpoint = isQueueSource && queueType
-        ? `/edm/queues/${queueType}`
-        : isMailboxSource && mailboxType
-          ? `/edm/mailboxes/${mailboxType}`
-          : '/edm/documents';
-      const response = await api.get<EdmDocumentsResponse>(endpoint, { params });
-      const payload = response.data;
-      const items = payload ? extractListItems(payload) : [];
+      const endpoint =
+        isQueueSource && queueType
+          ? `/edm/queues/${queueType}`
+          : isMailboxSource && mailboxType
+            ? `/edm/mailboxes/${mailboxType}`
+            : '/edm/documents';
+
+      const res = await api.get<EdmDocumentsResponse>(endpoint, { params });
+      const items = res.data ? extractListItems(res.data) : [];
       setDocuments(items);
       setTotal(
-        payload && !Array.isArray(payload) && typeof payload.total === 'number'
-          ? payload.total
+        !Array.isArray(res.data) && typeof res.data.total === 'number'
+          ? res.data.total
           : items.length,
       );
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        if (err.response?.status === 401) {
-          setError(t.sessionExpired);
-          return;
-        }
-        if (err.response?.status === 403) {
-          setError(t.noRights);
-          return;
-        }
+        if (err.response?.status === 401) { setError('Сессия истекла. Обновите страницу.'); return; }
+        if (err.response?.status === 403) { setError('Недостаточно прав для просмотра документов.'); return; }
       }
-      setError(t.loadFailed);
+      setError('Не удалось загрузить список документов. Попробуйте позже.');
     } finally {
       setLoading(false);
     }
-  }, [
-    fromDate,
-    isMailboxSource,
-    isQueueSource,
-    limit,
-    mailboxType,
-    page,
-    presetType,
-    q,
-    queueType,
-    status,
-    t.loadFailed,
-    t.noRights,
-    t.sessionExpired,
-    toDate,
-    type,
-  ]);
+  }, [fromDate, isMailboxSource, isQueueSource, limit, mailboxType, page, presetType, q, queueType, status, toDate, type]);
 
   useEffect(() => {
-    if (!accessToken) {
-      return;
-    }
+    if (presetType) setType(presetType);
+  }, [presetType]);
+
+  useEffect(() => {
+    if (!accessToken) return;
     void fetchDocuments();
-    if (!isQueueSource && !isMailboxSource && savedFiltersAvailable) {
-      void fetchSavedFilters();
-    }
-  }, [
-    accessToken,
-    fetchDocuments,
-    fetchSavedFilters,
-    isMailboxSource,
-    isQueueSource,
-    savedFiltersAvailable,
-  ]);
+    if (!isQueueSource && !isMailboxSource && savedFiltersAvailable) void fetchSavedFilters();
+  }, [accessToken, fetchDocuments, fetchSavedFilters, isMailboxSource, isQueueSource, savedFiltersAvailable]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / limit)), [limit, total]);
-
-  const statusCounters = useMemo(() => {
-    const counters: Record<EdmDocumentStatus, number> = {
-      draft: 0,
-      in_route: 0,
-      approved: 0,
-      rejected: 0,
-      returned_for_revision: 0,
-      archived: 0,
-    };
-    for (const document of documents) {
-      counters[document.status] += 1;
-    }
-    return counters;
-  }, [documents]);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / limit)), [total]);
 
   const resetFilters = () => {
     setQ('');
@@ -428,390 +396,332 @@ export function DocumentTable({
   );
 
   const saveNewFilter = async () => {
-    if (isQueueSource || !savedFiltersAvailable) {
-      return;
-    }
-    if (!savedFilterName.trim()) {
-      setError(t.enterFilterName);
+    if (isQueueSource || !savedFiltersAvailable || !savedFilterName.trim()) {
+      if (!savedFilterName.trim()) setError('Введите имя фильтра перед сохранением.');
       return;
     }
     setSavingFilter(true);
     setError(null);
     try {
-      const response = await api.post<IEdmSavedFilter>('/edm/saved-filters', {
+      const res = await api.post<IEdmSavedFilter>('/edm/saved-filters', {
         name: savedFilterName.trim(),
         scope: 'documents',
         isDefault: saveAsDefault,
         criteria: currentCriteria,
       });
-      const created = response.data;
       setSavedFilterName('');
       setSaveAsDefault(false);
-      setSelectedSavedFilterId(String(created.id));
+      setSelectedSavedFilterId(String(res.data.id));
       await fetchSavedFilters();
-    } catch (err) {
-      console.error('Failed to save EDM filter', err);
-      setError(t.saveFilterFailed);
+    } catch {
+      setError('Не удалось сохранить фильтр.');
     } finally {
       setSavingFilter(false);
     }
   };
 
   const updateSelectedFilter = async () => {
-    if (isQueueSource || !savedFiltersAvailable || selectedSavedFilterId === 'all') {
-      return;
-    }
+    if (isQueueSource || !savedFiltersAvailable || selectedSavedFilterId === 'all') return;
     setSavingFilter(true);
-    setError(null);
     try {
       await api.patch(`/edm/saved-filters/${selectedSavedFilterId}`, {
         criteria: currentCriteria,
         isDefault: saveAsDefault,
       });
       await fetchSavedFilters();
-    } catch (err) {
-      console.error('Failed to update EDM filter', err);
-      setError(t.updateFilterFailed);
+    } catch {
+      setError('Не удалось обновить фильтр.');
     } finally {
       setSavingFilter(false);
     }
   };
 
   const deleteSelectedFilter = async () => {
-    if (isQueueSource || !savedFiltersAvailable || selectedSavedFilterId === 'all') {
-      return;
-    }
+    if (isQueueSource || !savedFiltersAvailable || selectedSavedFilterId === 'all') return;
     setDeletingFilter(true);
-    setError(null);
     try {
       await api.delete(`/edm/saved-filters/${selectedSavedFilterId}`);
       setSelectedSavedFilterId('all');
       setSavedFilterName('');
-      setSaveAsDefault(false);
       await fetchSavedFilters();
-    } catch (err) {
-      console.error('Failed to delete EDM filter', err);
-      setError(t.deleteFilterFailed);
+    } catch {
+      setError('Не удалось удалить фильтр.');
     } finally {
       setDeletingFilter(false);
     }
   };
 
-  if (loading && documents.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-7 w-48" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {[...Array(6)].map((_, index) => (
-            <Skeleton key={index} className="h-12 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{t.draft}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{statusCounters.draft}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{t.inRoute}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{statusCounters.in_route}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{t.approved}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{statusCounters.approved}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{t.archived}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{statusCounters.archived}</CardContent>
-        </Card>
+      <div className="flex flex-col gap-4">
+
+        {/* ── Header bar ────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">{title}</h2>
+            {!loading && (
+              <p className="text-xs text-muted-foreground">
+                {total} {total === 1 ? 'документ' : total < 5 ? 'документа' : 'документов'}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {showCreate && (
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Создать
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Filter toolbar ─────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-8 h-9"
+              placeholder="Поиск по номеру, заголовку, теме..."
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setPage(1); }}
+            />
+          </div>
+
+          {/* Status filter */}
+          {!isQueueSource && !isMailboxSource && (
+            <Select
+              value={status}
+              onValueChange={(v: 'all' | EdmDocumentStatus) => { setStatus(v); setPage(1); }}
+            >
+              <SelectTrigger className="h-9 w-[150px]">
+                <SelectValue placeholder="Статус" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="draft">Черновик</SelectItem>
+                <SelectItem value="in_route">На маршруте</SelectItem>
+                <SelectItem value="approved">Утверждён</SelectItem>
+                <SelectItem value="rejected">Отклонён</SelectItem>
+                <SelectItem value="returned_for_revision">На доработке</SelectItem>
+                <SelectItem value="archived">Архив</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Type filter */}
+          {!isQueueSource && !isMailboxSource && !presetType && (
+            <Select
+              value={type}
+              onValueChange={(v: 'all' | EdmDocumentType) => { setType(v); setPage(1); }}
+            >
+              <SelectTrigger className="h-9 w-[140px]">
+                <SelectValue placeholder="Тип" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все типы</SelectItem>
+                <SelectItem value="incoming">Входящий</SelectItem>
+                <SelectItem value="outgoing">Исходящий</SelectItem>
+                <SelectItem value="internal">Внутренний</SelectItem>
+                <SelectItem value="order">Приказ</SelectItem>
+                <SelectItem value="resolution">Резолюция</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* More filters toggle */}
+          {!isQueueSource && !isMailboxSource && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn('h-9 gap-1.5', filtersOpen && 'bg-muted')}
+              onClick={() => setFiltersOpen((p) => !p)}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Фильтры
+              {hasActiveFilters && (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">
+                  !
+                </span>
+              )}
+            </Button>
+          )}
+
+          {/* Reset */}
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" className="h-9 gap-1 text-muted-foreground" onClick={resetFilters}>
+              <X className="h-3.5 w-3.5" />
+              Сбросить
+            </Button>
+          )}
+        </div>
+
+        {/* ── Expanded filters panel ──────────────────────────────────── */}
+        {filtersOpen && !isQueueSource && !isMailboxSource && (
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="flex flex-wrap items-end gap-3">
+              {/* Date range */}
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-muted-foreground">От</Label>
+                  <Input
+                    type="date"
+                    className="h-8 w-[140px] text-sm"
+                    value={fromDate}
+                    onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-muted-foreground">До</Label>
+                  <Input
+                    type="date"
+                    className="h-8 w-[140px] text-sm"
+                    value={toDate}
+                    onChange={(e) => { setToDate(e.target.value); setPage(1); }}
+                  />
+                </div>
+              </div>
+
+              {/* Saved filters */}
+              {savedFiltersAvailable && (
+                <div className="flex flex-wrap items-end gap-2 border-l pl-3">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">Сохранённый фильтр</Label>
+                    <Select
+                      value={selectedSavedFilterId}
+                      onValueChange={(v) => {
+                        setSelectedSavedFilterId(v);
+                        if (v === 'all') { setSavedFilterName(''); setSaveAsDefault(false); return; }
+                        const f = savedFilters.find((x) => String(x.id) === v);
+                        if (f) { setSavedFilterName(f.name); setSaveAsDefault(f.isDefault); applyCriteria(f.criteria ?? {}); }
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[160px] text-sm">
+                        <SelectValue placeholder="Без фильтра" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Без сохранённого фильтра</SelectItem>
+                        {savedFilters.map((f) => (
+                          <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">Название</Label>
+                    <Input
+                      className="h-8 w-[140px] text-sm"
+                      placeholder="Имя фильтра"
+                      value={savedFilterName}
+                      onChange={(e) => setSavedFilterName(e.target.value)}
+                    />
+                  </div>
+                  <label className="flex items-center gap-1.5 text-xs">
+                    <Checkbox
+                      checked={saveAsDefault}
+                      onCheckedChange={(c) => setSaveAsDefault(Boolean(c))}
+                    />
+                    По умолчанию
+                  </label>
+                  <Button size="sm" className="h-8 text-xs" onClick={saveNewFilter} disabled={savingFilter || deletingFilter}>
+                    {savingFilter ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                    Сохранить новый
+                  </Button>
+                  {selectedSavedFilterId !== 'all' && (
+                    <>
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={updateSelectedFilter} disabled={savingFilter || deletingFilter}>
+                        Обновить
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:text-red-600" onClick={deleteSelectedFilter} disabled={deletingFilter}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Error ──────────────────────────────────────────────────── */}
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
+            <Button variant="ghost" size="sm" className="ml-auto h-6 px-2 text-xs" onClick={() => setError(null)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
+        {/* ── Table ──────────────────────────────────────────────────── */}
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="min-w-full text-sm">
+            <thead className="border-b bg-muted/40">
+              <tr>
+                <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">№</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Документ</th>
+                <th className="hidden px-3 py-2.5 text-left text-xs font-medium text-muted-foreground md:table-cell">Тип</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Статус</th>
+                <th className="hidden px-3 py-2.5 text-left text-xs font-medium text-muted-foreground lg:table-cell">Подразделение</th>
+                <th className="hidden px-3 py-2.5 text-left text-xs font-medium text-muted-foreground xl:table-cell">Инициатор</th>
+                <th className="hidden px-3 py-2.5 text-left text-xs font-medium text-muted-foreground md:table-cell">Срок</th>
+                <th className="hidden px-3 py-2.5 text-left text-xs font-medium text-muted-foreground xl:table-cell">Обновлён</th>
+                <th className="px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">
+                  {isApprovalQueue ? 'Действие' : ''}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <TableSkeleton />
+              ) : documents.length === 0 ? (
+                <EmptyState
+                  message={emptyText ?? 'Документы не найдены по текущим фильтрам'}
+                  onReset={resetFilters}
+                />
+              ) : (
+                documents.map((doc) => (
+                  <DocumentRow key={doc.id} doc={doc} isApprovalQueue={isApprovalQueue} />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Pagination ─────────────────────────────────────────────── */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Страница {page} из {totalPages} · Всего {total}
+            </p>
+            <div className="flex gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Назад
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Вперёд
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <CardTitle>{title}</CardTitle>
-          {showCreateAction ? (
-            <Button onClick={() => setDialogOpen(true)} size="sm">
-              <PlusIcon className="mr-2 h-4 w-4" />
-              {t.createDocument}
-            </Button>
-          ) : null}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
-            <div className="relative lg:col-span-2">
-              <SearchIcon className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                className="pl-8"
-                placeholder={t.search}
-                value={q}
-                onChange={(event) => {
-                  setQ(event.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-
-            {!isQueueSource && !isMailboxSource ? (
-              <Select
-                value={status}
-                onValueChange={(value: 'all' | EdmDocumentStatus) => {
-                  setStatus(value);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t.status} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.allStatuses}</SelectItem>
-                  <SelectItem value="draft">{t.statusDraft}</SelectItem>
-                  <SelectItem value="in_route">{t.statusInRoute}</SelectItem>
-                  <SelectItem value="approved">{t.statusApproved}</SelectItem>
-                  <SelectItem value="rejected">{t.statusRejected}</SelectItem>
-                  <SelectItem value="returned_for_revision">{t.statusReturned}</SelectItem>
-                  <SelectItem value="archived">{t.statusArchived}</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : null}
-
-            {!isQueueSource && !isMailboxSource ? (
-              <Select
-                value={type}
-                onValueChange={(value: 'all' | EdmDocumentType) => {
-                  setType(value);
-                  setPage(1);
-                }}
-                disabled={Boolean(presetType)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t.type} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.allTypes}</SelectItem>
-                  <SelectItem value="incoming">{t.typeIncoming}</SelectItem>
-                  <SelectItem value="outgoing">{t.typeOutgoing}</SelectItem>
-                  <SelectItem value="internal">{t.typeInternal}</SelectItem>
-                  <SelectItem value="order">{t.typeOrder}</SelectItem>
-                  <SelectItem value="resolution">{t.typeResolution}</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : null}
-
-            {!isQueueSource && !isMailboxSource ? (
-              <Input
-                type="date"
-                value={fromDate}
-                onChange={(event) => {
-                  setFromDate(event.target.value);
-                  setPage(1);
-                }}
-              />
-            ) : null}
-            {!isQueueSource && !isMailboxSource ? (
-              <Input
-                type="date"
-                value={toDate}
-                onChange={(event) => {
-                  setToDate(event.target.value);
-                  setPage(1);
-                }}
-              />
-            ) : null}
-          </div>
-
-          {!isQueueSource && !isMailboxSource && savedFiltersAvailable ? (
-            <div className="grid gap-3 rounded-lg border p-3 md:grid-cols-2 lg:grid-cols-6">
-              <Select
-                value={selectedSavedFilterId}
-                onValueChange={(value) => {
-                  setSelectedSavedFilterId(value);
-                  if (value === 'all') {
-                    setSavedFilterName('');
-                    setSaveAsDefault(false);
-                    return;
-                  }
-                  const selected = savedFilters.find((item) => String(item.id) === value);
-                  if (!selected) {
-                    return;
-                  }
-                  setSavedFilterName(selected.name);
-                  setSaveAsDefault(selected.isDefault);
-                  applyCriteria(selected.criteria ?? {});
-                }}
-              >
-                <SelectTrigger className="lg:col-span-2">
-                  <SelectValue placeholder={t.savedFilters} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.noSavedFilter}</SelectItem>
-                  {savedFilters.map((filter) => (
-                    <SelectItem key={filter.id} value={String(filter.id)}>
-                      {filter.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Input
-                className="lg:col-span-2"
-                placeholder={t.filterName}
-                value={savedFilterName}
-                onChange={(event) => setSavedFilterName(event.target.value)}
-              />
-
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={saveAsDefault}
-                  onCheckedChange={(checked) => setSaveAsDefault(Boolean(checked))}
-                />
-                <Label>{t.byDefault}</Label>
-              </label>
-
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={saveNewFilter} disabled={savingFilter || deletingFilter}>
-                  {savingFilter ? t.saving : t.saveNew}
-                </Button>
-                {selectedSavedFilterId !== 'all' ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={updateSelectedFilter}
-                      disabled={savingFilter || deletingFilter}
-                    >
-                      {savingFilter ? t.updating : t.update}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={deleteSelectedFilter}
-                      disabled={savingFilter || deletingFilter}
-                    >
-                      <TrashIcon className="mr-1 h-4 w-4" />
-                      {deletingFilter ? t.deleting : t.delete}
-                    </Button>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{t.totalRecords}: {total}</p>
-            <Button variant="outline" size="sm" onClick={resetFilters}>
-              {t.resetFilters}
-            </Button>
-          </div>
-
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="min-w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2">№</th>
-                  <th className="px-3 py-2">{t.document}</th>
-                  <th className="px-3 py-2">{t.type}</th>
-                  <th className="px-3 py-2">{t.kind}</th>
-                  <th className="px-3 py-2">{t.status}</th>
-                  <th className="px-3 py-2">{t.access}</th>
-                  <th className="px-3 py-2">{t.department}</th>
-                  <th className="px-3 py-2">{t.initiator}</th>
-                  <th className="px-3 py-2">{t.dueDate}</th>
-                  <th className="px-3 py-2">{t.updatedAt}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="px-3 py-10 text-center text-muted-foreground">
-                      {emptyText ?? t.noDocumentsForFilters}
-                    </td>
-                  </tr>
-                ) : (
-                  documents.map((document) => (
-                    <tr key={document.id} className="border-t hover:bg-muted/20">
-                      <td className="px-3 py-2 font-medium">
-                        {document.externalNumber ?? `EDM-${document.id}`}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Link
-                          href={`/dashboard/documentation/${document.id}`}
-                          className="block hover:underline"
-                        >
-                          <p className="font-medium">{document.title}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-1">
-                            {document.subject ?? document.summary ?? t.noDescription}
-                          </p>
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2">{typeLabel[document.type]}</td>
-                      <td className="px-3 py-2">{document.documentKind?.name ?? '—'}</td>
-                      <td className="px-3 py-2">
-                        <Badge variant="outline" className={statusBadgeClass[document.status]}>
-                          {statusLabel[document.status]}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2">
-                        {confidentialityLabel[document.confidentiality]}
-                      </td>
-                      <td className="px-3 py-2">{document.department?.name ?? '—'}</td>
-                      <td className="px-3 py-2">{document.creator?.name ?? '—'}</td>
-                      <td className="px-3 py-2">
-                        {document.dueAt ? format(new Date(document.dueAt), 'dd.MM.yyyy') : '—'}
-                      </td>
-                      <td className="px-3 py-2">
-                        {format(new Date(document.updatedAt), 'dd.MM.yyyy HH:mm')}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {t.page} {page} {t.of} {totalPages}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-              >
-                {t.back}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages || loading}
-                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              >
-                {t.next}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {showCreateAction ? (
+      {showCreate && (
         <CreateDocumentDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
@@ -820,9 +730,7 @@ export function DocumentTable({
           lockType={lockCreateType}
           lang={lang}
         />
-      ) : null}
+      )}
     </>
   );
 }
-
-

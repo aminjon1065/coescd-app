@@ -2,13 +2,21 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { ArrowLeftIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  Building2,
+  Calendar,
+  CalendarClock,
+  FileText,
+  Hash,
+  Lock,
+  User,
+} from 'lucide-react';
 import { useEdmDocumentDetail } from './hooks/use-edm-document-detail';
 import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
 import { useAuth } from '@/context/auth-context';
 import { can } from '@/features/authz/can';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -18,50 +26,82 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { EdmDocumentStatus, EdmDocumentType } from '@/interfaces/IEdmDocument';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { EdmDocumentType } from '@/interfaces/IEdmDocument';
 import { RouteActionsCard } from './components/route-actions-card';
 import { AttachmentsCard } from './components/attachments-card';
 import { HistoryCard } from './components/history-card';
 import { AuditCard } from './components/audit-card';
 import { RepliesCard } from './components/replies-card';
+import { cn } from '@/lib/utils';
 
-const statusLabel: Record<EdmDocumentStatus, string> = {
-  draft: '��������',
-  in_route: '�� ��������',
-  approved: '���������',
-  rejected: '��������',
-  returned_for_revision: '�� ���������',
-  archived: '�����',
+// ── Label maps ────────────────────────────────────────────────────────────────
+
+const TYPE_LABEL: Record<EdmDocumentType, string> = {
+  incoming:   'Входящий',
+  outgoing:   'Исходящий',
+  internal:   'Внутренний',
+  order:      'Приказ',
+  resolution: 'Резолюция',
 };
 
-const typeLabel: Record<EdmDocumentType, string> = {
-  incoming: '��������',
-  outgoing: '���������',
-  internal: '����������',
-  order: '������',
-  resolution: '���������',
+const CONFIDENTIALITY_LABEL: Record<string, string> = {
+  public_internal:         'Внутренний',
+  department_confidential: 'Конфиденциально (подразделение)',
+  restricted:              'Ограниченный доступ',
 };
 
-const confidentialityLabel = {
-  public_internal: '���������� ������',
-  department_confidential: '��������������� (�����������)',
-  restricted: '������������ ������',
-} as const;
+// ── Metadata field ────────────────────────────────────────────────────────────
 
-const statusBadgeClass: Record<EdmDocumentStatus, string> = {
-  draft: 'bg-slate-100 text-slate-700 border-slate-300',
-  in_route: 'bg-blue-100 text-blue-700 border-blue-300',
-  approved: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-  rejected: 'bg-red-100 text-red-700 border-red-300',
-  returned_for_revision: 'bg-amber-100 text-amber-700 border-amber-300',
-  archived: 'bg-zinc-100 text-zinc-700 border-zinc-300',
-};
+function MetaField({
+  icon: Icon,
+  label,
+  value,
+  className,
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('flex flex-col gap-0.5', className)}>
+      <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {Icon && <Icon className="h-3 w-3" />}
+        {label}
+      </p>
+      <div className="text-sm">{value ?? <span className="text-muted-foreground">—</span>}</div>
+    </div>
+  );
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-7 w-64" />
+          <Skeleton className="h-4 w-40" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-4 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
 
 export default function DocumentDetailPage() {
   return (
     <ProtectedRouteGate
       policyKey="dashboard.documents.detail"
-      deniedDescription="�������� ��������� �������� ������������� � ������ ������ ����������."
+      deniedDescription="Просмотр документов требует соответствующих прав доступа."
     >
       <DocumentDetailContent />
     </ProtectedRouteGate>
@@ -106,88 +146,136 @@ function DocumentDetailContent() {
     formatFileSize,
   } = useEdmDocumentDetail(id);
 
-  const canUpdateDocument = can(user, {
-    anyPermissions: ['documents.update'],
-  });
+  const canUpdateDocument = can(user, { anyPermissions: ['documents.update'] });
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-7 w-56" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[...Array(6)].map((_, index) => (
-            <Skeleton key={index} className="h-4 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
+  if (loading) return <DetailSkeleton />;
 
   if (error || !document) {
     return (
       <Card>
-        <CardContent className="py-8 text-center">
-          <p className="text-sm text-red-600">{error ?? '�������� �� ������'}</p>
-          <Button variant="outline" className="mt-4" onClick={() => router.back()}>
-            �����
+        <CardContent className="flex flex-col items-center gap-4 py-12">
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {error ?? 'Документ не найден'}
+          </p>
+          <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Назад
           </Button>
         </CardContent>
       </Card>
     );
   }
 
+  const isOverdue =
+    document.dueAt &&
+    !['approved', 'archived', 'rejected'].includes(document.status) &&
+    new Date() > new Date(document.dueAt);
+
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/documentation')}>
-        <ArrowLeftIcon className="mr-2 h-4 w-4" />
-        ����� � �������
+      {/* ── Back button ──────────────────────────────────────────── */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 gap-1.5 text-muted-foreground"
+        onClick={() => router.push('/dashboard/documentation')}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Журнал документов
       </Button>
 
+      {/* ── Document header card ─────────────────────────────────── */}
       <Card>
-        <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardTitle>{document.title}</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              ���. �����: {document.externalNumber ?? `EDM-${document.id}`}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">{typeLabel[document.type]}</Badge>
-            <Badge variant="outline">{confidentialityLabel[document.confidentiality]}</Badge>
-            <Badge variant="outline" className={statusBadgeClass[document.status]}>
-              {statusLabel[document.status]}
-            </Badge>
+        <CardHeader className="pb-3">
+          {/* Title row */}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-xl leading-tight">{document.title}</CardTitle>
+              <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                <Hash className="h-3 w-3" />
+                {document.externalNumber ?? `EDM-${document.id}`}
+              </p>
+            </div>
+
+            {/* Status + type badges */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                {TYPE_LABEL[document.type]}
+              </span>
+              <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                <Lock className="mr-1 h-3 w-3" />
+                {CONFIDENTIALITY_LABEL[document.confidentiality] ?? document.confidentiality}
+              </span>
+              <StatusBadge status={document.status} />
+              {isOverdue && (
+                <StatusBadge status="overdue" />
+              )}
+            </div>
           </div>
         </CardHeader>
+
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">���������</p>
-              <p className="text-sm font-medium">{document.creator?.name ?? '�'}</p>
-              <p className="text-xs text-muted-foreground">{document.creator?.email ?? '�'}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">�����������</p>
-              <p className="text-sm font-medium">{document.department?.name ?? '�'}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Document Kind</p>
+          {/* ── Metadata grid ─────────────────────────────────── */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetaField
+              icon={User}
+              label="Инициатор"
+              value={
+                <div>
+                  <p className="font-medium">{document.creator?.name ?? '—'}</p>
+                  {document.creator?.email && (
+                    <p className="text-xs text-muted-foreground">{document.creator.email}</p>
+                  )}
+                </div>
+              }
+            />
+            <MetaField
+              icon={Building2}
+              label="Подразделение"
+              value={document.department?.name}
+            />
+            <MetaField
+              icon={Calendar}
+              label="Создан"
+              value={format(new Date(document.createdAt), 'dd.MM.yyyy HH:mm')}
+            />
+            <MetaField
+              icon={CalendarClock}
+              label="Срок"
+              value={
+                document.dueAt ? (
+                  <span className={cn(isOverdue && 'font-medium text-red-600 dark:text-red-400')}>
+                    {format(new Date(document.dueAt), 'dd.MM.yyyy')}
+                    {isOverdue ? ' (просрочено)' : ''}
+                  </span>
+                ) : null
+              }
+            />
+          </div>
+
+          {/* ── Document kind ─────────────────────────────────── */}
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <FileText className="h-3 w-3" />
+                Вид документа
+              </p>
               {canUpdateDocument ? (
-                <div className="mt-1 flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <Select
-                    value={document.documentKind?.id ? String(document.documentKind.id) : 'none'}
-                    onValueChange={(value) =>
-                      void updateDocumentKind(value === 'none' ? null : Number(value))
+                    value={
+                      document.documentKind?.id ? String(document.documentKind.id) : 'none'
+                    }
+                    onValueChange={(v) =>
+                      void updateDocumentKind(v === 'none' ? null : Number(v))
                     }
                     disabled={savingDocumentKind}
                   >
-                    <SelectTrigger className="w-[240px]">
-                      <SelectValue placeholder="No kind" />
+                    <SelectTrigger className="h-8 w-[220px] text-sm">
+                      <SelectValue placeholder="Не указан" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No kind</SelectItem>
+                      <SelectItem value="none">Не указан</SelectItem>
                       {documentKinds.map((kind) => (
                         <SelectItem key={kind.id} value={String(kind.id)}>
                           {kind.name}
@@ -195,47 +283,49 @@ function DocumentDetailContent() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {savingDocumentKind ? (
-                    <span className="text-xs text-muted-foreground">Saving...</span>
-                  ) : null}
+                  {savingDocumentKind && (
+                    <span className="text-xs text-muted-foreground">Сохранение...</span>
+                  )}
                 </div>
               ) : (
-                <p className="text-sm font-medium">{document.documentKind?.name ?? '�'}</p>
+                <p className="text-sm">{document.documentKind?.name ?? '—'}</p>
               )}
             </div>
+          </div>
+
+          {/* ── Text fields ───────────────────────────────────── */}
+          {document.subject && (
             <div>
-              <p className="text-xs uppercase text-muted-foreground">������</p>
-              <p className="text-sm">{format(new Date(document.createdAt), 'dd.MM.yyyy HH:mm')}</p>
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Тема
+              </p>
+              <p className="text-sm">{document.subject}</p>
             </div>
+          )}
+
+          {document.summary && (
             <div>
-              <p className="text-xs uppercase text-muted-foreground">����</p>
-              <p className="text-sm">
-                {document.dueAt ? format(new Date(document.dueAt), 'dd.MM.yyyy') : '�� �����'}
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Краткое содержание
+              </p>
+              <p className="whitespace-pre-wrap text-sm text-foreground/80">
+                {document.summary}
               </p>
             </div>
-          </div>
+          )}
 
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">����</p>
-            <p className="text-sm">{document.subject || '�'}</p>
-          </div>
-
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">������� ����������</p>
-            <p className="text-sm whitespace-pre-wrap">
-              {document.summary || '���������� �����������'}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">���������</p>
-            <p className="text-sm whitespace-pre-wrap">
-              {document.resolutionText || '��������� �� ������'}
-            </p>
-          </div>
+          {document.resolutionText && (
+            <div className="rounded-lg border-l-4 border-blue-400 bg-blue-50 px-4 py-3 dark:bg-blue-950/30">
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                Резолюция
+              </p>
+              <p className="whitespace-pre-wrap text-sm">{document.resolutionText}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* ── Route & actions ──────────────────────────────────────── */}
       <RouteActionsCard
         document={document}
         stageCommentById={stageCommentById}
@@ -247,6 +337,8 @@ function DocumentDetailContent() {
         submittingToRoute={submittingToRoute}
         archiving={archiving}
       />
+
+      {/* ── Attachments ──────────────────────────────────────────── */}
       <AttachmentsCard
         attachments={attachments}
         availableFiles={availableFiles}
@@ -259,8 +351,14 @@ function DocumentDetailContent() {
         onUnlinkFile={unlinkFile}
         formatFileSize={formatFileSize}
       />
-      <HistoryCard events={historyEvents} />
-      <AuditCard events={auditEvents} />
+
+      {/* ── Timeline: history + audit ─────────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <HistoryCard events={historyEvents} />
+        <AuditCard events={auditEvents} />
+      </div>
+
+      {/* ── Replies ──────────────────────────────────────────────── */}
       <RepliesCard
         replies={replies}
         replyText={replyText}

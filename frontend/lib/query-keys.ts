@@ -20,6 +20,7 @@ export const queryKeys = {
   tasks: {
     all: () => ['tasks'] as const,
     list: () => ['tasks', 'list'] as const,
+    detail: (id: number | string) => ['tasks', 'detail', id] as const,
   },
 
   // ── Calls ─────────────────────────────────────────────────────────────────

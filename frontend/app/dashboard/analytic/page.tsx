@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -914,14 +915,10 @@ function AnalyticContent() {
                 <span className="text-xs text-muted-foreground">
                   Детализация:{' '}
                   {drillDownSeverity && (
-                    <Badge variant="outline" className={severityBadgeClass[drillDownSeverity]}>
-                      {severityLabel[drillDownSeverity]}
-                    </Badge>
+                    <StatusBadge status={drillDownSeverity} label={severityLabel[drillDownSeverity]} />
                   )}
                   {drillDownType && (
-                    <Badge variant="outline" className="ml-1">
-                      {drillDownType}
-                    </Badge>
+                    <StatusBadge status="draft" label={drillDownType} className="ml-1" />
                   )}
                 </span>
                 <Button
@@ -945,15 +942,11 @@ function AnalyticContent() {
               <div key={disaster.id} className="rounded-lg border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{disaster.title}</p>
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className={severityBadgeClass[disaster.severity]}>
-                      {severityLabel[disaster.severity]}
-                    </Badge>
-                    <Badge variant="outline">{statusLabel[disaster.status]}</Badge>
+                  <div className="flex flex-wrap gap-1.5">
+                    <StatusBadge status={disaster.severity} label={severityLabel[disaster.severity]} />
+                    <StatusBadge status={disaster.status} label={statusLabel[disaster.status]} />
                     {disaster.type && (
-                      <Badge variant="outline" className="text-xs">
-                        {disaster.type.name}
-                      </Badge>
+                      <StatusBadge status="draft" label={disaster.type.name} />
                     )}
                   </div>
                 </div>

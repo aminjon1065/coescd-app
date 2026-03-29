@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,18 +23,13 @@ import { hasPermission, setPermissionSubject } from '@/lib/permissions';
 import { CreateFeatureDialog } from './components/create-feature-dialog';
 import { FeatureDetailPanel } from './components/feature-detail-panel';
 import { SEVERITY_COLORS, SEVERITY_LABEL, STATUS_LABEL } from './components/map-container';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 const GisMapContainer = dynamic(() => import('./components/map-container'), {
   ssr: false,
   loading: () => <Skeleton className="h-full w-full rounded-lg" />,
 });
 
-const SEVERITY_BADGE_CLASS: Record<string, string> = {
-  low: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  medium: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  high: 'bg-orange-500/15 text-orange-700 dark:text-orange-400',
-  critical: 'bg-red-500/15 text-red-700 dark:text-red-400',
-};
 
 export default function GisPage() {
   return (
@@ -254,18 +248,16 @@ function GisContent() {
                       />
                     </div>
                     <div className="flex gap-1 mt-1.5 flex-wrap">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] px-1.5 py-0 h-4 ${SEVERITY_BADGE_CLASS[f.severity]}`}
-                      >
-                        {SEVERITY_LABEL[f.severity]}
-                      </Badge>
-                      <Badge
-                        variant="outline"
+                      <StatusBadge
+                        status={f.severity}
+                        label={SEVERITY_LABEL[f.severity]}
                         className="text-[10px] px-1.5 py-0 h-4"
-                      >
-                        {STATUS_LABEL[f.status]}
-                      </Badge>
+                      />
+                      <StatusBadge
+                        status={f.status}
+                        label={STATUS_LABEL[f.status]}
+                        className="text-[10px] px-1.5 py-0 h-4"
+                      />
                     </div>
                   </button>
                 ))}

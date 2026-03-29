@@ -141,15 +141,24 @@ function ChatContent() {
       {/* Main chat area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Room header */}
-        <header className="flex items-center gap-2 border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">
-            {rooms.find((r) => r.id === activeRoom)?.label ?? activeRoom}
-          </h2>
-          {isReadOnly && (
-            <span className="rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              только чтение
-            </span>
-          )}
+        <header className="flex items-center gap-3 border-b px-4 py-3">
+          <div className="flex flex-1 items-center gap-2 min-w-0">
+            <h2 className="text-sm font-semibold truncate">
+              {rooms.find((r) => r.id === activeRoom)?.label ?? activeRoom}
+            </h2>
+            {isReadOnly && (
+              <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                только чтение
+              </span>
+            )}
+          </div>
+          {/* Connection status */}
+          <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span
+              className={`h-2 w-2 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground/50'}`}
+            />
+            {connected ? 'Подключено' : 'Нет связи'}
+          </div>
         </header>
 
         {/* Messages */}
