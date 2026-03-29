@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/context/auth-context';
 import { ThemeProvider } from '@/components/theme-provider';
 import NProgressProvider from '@/app/nprogress-provider';
+import { QueryProvider } from '@/providers/query-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -31,15 +32,17 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
     <NProgressProvider />
-    <AuthProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-      >
-        {children}
-      </ThemeProvider>
-    </AuthProvider>
+    <QueryProvider>
+      <AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        >
+          {children}
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryProvider>
     </body>
     </html>
   );

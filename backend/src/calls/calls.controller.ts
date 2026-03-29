@@ -20,6 +20,18 @@ export class CallsController {
   constructor(private readonly callsService: CallsService) {}
 
   /**
+   * GET /calls/turn-credentials
+   * Returns short-lived HMAC-SHA1 TURN credentials for the requesting user.
+   * The client should cache these for up to `ttl` seconds and re-fetch before
+   * they expire.  Must be declared before `GET /calls/:id` so NestJS does not
+   * match the literal string "turn-credentials" as a numeric id param.
+   */
+  @Get('turn-credentials')
+  getTurnCredentials(@ActiveUser() user: ActiveUserData) {
+    return this.callsService.getTurnCredentials(user.sub);
+  }
+
+  /**
    * GET /calls
    * Paginated call history for the current user (initiator OR receiver).
    */

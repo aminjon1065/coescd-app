@@ -27,7 +27,7 @@ function getInitials(name: string): string {
 }
 
 export function ActiveCallDialog() {
-  const { activeCall, hangUp, localStreamRef, remoteStreamRef } = useCalls();
+  const { activeCall, hangUp, localStreamRef, remoteStreamRef, localStream, remoteStream, mediaError, clearMediaError, iceConnState } = useCalls();
   const { user } = useAuth();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -41,17 +41,20 @@ export function ActiveCallDialog() {
   const isOpen = activeCall?.status === 'active' || activeCall?.status === 'pending';
   const isConnecting = activeCall?.status === 'pending';
 
-  // Attach media streams to video elements
+  // Attach streams to video elements whenever the stream state changes.
+  // Using the state values (not refs) as deps guarantees this effect fires
+  // exactly when a new stream arrives or is cleared.
   useEffect(() => {
-    if (localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
     }
-  });
+  }, [localStream]);
+
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStreamRef.current) {
-      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
     }
-  });
+  }, [remoteStream]);
 
   // Duration timer
   useEffect(() => {
@@ -111,7 +114,7 @@ export function ActiveCallDialog() {
 
         {/* Remote video */}
         <div className="relative flex-1 overflow-hidden">
-          {remoteStreamRef.current ? (
+          {remoteStream ? (
             <video
               ref={remoteVideoRef}
               autoPlay
@@ -132,7 +135,7 @@ export function ActiveCallDialog() {
           )}
 
           {/* Local video PiP */}
-          {localStreamRef.current && activeCall.hasVideo && (
+          {localStream && activeCall.hasVideo && (
             <div className="absolute bottom-4 right-4 h-32 w-24 overflow-hidden rounded-xl border-2 border-white/20 shadow-lg">
               <video
                 ref={localVideoRef}
@@ -153,7 +156,32 @@ export function ActiveCallDialog() {
               </p>
             )}
           </div>
+
+          {/* Reconnecting overlay — shown during transient network loss */}
+          {iceConnState === 'disconnected' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 backdrop-blur-sm">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <p className="text-sm font-medium text-white">
+                Восстановление соединения…
+              </p>
+            </div>
+          )}
         </div>
+
+        {/* Media-device error banner — non-blocking, dismissible */}
+        {mediaError && (
+          <div className="flex items-center justify-between gap-3 bg-yellow-500/90 px-4 py-2 text-sm font-medium text-black">
+            <span>{mediaError}</span>
+            <button
+              type="button"
+              onClick={clearMediaError}
+              className="shrink-0 text-black/70 hover:text-black"
+              aria-label="Закрыть"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Controls bar */}
         <div className="flex items-center justify-center gap-4 bg-black/80 py-6">

@@ -20,6 +20,7 @@ export function LoginForm({
                             setEmail,
                             setPassword,
                             handleSubmit,
+                            error,
                             loading,
                             ...props
                           }: {
@@ -74,18 +75,12 @@ export function LoginForm({
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+              <Button type="submit" disabled={loading} className="w-full">
                 <LogIn />
                 Login
-              </Button>
-              <Button variant="outline" className="w-full">
-                Login with Google
-              </Button>
-            </div>
-            <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{' '}
-              <Button disabled={loading} className="underline underline-offset-4">
-                Sign up
               </Button>
             </div>
           </form>

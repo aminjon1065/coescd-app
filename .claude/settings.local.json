@@ -26,7 +26,20 @@
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/create-gis-feature.dto.ts:*)",
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/update-gis-feature.dto.ts:*)",
       "Bash(/Users/aminjon/Desktop/coescd-app/backend/src/gis/dto/get-gis-features-query.dto.ts:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/backend/src/document -type f -name *.ts)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/frontend/features/zones/analytics -type f -name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/frontend -type f \\\\\\(-name *map* -o -name *leaflet* -o -name *geo* \\\\\\) -name *.tsx -o -name *.ts)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/frontend/lib -type f -name *.ts)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/backend -type f -name *.ts -path */migrations/*)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/backend/src -type f -name *migration*.ts)",
+      "Bash(ls /Users/aminjon/Desktop/coescd-app/backend/src/database/migrations/*.ts)",
+      "Bash(ls /Users/aminjon/Desktop/coescd-app/backend/*.env*)",
+      "Bash(ls /Users/aminjon/Desktop/coescd-app/backend/.env*)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/frontend -name axios*)",
+      "Bash(cat /Users/aminjon/Desktop/coescd-app/frontend/app/dashboard/documentation/[id]/hooks/use-edm-document-detail.ts)",
+      "Bash(sudo chown:*)",
+      "Bash(npm_config_cache=/tmp/npm-fresh-cache npm install @tanstack/react-query @tanstack/react-query-devtools)"
     ]
   }
 }

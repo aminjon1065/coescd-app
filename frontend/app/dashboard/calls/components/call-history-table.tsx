@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import api from '@/lib/axios';
+import { useState } from 'react';
 import { ICall, CallStatus } from '@/interfaces/ICall';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,13 +17,7 @@ import { ArrowDownLeft, ArrowUpRight, Phone, Video } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
-
-interface PaginatedCalls {
-  items: ICall[];
-  total: number;
-  page: number;
-  limit: number;
-}
+import { useCallHistoryQuery } from '@/hooks/queries/useCalls';
 
 const statusLabel: Record<CallStatus, string> = {
   pending:  'Ожидание',
@@ -49,38 +42,36 @@ function formatDuration(sec: number | null): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+const LIMIT = 20;
+
 export function CallHistoryTable() {
-  const { user } = useAuth();
-  const [calls, setCalls] = useState<ICall[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user, accessToken } = useAuth();
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const limit = 20;
 
-  const fetchCalls = async (p: number) => {
-    setLoading(true);
-    try {
-      const res = await api.get<PaginatedCalls>('/calls', {
-        params: { page: p, limit },
-      });
-      setCalls(res.data.items);
-      setTotal(res.data.total);
-    } catch (err) {
-      console.error('Failed to load calls', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // placeholderData keeps the current page visible while the next page fetches
+  // — no empty-table flash between page transitions.
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+  } = useCallHistoryQuery(page, LIMIT, !!accessToken);
 
-  useEffect(() => {
-    fetchCalls(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  const calls: ICall[] = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
-  const totalPages = Math.max(1, Math.ceil(total / limit));
+  // Show skeleton rows on hard load; show subtle opacity during page transitions
+  const showSkeleton = isLoading;
+  const showFetchingOverlay = !isLoading && isFetching;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 transition-opacity ${showFetchingOverlay ? 'opacity-60' : 'opacity-100'}`}>
+      {isError && (
+        <p className="text-sm text-destructive">
+          Не удалось загрузить историю звонков. Попробуйте обновить страницу.
+        </p>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -93,7 +84,7 @@ export function CallHistoryTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {loading ? (
+          {showSkeleton ? (
             Array.from({ length: 5 }).map((_, i) => (
               <TableRow key={i}>
                 {Array.from({ length: 6 }).map((__, j) => (
@@ -117,7 +108,6 @@ export function CallHistoryTable() {
 
               return (
                 <TableRow key={call.id}>
-                  {/* Direction */}
                   <TableCell>
                     {isOutgoing ? (
                       <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
@@ -125,11 +115,7 @@ export function CallHistoryTable() {
                       <ArrowDownLeft className="h-4 w-4 text-primary" />
                     )}
                   </TableCell>
-
-                  {/* Participant */}
                   <TableCell className="font-medium">{otherName}</TableCell>
-
-                  {/* Call type */}
                   <TableCell>
                     {call.hasVideo ? (
                       <Video className="h-4 w-4 text-muted-foreground" />
@@ -137,8 +123,6 @@ export function CallHistoryTable() {
                       <Phone className="h-4 w-4 text-muted-foreground" />
                     )}
                   </TableCell>
-
-                  {/* Status */}
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -147,13 +131,9 @@ export function CallHistoryTable() {
                       {statusLabel[call.status]}
                     </Badge>
                   </TableCell>
-
-                  {/* Duration */}
                   <TableCell className="tabular-nums">
                     {formatDuration(call.durationSec)}
                   </TableCell>
-
-                  {/* Date */}
                   <TableCell className="text-sm text-muted-foreground">
                     {format(parseISO(call.createdAt), 'd MMM yyyy, HH:mm', {
                       locale: ru,
@@ -166,13 +146,12 @@ export function CallHistoryTable() {
         </TableBody>
       </Table>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            disabled={page <= 1}
+            disabled={page <= 1 || isFetching}
             onClick={() => setPage((p) => p - 1)}
           >
             ←
@@ -183,7 +162,7 @@ export function CallHistoryTable() {
           <Button
             variant="outline"
             size="sm"
-            disabled={page >= totalPages}
+            disabled={page >= totalPages || isFetching}
             onClick={() => setPage((p) => p + 1)}
           >
             →

@@ -1,20 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlusIcon } from 'lucide-react';
-import api from '@/lib/axios';
 import { useAuth } from '@/context/auth-context';
 import { ITask, TaskStatus } from '@/interfaces/ITask';
 import { CreateTaskDialog } from './components/create-task-dialog';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { extractListItems, ListResponse } from '@/lib/list-response';
 import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
+import { useTasksQuery } from '@/hooks/queries/useTasks';
+import { queryKeys } from '@/lib/query-keys';
 
 const statusLabel: Record<TaskStatus, string> = {
   new: 'Новая',
@@ -41,29 +42,16 @@ export default function TasksPage() {
 
 function TasksContent() {
   const { accessToken } = useAuth();
-  const [tasks, setTasks] = useState<ITask[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const fetchTasks = async () => {
-    try {
-      const res = await api.get<ListResponse<ITask> | ITask[]>('/task');
-      setTasks(extractListItems(res.data));
-    } catch (err) {
-      console.error('Failed to load tasks', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!accessToken) return;
-    fetchTasks();
-  }, [accessToken]);
+  // React Query handles loading, caching, and background refetch.
+  // `enabled` mirrors the old `if (!accessToken) return` guard in useEffect.
+  const { data: tasks = [], isLoading, isError } = useTasksQuery(!!accessToken);
 
   const filterTasks = (status?: TaskStatus) => {
     if (!status) return tasks;
-    return tasks.filter((t) => t.status === status);
+    return tasks.filter((t: ITask) => t.status === status);
   };
 
   const renderTaskList = (filteredTasks: ITask[]) => {
@@ -98,7 +86,7 @@ function TasksContent() {
     );
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
@@ -108,6 +96,16 @@ function TasksContent() {
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
           ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-destructive">
+          Не удалось загрузить задачи. Попробуйте обновить страницу.
         </CardContent>
       </Card>
     );
@@ -152,7 +150,11 @@ function TasksContent() {
       <CreateTaskDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onCreated={fetchTasks}
+        onCreated={() => {
+          // Invalidate the tasks list so the new entry appears immediately
+          // without waiting for the staleTime window to expire.
+          queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() });
+        }}
       />
     </>
   );

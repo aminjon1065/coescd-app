@@ -1,10 +1,8 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
-import api from '@/lib/axios';
 import { IUser } from '@/interfaces/IUser';
-import { IDepartment } from '@/interfaces/IDepartment';
 import { useAuth } from '@/context/auth-context';
 import { hasAnyPermission, Permission } from '@/lib/permissions';
 import Loading from '@/app/loading';
@@ -15,7 +13,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Role } from '@/enums/RoleEnum';
-import { extractListItems, ListResponse } from '@/lib/list-response';
+import {
+  useUsersQuery,
+  useCreateUserMutation,
+  useUpdateUserMutation,
+  useToggleUserActiveMutation,
+} from '@/hooks/queries/useUsers';
+import { useDepartmentsQuery } from '@/hooks/queries/useDepartments';
 
 const NO_DEPARTMENT_VALUE = '__none__';
 
@@ -47,27 +51,25 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === 'object' && error !== null) {
     const response = (error as { response?: { data?: { message?: unknown } } }).response;
     const message = response?.data?.message;
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
-    if (typeof message === 'string') {
-      return message;
-    }
+    if (Array.isArray(message)) return message.join(', ');
+    if (typeof message === 'string') return message;
   }
   return fallback;
 }
 
 export default function UsersTable() {
   const { loading, accessToken, user } = useAuth();
-  const [users, setUsers] = useState<IUser[]>([]);
-  const [departments, setDepartments] = useState<IDepartment[]>([]);
+
+  // ── Local UI state ────────────────────────────────────────────────────────
   const [createForm, setCreateForm] = useState<CreateUserForm>(initialCreateForm);
   const [search, setSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [isCreating, setIsCreating] = useState(false);
-  const [busyByUserId, setBusyByUserId] = useState<Record<number, boolean>>({});
   const [pageError, setPageError] = useState<string | null>(null);
+  // Per-row busy tracking for toggle/update actions (not covered by a single
+  // mutation isPending because multiple rows can be in-flight at once).
+  const [busyByUserId, setBusyByUserId] = useState<Record<number, boolean>>({});
 
+  // ── Derived auth values ───────────────────────────────────────────────────
   const isAdmin = user?.role === Role.Admin;
   const isManager = user?.role === Role.Manager;
   const canReadUsers = isAdmin || isManager;
@@ -75,75 +77,56 @@ export default function UsersTable() {
   const canUpdateUsers = hasAnyPermission(user, [Permission.USERS_UPDATE]);
   const managerDepartmentId = user?.department?.id ?? null;
 
-  const loadUsers = useCallback(async () => {
-    if (!canReadUsers) return;
-    const params: Record<string, string | number> = {};
-    if (isManager && managerDepartmentId) {
-      params.departmentId = managerDepartmentId;
-    } else if (departmentFilter !== 'all') {
-      params.departmentId = Number(departmentFilter);
-    }
-    if (search.trim()) {
-      params.q = search.trim();
-    }
-    const res = await api.get<ListResponse<IUser> | IUser[]>('/users', { params });
-    setUsers(extractListItems(res.data));
-  }, [canReadUsers, departmentFilter, isManager, managerDepartmentId, search]);
+  // ── Queries ───────────────────────────────────────────────────────────────
+  // Departments are cached for 5 minutes — no loading flicker on re-mount.
+  const { data: departments = [], isError: deptError } = useDepartmentsQuery(
+    !!accessToken && canReadUsers,
+  );
 
-  const loadDepartments = useCallback(async () => {
-    const res = await api.get<IDepartment[]>('/department');
-    setDepartments(res.data);
-  }, []);
+  // The full filter object is the query key — changing any field auto-refetches.
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    isError: usersError,
+  } = useUsersQuery(
+    { search, departmentId: departmentFilter, isManager, managerDepartmentId },
+    !!accessToken && canReadUsers,
+  );
 
-  useEffect(() => {
-    if (!accessToken || !canReadUsers) return;
-    loadDepartments().catch((error) => {
-      console.error(error);
-      setPageError(getApiErrorMessage(error, 'Failed to load staff data'));
-    });
-  }, [accessToken, canReadUsers, loadDepartments]);
+  // ── Mutations ─────────────────────────────────────────────────────────────
+  const createUserMutation = useCreateUserMutation();
+  const updateUserMutation = useUpdateUserMutation();
+  const toggleActiveMutation = useToggleUserActiveMutation();
 
-  useEffect(() => {
-    if (!accessToken || !canReadUsers) return;
-    loadUsers().catch((error) => {
-      console.error(error);
-      setPageError(getApiErrorMessage(error, 'Failed to filter users'));
-    });
-  }, [accessToken, canReadUsers, loadUsers]);
+  const setRowBusy = (userId: number, busy: boolean) =>
+    setBusyByUserId((prev) => ({ ...prev, [userId]: busy }));
 
-  useEffect(() => {
-    if (isManager && managerDepartmentId) {
-      setCreateForm((prev) => ({ ...prev, departmentId: String(managerDepartmentId) }));
-    }
-  }, [isManager, managerDepartmentId]);
-
-  const setRowBusy = (userId: number, value: boolean) => {
-    setBusyByUserId((prev) => ({ ...prev, [userId]: value }));
-  };
-
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const onCreateUser = async (event: FormEvent) => {
     event.preventDefault();
-    setIsCreating(true);
     setPageError(null);
     try {
-      await api.post('/users', {
+      await createUserMutation.mutateAsync({
         email: createForm.email,
         password: createForm.password,
         name: createForm.name,
         position: createForm.position || undefined,
         role: createForm.role,
-        departmentId: createForm.departmentId ? Number(createForm.departmentId) : undefined,
+        departmentId: createForm.departmentId
+          ? Number(createForm.departmentId)
+          : undefined,
       });
+      // Reset form, preserve manager's department
       setCreateForm({
         ...initialCreateForm,
-        departmentId: isManager && managerDepartmentId ? String(managerDepartmentId) : '',
+        departmentId:
+          isManager && managerDepartmentId
+            ? String(managerDepartmentId)
+            : '',
       });
-      await loadUsers();
     } catch (error: unknown) {
       console.error(error);
       setPageError(getApiErrorMessage(error, 'Failed to create user'));
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -151,8 +134,10 @@ export default function UsersTable() {
     setRowBusy(target.id, true);
     setPageError(null);
     try {
-      await api.patch(`/users/${target.id}`, { position: position || null });
-      await loadUsers();
+      await updateUserMutation.mutateAsync({
+        userId: target.id,
+        data: { position: position || null },
+      });
     } catch (error: unknown) {
       console.error(error);
       setPageError(getApiErrorMessage(error, 'Failed to update profile'));
@@ -166,10 +151,10 @@ export default function UsersTable() {
     setRowBusy(target.id, true);
     setPageError(null);
     try {
-      await api.patch(`/users/${target.id}/active`, {
+      await toggleActiveMutation.mutateAsync({
+        userId: target.id,
         isActive: !target.isActive,
       });
-      await loadUsers();
     } catch (error: unknown) {
       console.error(error);
       setPageError(getApiErrorMessage(error, 'Failed to update activity status'));
@@ -184,9 +169,8 @@ export default function UsersTable() {
     return [];
   }, [isAdmin, isManager]);
 
-  if (loading || !accessToken) {
-    return <Loading />;
-  }
+  // ── Early returns ─────────────────────────────────────────────────────────
+  if (loading || !accessToken) return <Loading />;
 
   if (!canReadUsers) {
     return (
@@ -211,12 +195,19 @@ export default function UsersTable() {
         </div>
       ) : null}
 
-      {pageError ? (
+      {/* Inline error banner for mutation errors */}
+      {(pageError || usersError || deptError) && (
         <Card className="border-red-300">
-          <CardContent className="pt-6 text-sm text-red-600">{pageError}</CardContent>
+          <CardContent className="pt-6 text-sm text-red-600">
+            {pageError ??
+              (usersError
+                ? 'Не удалось загрузить список сотрудников.'
+                : 'Не удалось загрузить список отделов.')}
+          </CardContent>
         </Card>
-      ) : null}
+      )}
 
+      {/* ── Create user form ─────────────────────────────────────────────── */}
       {canCreateUsers && (
         <Card>
           <CardHeader>
@@ -230,14 +221,17 @@ export default function UsersTable() {
                 Department Head can create users only in own department.
               </p>
             ) : null}
-            <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={onCreateUser}>
+            <form
+              className="grid grid-cols-1 gap-3 md:grid-cols-2"
+              onSubmit={onCreateUser}
+            >
               <div className="space-y-1">
                 <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
                   value={createForm.name}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, name: e.target.value }))
                   }
                   required
                 />
@@ -248,8 +242,8 @@ export default function UsersTable() {
                   id="email"
                   type="email"
                   value={createForm.email}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, email: event.target.value }))
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, email: e.target.value }))
                   }
                   required
                 />
@@ -260,8 +254,8 @@ export default function UsersTable() {
                   id="password"
                   type="password"
                   value={createForm.password}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, password: event.target.value }))
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, password: e.target.value }))
                   }
                   minLength={6}
                   required
@@ -272,8 +266,8 @@ export default function UsersTable() {
                 <Input
                   id="position"
                   value={createForm.position}
-                  onChange={(event) =>
-                    setCreateForm((prev) => ({ ...prev, position: event.target.value }))
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({ ...prev, position: e.target.value }))
                   }
                 />
               </div>
@@ -304,7 +298,8 @@ export default function UsersTable() {
                   onValueChange={(value) =>
                     setCreateForm((prev) => ({
                       ...prev,
-                      departmentId: value === NO_DEPARTMENT_VALUE ? '' : value,
+                      departmentId:
+                        value === NO_DEPARTMENT_VALUE ? '' : value,
                     }))
                   }
                   disabled={isManager}
@@ -313,18 +308,23 @@ export default function UsersTable() {
                     <SelectValue placeholder="No department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_DEPARTMENT_VALUE}>No department</SelectItem>
-                    {departments.map((department) => (
-                      <SelectItem key={department.id} value={String(department.id)}>
-                        {department.name}
+                    <SelectItem value={NO_DEPARTMENT_VALUE}>
+                      No department
+                    </SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={String(dept.id)}>
+                        {dept.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="md:col-span-2">
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Create User'}
+                <Button
+                  type="submit"
+                  disabled={createUserMutation.isPending}
+                >
+                  {createUserMutation.isPending ? 'Creating...' : 'Create User'}
                 </Button>
               </div>
             </form>
@@ -332,6 +332,7 @@ export default function UsersTable() {
         </Card>
       )}
 
+      {/* ── Staff directory ──────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle>Staff Directory</CardTitle>
@@ -341,7 +342,7 @@ export default function UsersTable() {
             <Input
               value={search}
               placeholder="Search by name or email"
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
             />
             <Select
               value={departmentFilter}
@@ -353,17 +354,21 @@ export default function UsersTable() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All departments</SelectItem>
-                {departments.map((department) => (
-                  <SelectItem key={department.id} value={String(department.id)}>
-                    {department.name}
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={String(dept.id)}>
+                    {dept.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {users.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No users found for selected filters.</p>
+          {usersLoading ? (
+            <p className="text-sm text-muted-foreground">Загрузка…</p>
+          ) : users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No users found for selected filters.
+            </p>
           ) : (
             <div className="space-y-3">
               {users.map((item) => (
@@ -371,14 +376,18 @@ export default function UsersTable() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-medium">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.email}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Department: {item.department?.name ?? '—'}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{roleLabel(item.role)}</Badge>
-                      <Badge variant={item.isActive ? 'default' : 'secondary'}>
+                      <Badge
+                        variant={item.isActive ? 'default' : 'secondary'}
+                      >
                         {item.isActive ? 'Active' : 'Disabled'}
                       </Badge>
                     </div>
@@ -389,11 +398,11 @@ export default function UsersTable() {
                       <Input
                         defaultValue={item.position ?? ''}
                         disabled={!canUpdateUsers}
-                        onBlur={(event) => {
+                        onBlur={(e) => {
                           if (!canUpdateUsers) return;
-                          const nextPosition = event.target.value.trim();
-                          if ((item.position ?? '') !== nextPosition) {
-                            void onUpdatePosition(item, nextPosition);
+                          const next = e.target.value.trim();
+                          if ((item.position ?? '') !== next) {
+                            void onUpdatePosition(item, next);
                           }
                         }}
                       />

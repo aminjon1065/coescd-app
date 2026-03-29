@@ -16,6 +16,10 @@ export interface TypingUser {
 
 export function useChatSocket(accessToken: string | null, room: string) {
   const socketRef = useRef<Socket | null>(null);
+  // Tracks the room this effect iteration was created for.  Socket handlers
+  // capture this ref so they can discard events that belong to a previous room
+  // (race: old socket fires during the async teardown window after room change).
+  const currentRoomRef = useRef<string>(room);
   const [messages, setMessages] = useState<IChatMessage[]>([]);
   const [connected, setConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
@@ -23,6 +27,12 @@ export function useChatSocket(accessToken: string | null, room: string) {
 
   useEffect(() => {
     if (!accessToken || !room) return;
+
+    // Eagerly clear messages and update the room ref BEFORE creating the new
+    // socket so the UI never shows stale messages from the previous room.
+    currentRoomRef.current = room;
+    setMessages([]);
+    setTypingUsers([]);
 
     const chatSocket = io(`${WS_URL}/chat`, {
       path: '/socket.io',
@@ -56,8 +66,12 @@ export function useChatSocket(accessToken: string | null, room: string) {
     });
 
     chatSocket.on('chat:message', (msg: IChatMessage) => {
+      // Guard: discard messages from a room that is no longer active.
+      // This handles the race where the old socket fires chat:message during
+      // the async teardown window after the user switches rooms.
+      if (msg.room !== currentRoomRef.current) return;
       setMessages((prev) => {
-        // Avoid duplicates
+        // Avoid duplicates (e.g. echo from own send)
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
@@ -67,6 +81,8 @@ export function useChatSocket(accessToken: string | null, room: string) {
       'chat:history',
       (data: { items: IChatMessage[] } | IChatMessage[]) => {
         const items = Array.isArray(data) ? data : data.items;
+        // Discard history that arrived for a previous room after a fast switch.
+        if (items.length > 0 && items[0].room !== currentRoomRef.current) return;
         setMessages(items);
       },
     );
@@ -105,11 +121,14 @@ export function useChatSocket(accessToken: string | null, room: string) {
 
     return () => {
       Object.values(typingTimers.current).forEach(clearTimeout);
+      typingTimers.current = {};
       chatSocket.disconnect();
       socketRef.current = null;
       setConnected(false);
-      setMessages([]);
-      setTypingUsers([]);
+      // NOTE: setMessages / setTypingUsers are intentionally omitted here.
+      // They are cleared eagerly at the TOP of each effect run (before the new
+      // socket connects) so the user sees an empty list while the new room
+      // loads — not stale messages from the old room.
     };
   // Re-connect when room or token changes
   // eslint-disable-next-line react-hooks/exhaustive-deps

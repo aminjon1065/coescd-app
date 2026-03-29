@@ -42,13 +42,21 @@ export class ChatService {
     const safeLimit = Math.min(100, Math.max(1, limit));
     const offset = (safePage - 1) * safeLimit;
 
-    const [items, total] = await this.messageRepo.findAndCount({
-      where: { room },
-      relations: ['sender'],
-      order: { createdAt: 'DESC' },
-      skip: offset,
-      take: safeLimit,
-    });
+    // Use QueryBuilder instead of findAndCount + relations so we select only
+    // the three sender columns we actually need (id, name, avatar).
+    // findAndCount with relations loads every column from `users` (including
+    // password hash, permissions JSON, etc.) for every row — wasteful and
+    // unnecessary.  The composite index (room, created_at) is used by both the
+    // data fetch and the COUNT query.
+    const [items, total] = await this.messageRepo
+      .createQueryBuilder('msg')
+      .leftJoin('msg.sender', 'sender')
+      .addSelect(['sender.id', 'sender.name', 'sender.avatar'])
+      .where('msg.room = :room', { room })
+      .orderBy('msg.createdAt', 'DESC')
+      .skip(offset)
+      .take(safeLimit)
+      .getManyAndCount();
 
     // Return oldest-first for display
     return {
