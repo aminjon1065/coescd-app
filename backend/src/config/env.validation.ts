@@ -39,6 +39,10 @@ export const envValidationSchema = Joi.object({
     then: Joi.string().uri().required(),
     otherwise: Joi.string().optional(),
   }),
+  S3_FORCE_PATH_STYLE: Joi.string().valid('true', 'false').default('true'),
+  S3_TLS_REJECT_UNAUTHORIZED: Joi.string()
+    .valid('true', 'false')
+    .default('true'),
 
   // ── Redis (optional) ────────────────────────────────────────────────────────
   REDIS_DISABLED: Joi.string().valid('true', 'false').default('false'),
@@ -48,6 +52,7 @@ export const envValidationSchema = Joi.object({
     otherwise: Joi.string().optional(),
   }),
   REDIS_PORT: Joi.number().integer().positive().default(6379),
+  REDIS_DB: Joi.number().integer().min(0).default(0),
   REDIS_PASSWORD: Joi.string().optional().allow(''),
 
   // ── TURN / WebRTC ───────────────────────────────────────────────────────────

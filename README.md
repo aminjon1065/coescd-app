@@ -141,11 +141,23 @@
 ## 🛠️ Операционные команды (backend)
 
 ```bash
+cd backend
 npm run build
 npm run test:e2e
 npm run seed:iam
 npm run migration:run
 npm run migration:revert
+```
+
+## 📦 Package Manager Policy
+
+- Стандартный пакетный менеджер репозитория: `npm`
+- CI использует `npm ci`
+- Версия Node: `.nvmrc` -> `22`
+
+```bash
+cd backend && npm ci
+cd frontend && npm ci
 ```
 
 ---

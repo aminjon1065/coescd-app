@@ -27,7 +27,7 @@ export interface CreateFeaturePayload {
   departmentId?: number;
 }
 
-export interface UpdateFeaturePayload extends Partial<CreateFeaturePayload> {}
+export type UpdateFeaturePayload = Partial<CreateFeaturePayload>;
 
 export const gisApi = {
   // ── Layers ────────────────────────────────────────────────────────────────

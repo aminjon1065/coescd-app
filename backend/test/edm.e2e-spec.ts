@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as request from 'supertest';
@@ -66,6 +67,9 @@ describe('EDM (e2e)', () => {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
+        }),
+        EventEmitterModule.forRoot({
+          global: true,
         }),
         TypeOrmModule.forRootAsync({
           useFactory: () => ({

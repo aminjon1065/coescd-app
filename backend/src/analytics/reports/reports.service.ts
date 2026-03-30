@@ -201,12 +201,11 @@ export class ReportsService {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const avgRouteQb = this.edmRouteRepo
       .createQueryBuilder('route')
-      .select(
-        "AVG(EXTRACT(EPOCH FROM (route.finished_at - route.started_at)) / 3600)",
-        'avgHours',
-      )
+      .select(['route.startedAt AS "startedAt"', 'route.finishedAt AS "finishedAt"'])
       .where('route.state = :state', { state: 'finished' })
-      .andWhere('route.finished_at >= :since', { since: thirtyDaysAgo });
+      .andWhere('route.finishedAt IS NOT NULL')
+      .andWhere('route.startedAt IS NOT NULL')
+      .andWhere('route.finishedAt >= :since', { since: thirtyDaysAgo });
 
     if (isDepartmentHead && departmentId) {
       avgRouteQb
@@ -215,10 +214,32 @@ export class ReportsService {
         .andWhere('avgDept.id = :departmentId', { departmentId });
     }
 
-    const avgRouteRaw = await avgRouteQb.getRawOne<{ avgHours: string | null }>();
-    const avgProcessingHours = avgRouteRaw?.avgHours
-      ? Number(Number(avgRouteRaw.avgHours).toFixed(1))
-      : 0;
+    const avgRouteRows = await avgRouteQb.getRawMany<{
+      startedAt: Date | string | null;
+      finishedAt: Date | string | null;
+    }>();
+    const routeDurationsHours = avgRouteRows
+      .map((row) => {
+        if (!row.startedAt || !row.finishedAt) {
+          return null;
+        }
+
+        const startedAt = new Date(row.startedAt);
+        const finishedAt = new Date(row.finishedAt);
+        const durationMs = finishedAt.getTime() - startedAt.getTime();
+
+        return durationMs >= 0 ? durationMs / (1000 * 60 * 60) : null;
+      })
+      .filter((value): value is number => value !== null);
+    const avgProcessingHours =
+      routeDurationsHours.length > 0
+        ? Number(
+            (
+              routeDurationsHours.reduce((sum, value) => sum + value, 0) /
+              routeDurationsHours.length
+            ).toFixed(1),
+          )
+        : 0;
 
     const result: {
       generatedAt: string;

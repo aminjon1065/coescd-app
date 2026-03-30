@@ -232,7 +232,6 @@ export function RouteActionsCard({
 }: Props) {
   const route = document.route;
   const stages = route ? [...route.stages].sort((a, b) => a.orderNo - b.orderNo) : [];
-  const hasActiveStage = stages.some((s) => ['in_progress', 'pending'].includes(s.state));
 
   return (
     <Card>

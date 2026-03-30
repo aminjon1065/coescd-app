@@ -1,10 +1,6 @@
 'use client';
-import { useTheme } from 'next-themes';
 
 export default function Loading() {
-  // Or a custom loading skeleton component
-  const { theme } = useTheme();
-  console.log(theme);
   return (
     <div
       role="status"

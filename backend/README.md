@@ -1,5 +1,16 @@
 ## Backend Для плафтормы
 
+### Local Workflow
+
+Стандартный пакетный менеджер: `npm`.
+
+```bash
+npm ci
+npm run build
+npm run test:smoke
+npm run test:e2e:ci
+```
+
 ### EDM Alerts Scheduler
 
 Автоматический запуск обработки уведомлений/просрочек СЭД работает по cron.

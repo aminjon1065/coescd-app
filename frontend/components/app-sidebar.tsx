@@ -34,17 +34,17 @@ const ZONE_NAV_GROUPS = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
-  if (!user || !user.permissions) {
-    return null;
-  }
-
-  setPermissionSubject(user);
+  setPermissionSubject(user ?? null);
 
   const routeByUrl = useMemo(() => new Map(navItems.map((item) => [item.url, item])), []);
-  const zones = useMemo(() => resolveVisibleZones(user), [user]);
+  const zones = useMemo(() => (user ? resolveVisibleZones(user) : []), [user]);
 
   const adaptRoute = React.useCallback(
     (route: NavItem): NavItem => {
+      if (!user) {
+        return route;
+      }
+
       const isPrivilegedEdmUser = hasAnyPermission(user, [
         Permission.DOCUMENTS_REGISTER,
         Permission.DOCUMENTS_JOURNAL_READ,
@@ -74,8 +74,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   const zoneSections = useMemo(
-    () =>
-      ZONE_NAV_GROUPS.filter((group) => zones.includes(group.zone))
+    () => {
+      if (!user || !user.permissions) {
+        return [];
+      }
+
+      return ZONE_NAV_GROUPS.filter((group) => zones.includes(group.zone))
         .map((group) => {
           const items = group.routes
             .filter((routeDef) => {
@@ -107,9 +111,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           return { zone: group.zone, items };
         })
-        .filter((section) => section.items.length > 0),
+        .filter((section) => section.items.length > 0);
+    },
     [adaptRoute, routeByUrl, user, zones],
   );
+
+  if (!user || !user.permissions) {
+    return null;
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>

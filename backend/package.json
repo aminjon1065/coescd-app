@@ -4,6 +4,7 @@
   "description": "",
   "author": "Aminjo Aliev",
   "private": true,
+  "packageManager": "npm@11.11.0",
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
@@ -105,6 +106,9 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

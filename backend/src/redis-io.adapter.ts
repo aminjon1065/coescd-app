@@ -57,8 +57,15 @@ export class RedisIoAdapter extends IoAdapter {
     const host = config.get<string>('REDIS_HOST', 'localhost');
     const port = Number(config.get<string>('REDIS_PORT', '6379'));
     const db = Number(config.get<string>('REDIS_DB', '0'));
+    const password = config.get<string>('REDIS_PASSWORD');
 
-    this.pubClient = new Redis({ host, port, db, lazyConnect: false });
+    this.pubClient = new Redis({
+      host,
+      port,
+      db,
+      password: password || undefined,
+      lazyConnect: false,
+    });
     this.subClient = this.pubClient.duplicate();
 
     this.pubClient.on('error', (err) =>

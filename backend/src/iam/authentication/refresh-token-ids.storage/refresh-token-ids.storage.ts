@@ -35,6 +35,8 @@ export class RefreshTokenIdsStorage
       host: this.configService.get<string>('REDIS_HOST', 'localhost'),
       port: Number(this.configService.get<string>('REDIS_PORT', '6379')),
       db: Number(this.configService.get<string>('REDIS_DB', '0')),
+      password:
+        this.configService.get<string>('REDIS_PASSWORD') || undefined,
     });
   }
 

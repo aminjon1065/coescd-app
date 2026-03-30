@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+
+node_modules/
+coverage/
+dist/
+build/
+
+frontend/.next/
+frontend/out/
+frontend/playwright-report/
+frontend/test-results/
+
+backend/dist/
+backend/node_modules/

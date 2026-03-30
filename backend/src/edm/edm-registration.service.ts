@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -66,7 +67,7 @@ export class EdmRegistrationService {
         });
 
       if (existingJournal?.status === 'registered') {
-        throw new BadRequestException('Document is already registered');
+        throw new ConflictException('Document is already registered');
       }
 
       if (!document.externalNumber) {

@@ -17,21 +17,37 @@ import { Readable } from 'stream';
 export class FilesStorageService implements OnModuleInit {
   private readonly client: S3Client;
   private readonly bucket: string;
+  private readonly endpoint?: string;
   private readonly logger = new Logger(FilesStorageService.name);
 
   constructor() {
-    const endpoint = process.env.S3_ENDPOINT ?? 'http://127.0.0.1:9000';
+    const storageBackend = process.env.STORAGE_BACKEND ?? 's3';
+    const endpoint =
+      storageBackend === 'minio'
+        ? process.env.MINIO_ENDPOINT ??
+          process.env.S3_ENDPOINT ??
+          'http://127.0.0.1:9000'
+        : process.env.S3_ENDPOINT;
     const rejectUnauthorized =
       (process.env.S3_TLS_REJECT_UNAUTHORIZED ?? 'true') !== 'false';
+    const accessKeyId =
+      process.env.AWS_ACCESS_KEY_ID ??
+      process.env.S3_ACCESS_KEY ??
+      'minioadmin';
+    const secretAccessKey =
+      process.env.AWS_SECRET_ACCESS_KEY ??
+      process.env.S3_SECRET_KEY ??
+      'minioadmin';
 
     this.bucket = process.env.S3_BUCKET ?? 'coescd-files';
+    this.endpoint = endpoint;
     this.client = new S3Client({
-      region: process.env.S3_REGION ?? 'us-east-1',
+      region: process.env.AWS_REGION ?? process.env.S3_REGION ?? 'us-east-1',
       endpoint,
       forcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
       credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY ?? 'minioadmin',
-        secretAccessKey: process.env.S3_SECRET_KEY ?? 'minioadmin',
+        accessKeyId,
+        secretAccessKey,
       },
       // Allow self-signed TLS certs (e.g. Herd local dev) when explicitly opted-in
       ...(!rejectUnauthorized && {
@@ -61,7 +77,7 @@ export class FilesStorageService implements OnModuleInit {
         this.logger.log(`S3 bucket "${this.bucket}" created successfully`);
       } else {
         this.logger.error(
-          `S3 connectivity check failed (endpoint: ${process.env.S3_ENDPOINT ?? 'default'}):`,
+          `S3 connectivity check failed (endpoint: ${this.endpoint ?? 'default'}):`,
           err,
         );
       }

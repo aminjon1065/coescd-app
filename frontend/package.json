@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "author": "Amin Aliev",
   "private": true,
+  "packageManager": "npm@11.11.0",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

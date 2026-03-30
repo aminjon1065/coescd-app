@@ -8,7 +8,7 @@ export class NotificationsSchema20260329010000 implements MigrationInterface {
       CREATE TABLE "notifications" (
         "id"         SERIAL PRIMARY KEY,
         "user_id"    INTEGER NOT NULL
-                       REFERENCES "users"("id") ON DELETE CASCADE,
+                       REFERENCES "user"("id") ON DELETE CASCADE,
         "kind"       VARCHAR(64) NOT NULL,
         "message"    TEXT NOT NULL,
         "payload"    JSONB DEFAULT NULL,

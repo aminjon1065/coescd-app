@@ -127,13 +127,6 @@ const statusLabel: Record<DisasterStatus, string> = {
   resolved: 'Устранена',
 };
 
-const severityBadgeClass: Record<DisasterSeverity, string> = {
-  low: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  medium: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  high: 'bg-orange-500/15 text-orange-700 dark:text-orange-400',
-  critical: 'bg-red-500/15 text-red-700 dark:text-red-400',
-};
-
 const taskStatusLabel: Record<ITask['status'], string> = {
   new: 'Новые',
   in_progress: 'В работе',
@@ -1109,20 +1102,27 @@ function PredictionSection({ departments }: { departments: IDepartment[] }) {
                 <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                 <Tooltip
-                  formatter={(value: number, name: string) => {
+                  formatter={(value: number | string | undefined, name: string | undefined) => {
                     const labels: Record<string, string> = {
                       historical: 'История',
                       predicted: 'Прогноз',
                       lower: 'Нижняя граница (95%)',
                       upper: 'Верхняя граница (95%)',
                     };
-                    return [value ?? '—', labels[name] ?? name];
+                    return [value ?? '—', name ? (labels[name] ?? name) : '—'];
                   }}
                 />
                 <Legend
-                  formatter={(value) =>
-                    ({ historical: 'История', predicted: 'Прогноз', lower: 'ДИ нижн.', upper: 'ДИ верхн.' })[value] ?? value
-                  }
+                  formatter={(value) => {
+                    const labels: Record<string, string> = {
+                      historical: 'История',
+                      predicted: 'Прогноз',
+                      lower: 'ДИ нижн.',
+                      upper: 'ДИ верхн.',
+                    };
+
+                    return typeof value === 'string' ? (labels[value] ?? value) : String(value ?? '—');
+                  }}
                 />
                 <Line
                   type="monotone"

@@ -54,7 +54,7 @@ function KpiTile({
 // ── Content ───────────────────────────────────────────────────────────────────
 
 function CallHistoryContent() {
-  const { user, accessToken } = useAuth();
+  const { accessToken } = useAuth();
   // Fetch first page for KPI calculation (all calls in first 100 = summary proxy)
   const { data, isLoading } = useCallHistoryQuery(1, 100, !!accessToken);
 

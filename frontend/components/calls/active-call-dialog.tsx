@@ -27,7 +27,7 @@ function getInitials(name: string): string {
 }
 
 export function ActiveCallDialog() {
-  const { activeCall, hangUp, localStreamRef, remoteStreamRef, localStream, remoteStream, mediaError, clearMediaError, iceConnState } = useCalls();
+  const { activeCall, hangUp, localStreamRef, localStream, remoteStream, mediaError, clearMediaError, iceConnState } = useCalls();
   const { user } = useAuth();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);

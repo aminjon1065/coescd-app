@@ -24,6 +24,8 @@ import { DepartmentEnum } from '../src/department/enums/department.enum';
 import { FilesStorageService } from '../src/files/storage/files-storage.service';
 import { Readable } from 'stream';
 
+jest.setTimeout(30000);
+
 const db = newDb({ autoCreateForeignKeyIndices: true });
 db.public.registerFunction({
   name: 'current_database',

@@ -67,12 +67,6 @@ const TYPE_LABEL: Record<EdmDocumentType, string> = {
   resolution: 'Резолюция',
 };
 
-const CONFIDENTIALITY_LABEL: Record<string, string> = {
-  public_internal:         'Внутренний',
-  department_confidential: 'Департамент',
-  restricted:              'Ограниченный',
-};
-
 // ── Row component ─────────────────────────────────────────────────────────────
 
 function DocumentRow({
