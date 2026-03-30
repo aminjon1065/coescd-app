@@ -7,7 +7,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Role } from '../../../users/enums/role.enum';
-import { Permission, PermissionType } from '../permission.type';
+import { Permission } from '../permission.type';
+import type { PermissionType } from '../permission.type';
 
 @Entity('role_permission_profiles')
 @Unique('UQ_ROLE_PERMISSION_PROFILE_ROLE', ['role'])

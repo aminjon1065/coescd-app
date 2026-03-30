@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { EdmDocumentRoute } from './edm-document-route.entity';
 import { User } from '../../users/entities/user.entity';
@@ -32,7 +33,7 @@ export class EdmRouteStage {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'route_id' })
-  route: EdmDocumentRoute;
+  route: Relation<EdmDocumentRoute>;
 
   @Column({ name: 'order_no' })
   orderNo: number;
@@ -48,14 +49,14 @@ export class EdmRouteStage {
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'assignee_user_id' })
-  assigneeUser: User | null;
+  assigneeUser: Relation<User> | null;
 
   @Column({ name: 'assignee_role', type: 'varchar', nullable: true })
   assigneeRole: string | null;
 
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'assignee_department_id' })
-  assigneeDepartment: Department | null;
+  assigneeDepartment: Relation<Department> | null;
 
   @Column({ default: 'pending' })
   state: EdmStageState;

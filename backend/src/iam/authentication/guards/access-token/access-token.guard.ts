@@ -6,14 +6,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
+import type { Request } from 'express';
 import jwtConfig from '../../../config/jwt.config';
-import { ConfigType } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
 import { REQUEST_USER_KEY } from '../../../iam.constants';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../../../../users/entities/user.entity';
 import { Repository } from 'typeorm';
-import { ActiveUserData } from '../../../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../../../interfaces/activate-user-data.interface';
 import { DelegationContextService } from '../../delegation-context.service';
 
 @Injectable()

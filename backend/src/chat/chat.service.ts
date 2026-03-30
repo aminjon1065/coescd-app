@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChatMessage } from './entities/chat-message.entity';
@@ -23,11 +23,14 @@ export class ChatService {
       where: { id: senderId },
       select: ['id', 'name', 'avatar'],
     });
+    if (!sender) {
+      throw new NotFoundException(`User ${senderId} not found`);
+    }
 
     const message = this.messageRepo.create({
       room,
       content,
-      sender: sender ?? undefined,
+      sender,
     });
 
     return this.messageRepo.save(message);

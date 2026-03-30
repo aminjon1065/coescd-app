@@ -7,6 +7,7 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  type Relation,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { DepartmentEnum } from '../enums/department.enum';
@@ -36,10 +37,10 @@ export class Department {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'chief_id' })
   @IsOptional()
-  chief: User | null;
+  chief: Relation<User> | null;
 
   @OneToMany(() => User, (user) => user.department)
-  users: User[];
+  users: Relation<User>[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

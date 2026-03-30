@@ -13,7 +13,7 @@ import { EdmRegistrationJournal } from './entities/edm-registration-journal.enti
 import { EdmDocumentTaskLink } from './entities/edm-document-task-link.entity';
 import { Task } from '../task/entities/task.entity';
 import { User } from '../users/entities/user.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { ScopeService } from '../iam/authorization/scope.service';
 import { EdmCoreService } from './edm-core.service';
 import {
@@ -57,7 +57,7 @@ export class EdmRegistrationService {
     }
     const journalType = document.type === 'incoming' ? 'incoming' : 'outgoing';
 
-    return this.dataSource.transaction(async (manager) => {
+    const record = await this.dataSource.transaction(async (manager) => {
       const existingJournal = await manager
         .getRepository(EdmRegistrationJournal)
         .findOne({
@@ -108,18 +108,19 @@ export class EdmRegistrationService {
       journalRecord.updatedBy = actorUser;
 
       return manager.getRepository(EdmRegistrationJournal).save(journalRecord);
-    }).then((record) => {
-      this.eventEmitter.emit(
-        EdmEvents.DOCUMENT_REGISTERED,
-        new EdmDocumentRegisteredEvent(
-          document.id,
-          actor.sub,
-          record.registrationNumber,
-          record.journalType,
-        ),
-      );
-      return record;
     });
+
+    this.eventEmitter.emit(
+      EdmEvents.DOCUMENT_REGISTERED,
+      new EdmDocumentRegisteredEvent(
+        document.id,
+        actor.sub,
+        record.registrationNumber,
+        record.journalType,
+      ),
+    );
+
+    return record;
   }
 
   async updateRegistrationStatus(

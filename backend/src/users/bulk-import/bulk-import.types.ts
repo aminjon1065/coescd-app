@@ -1,4 +1,4 @@
-import { PermissionType } from '../../iam/authorization/permission.type';
+import type { PermissionType } from '../../iam/authorization/permission.type';
 import { Role } from '../enums/role.enum';
 
 export type BulkImportRow = {

@@ -16,7 +16,7 @@ import { EdmDocumentKind } from './entities/edm-document-kind.entity';
 import { EdmSavedFilter } from './entities/edm-saved-filter.entity';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { ScopeResolverService } from '../iam/authorization/scope-resolver.service';
 import { EdmCoreService } from './edm-core.service';
 import {

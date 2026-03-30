@@ -14,6 +14,15 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { FilesService } from './files.service';
 import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../iam/authorization/permission.type';
@@ -24,7 +33,7 @@ import {
   CreatePresignedUploadDto,
 } from './dto/create-presigned-upload.dto';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
 import { getFilesRuntimeConfig } from './files.config';
@@ -55,10 +64,23 @@ function createUploadInterceptorOptions() {
   };
 }
 
+@ApiTags('Files')
+@ApiBearerAuth()
 @Controller('files')
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
+  @ApiOperation({ summary: 'Upload a file (multipart/form-data)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Post('upload')
   @Permissions(Permission.FILES_WRITE)
   @UseInterceptors(FileInterceptor('file', createUploadInterceptorOptions()))
@@ -70,6 +92,10 @@ export class FilesController {
     return this.filesService.uploadFile(file, actor, getRequestMeta(request));
   }
 
+  @ApiOperation({ summary: 'Create a presigned upload URL' })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Post('upload-url')
   @Permissions(Permission.FILES_WRITE)
   createUploadUrl(
@@ -84,6 +110,10 @@ export class FilesController {
     );
   }
 
+  @ApiOperation({ summary: 'Complete a presigned upload' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Post('upload-complete')
   @Permissions(Permission.FILES_WRITE)
   completeUpload(
@@ -98,6 +128,10 @@ export class FilesController {
     );
   }
 
+  @ApiOperation({ summary: 'List all files' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Get()
   @Permissions(Permission.FILES_READ)
   findAll(
@@ -107,6 +141,12 @@ export class FilesController {
     return this.filesService.findAll(actor, query);
   }
 
+  @ApiOperation({ summary: 'Get a file by ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   @Get(':id')
   @Permissions(Permission.FILES_READ)
   findOne(
@@ -116,6 +156,11 @@ export class FilesController {
     return this.filesService.findOne(id, actor);
   }
 
+  @ApiOperation({ summary: 'Download a file by ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Get(':id/download')
   @Permissions(Permission.FILES_READ)
   async download(
@@ -137,6 +182,11 @@ export class FilesController {
     return new StreamableFile(stream);
   }
 
+  @ApiOperation({ summary: 'Create a presigned download URL for a file' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Get(':id/download-url')
   @Permissions(Permission.FILES_READ)
   createDownloadUrl(
@@ -151,6 +201,12 @@ export class FilesController {
     );
   }
 
+  @ApiOperation({ summary: 'Delete a file by ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   @Delete(':id')
   @Permissions(Permission.FILES_DELETE)
   remove(
@@ -161,6 +217,11 @@ export class FilesController {
     return this.filesService.softDelete(id, actor, getRequestMeta(request));
   }
 
+  @ApiOperation({ summary: 'Link a file to a resource' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Post(':id/link')
   @Permissions(Permission.FILES_WRITE)
   createLink(
@@ -179,6 +240,11 @@ export class FilesController {
 
   // ── Share Endpoints ─────────────────────────────────────────────────────────
 
+  @ApiOperation({ summary: 'Get shares for a file' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Get(':id/shares')
   @Permissions(Permission.FILES_READ)
   getShares(
@@ -189,6 +255,11 @@ export class FilesController {
     return this.filesService.getShares(id, actor, getRequestMeta(request));
   }
 
+  @ApiOperation({ summary: 'Add a share to a file' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Post(':id/shares')
   @Permissions(Permission.FILES_WRITE)
   addShare(
@@ -200,6 +271,12 @@ export class FilesController {
     return this.filesService.addShare(id, dto, actor, getRequestMeta(request));
   }
 
+  @ApiOperation({ summary: 'Remove a share from a file' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiParam({ name: 'shareId', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Delete(':id/shares/:shareId')
   @Permissions(Permission.FILES_WRITE)
   removeShare(

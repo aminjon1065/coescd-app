@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Department } from '../../department/entities/department.entity';
-import { EdmDocumentType } from './edm-document.entity';
+import type { EdmDocumentType } from './edm-document.entity';
 
 @Entity('edm_document_registry_sequences')
 export class EdmDocumentRegistrySequence {

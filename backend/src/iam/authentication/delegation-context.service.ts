@@ -1,8 +1,8 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { Repository } from 'typeorm';
-import { ActiveUserData } from '../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../interfaces/activate-user-data.interface';
 import { IamDelegation } from '../../edm/entities/iam-delegation.entity';
 import { ScopeResolverService } from '../authorization/scope-resolver.service';
 import { User } from '../../users/entities/user.entity';

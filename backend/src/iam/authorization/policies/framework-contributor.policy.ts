@@ -1,6 +1,6 @@
 import { Policy } from './interfaces/policy.interface';
 import { ExecutionContext, Injectable } from '@nestjs/common';
-import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import { PolicyHandler } from './interfaces/policy-handler.interface';
 import { PolicyHandlersStorage } from './policy-handlers.storage';
 

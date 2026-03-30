@@ -12,7 +12,7 @@ import { EdmRouteTemplate } from './entities/edm-route-template.entity';
 import { Task } from '../task/entities/task.entity';
 import { FileEntity } from '../files/entities/file.entity';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { CreateEdmDocumentDto } from './dto/create-edm-document.dto';
 import { UpdateEdmDocumentDto } from './dto/update-edm-document.dto';
 import { GetEdmDocumentsQueryDto } from './dto/get-edm-documents-query.dto';

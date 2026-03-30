@@ -6,6 +6,7 @@ export const managerDashboardPreset: DashboardWidgetConfig[] = [
   { id: 'documents_in_route', title: 'Документы в маршруте', requiredRoles: [Role.Manager] },
   { id: 'my_approvals', title: 'Мои согласования', requiredRoles: [Role.Manager] },
   { id: 'overdue_stages', title: 'Просрочки', requiredRoles: [Role.Manager] },
+  { id: 'edm_avg_processing_hours', title: 'Среднее время обработки', requiredRoles: [Role.Manager] },
   { id: 'department_users', title: 'Сотрудники департамента', requiredRoles: [Role.Manager] },
   { id: 'department_files', title: 'Файлы департамента', requiredRoles: [Role.Manager] },
   {

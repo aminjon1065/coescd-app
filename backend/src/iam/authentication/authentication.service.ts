@@ -14,8 +14,8 @@ import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { JwtService } from '@nestjs/jwt';
 import jwtConfig from '../config/jwt.config';
-import { ConfigType } from '@nestjs/config';
-import { ActiveUserData } from '../interfaces/activate-user-data.interface';
+import type { ConfigType } from '@nestjs/config';
+import type { ActiveUserData } from '../interfaces/activate-user-data.interface';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import {
   InValidatedRefreshTokenError,
@@ -25,7 +25,7 @@ import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { SafeUserDto } from './dto/safe-user.dto';
 import { RolePermissionsService } from '../authorization/role-permissions.service';
-import { PermissionType } from '../authorization/permission.type';
+import type { PermissionType } from '../authorization/permission.type';
 
 @Injectable()
 export class AuthenticationService {

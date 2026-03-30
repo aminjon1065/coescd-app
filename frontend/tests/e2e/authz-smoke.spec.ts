@@ -95,6 +95,7 @@ async function mockApiForRole(page: Page, role: TestRole) {
               myUnreadAlerts: 1,
               myApprovals: 2,
               overdueStages: 1,
+              avgProcessingHours: 18,
             },
             admin:
               role === 'admin'

@@ -9,12 +9,11 @@ import {
 } from 'typeorm';
 import { IsOptional } from 'class-validator';
 import { Role } from '../enums/role.enum';
-import {
-  Permission,
-  PermissionType,
-} from '../../iam/authorization/permission.type';
+import { Permission } from '../../iam/authorization/permission.type';
+import type { PermissionType } from '../../iam/authorization/permission.type';
 import { Department } from '../../department/entities/department.entity';
 import { OrgUnit } from '../../iam/entities/org-unit.entity';
+import { type Relation } from 'typeorm';
 
 @Entity()
 export class User {
@@ -44,10 +43,10 @@ export class User {
   businessRole: string | null;
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
-  department: Department | null;
+  department: Relation<Department> | null;
   @ManyToOne(() => OrgUnit, { nullable: true })
   @JoinColumn({ name: 'org_unit_id' })
-  orgUnit: OrgUnit | null;
+  orgUnit: Relation<OrgUnit> | null;
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at' })

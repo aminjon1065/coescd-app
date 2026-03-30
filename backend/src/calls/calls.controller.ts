@@ -7,13 +7,16 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { CallsService } from './calls.service';
 import { CallQueryDto } from './dto/call-query.dto';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../iam/authorization/permission.type';
 
+@ApiTags('Calls')
+@ApiBearerAuth()
 @Controller('calls')
 @Permissions(Permission.CALLS_READ)
 export class CallsController {
@@ -26,6 +29,10 @@ export class CallsController {
    * they expire.  Must be declared before `GET /calls/:id` so NestJS does not
    * match the literal string "turn-credentials" as a numeric id param.
    */
+  @ApiOperation({ summary: 'Get TURN credentials for WebRTC' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Get('turn-credentials')
   getTurnCredentials(@ActiveUser() user: ActiveUserData) {
     return this.callsService.getTurnCredentials(user.sub);
@@ -35,6 +42,10 @@ export class CallsController {
    * GET /calls
    * Paginated call history for the current user (initiator OR receiver).
    */
+  @ApiOperation({ summary: 'Get call history for the current user' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Get()
   async findAll(
     @ActiveUser() user: ActiveUserData,
@@ -52,6 +63,12 @@ export class CallsController {
    * GET /calls/:id
    * Single call details — only accessible to participants.
    */
+  @ApiOperation({ summary: 'Get a call by ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   @Get(':id')
   async findOne(
     @ActiveUser() user: ActiveUserData,

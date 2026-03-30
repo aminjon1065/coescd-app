@@ -12,7 +12,7 @@ import {
 } from './entities/file-link.entity';
 import { FileAccessAuditEntity } from './entities/file-access-audit.entity';
 import { User } from '../users/entities/user.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { ScopeService } from '../iam/authorization/scope.service';
 
 @Injectable()

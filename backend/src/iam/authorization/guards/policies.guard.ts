@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Policy } from '../policies/interfaces/policy.interface';
 import { POLICIES_KEY } from '../decorators/policies.decorator';
-import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import { REQUEST_USER_KEY } from '../../iam.constants';
 import { PolicyHandlersStorage } from '../policies/policy-handlers.storage';
 

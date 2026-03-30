@@ -6,6 +6,7 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  type Relation,
 } from 'typeorm';
 import { DisasterType } from '../../disasterTypes/entities/disaster-type.entity';
 import { Department } from '../../../department/entities/department.entity';
@@ -49,11 +50,11 @@ export class Disaster {
 
   @ManyToOne(() => DisasterType, { nullable: true })
   @JoinColumn({ name: 'type_id' })
-  type: DisasterType;
+  type: Relation<DisasterType>;
 
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
-  department: Department;
+  department: Relation<Department>;
 
   @Column({ default: 0 })
   casualties: number;

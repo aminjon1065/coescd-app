@@ -4,6 +4,7 @@ import {
   ClipboardListIcon,
   FileIcon,
   LucideIcon,
+  TimerIcon,
 } from 'lucide-react';
 import { Role } from '@/enums/RoleEnum';
 import { can } from '@/features/authz/can';
@@ -124,6 +125,18 @@ function buildWidgetModel(
         title: 'Активные маршруты',
         value: dashboard.widgets.admin.routeActiveTotal,
         href: '/dashboard/documentation',
+      };
+
+    case 'edm_avg_processing_hours':
+      return {
+        title: 'Среднее время обработки',
+        value: dashboard.widgets.edm.avgProcessingHours,
+        subtitle: 'Часов на маршрут (30 дн.)',
+        icon: TimerIcon,
+        variant:
+          dashboard.widgets.edm.avgProcessingHours > 72
+            ? 'warning'
+            : 'default',
       };
 
     case 'analytics_total_disasters':

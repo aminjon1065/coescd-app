@@ -45,6 +45,7 @@ import {
 } from 'recharts';
 import { extractListItems, ListResponse } from '@/lib/list-response';
 import { ProtectedRouteGate } from '@/features/authz/ProtectedRouteGate';
+import { analyticsApi, PredictionResult } from '@/lib/api/analytics';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -967,35 +968,205 @@ function AnalyticContent() {
         </CardContent>
       </Card>
 
-      {/* ── Prediction block (placeholder) ── */}
-      <Card className="border-dashed">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <BrainCircuitIcon className="h-4 w-4 text-muted-foreground" />
-            <CardTitle>Прогнозирование рисков</CardTitle>
-            <Badge variant="outline" className="text-xs ml-auto">В разработке</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-lg border bg-muted/30 p-4 text-center space-y-1">
-              <p className="text-xs text-muted-foreground">Общий риск</p>
-              <p className="text-2xl font-bold text-muted-foreground">—</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 p-4 text-center space-y-1">
-              <p className="text-xs text-muted-foreground">Уверенность модели</p>
-              <p className="text-2xl font-bold text-muted-foreground">—</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 p-4 text-center space-y-1">
-              <p className="text-xs text-muted-foreground">Обновлено</p>
-              <p className="text-2xl font-bold text-muted-foreground">—</p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            ML-модуль прогнозирования рисков ЧС будет подключён в следующем релизе.
-          </p>
-        </CardContent>
-      </Card>
+      {/* ── Prediction block ── */}
+      <PredictionSection departments={departments} />
     </div>
+  );
+}
+
+// ── Prediction Section ──────────────────────────────────────────────────────
+
+function PredictionSection({ departments }: { departments: IDepartment[] }) {
+  const [fromDate, setFromDate] = useState<string>(
+    () => new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  );
+  const [toDate, setToDate] = useState<string>(
+    () => new Date().toISOString().slice(0, 10),
+  );
+  const [horizonMonths, setHorizonMonths] = useState(6);
+  const [deptId, setDeptId] = useState('');
+  const [result, setResult] = useState<PredictionResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await analyticsApi.predict({
+        fromDate,
+        toDate,
+        horizonMonths,
+        ...(deptId ? { departmentId: Number(deptId) } : {}),
+      });
+      setResult(data);
+    } catch {
+      setError('Не удалось выполнить прогноз. Проверьте параметры и попробуйте снова.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const chartData = useMemo(() => {
+    if (!result) return [];
+    const hist = result.historical.map((p) => ({
+      month: p.month,
+      historical: p.count,
+      predicted: undefined as number | undefined,
+      lower: undefined as number | undefined,
+      upper: undefined as number | undefined,
+    }));
+    const fore = result.forecast.map((p) => ({
+      month: p.month,
+      historical: undefined as number | undefined,
+      predicted: Math.max(0, Math.round(p.predicted * 10) / 10),
+      lower: Math.max(0, Math.round(p.lower * 10) / 10),
+      upper: Math.max(0, Math.round(p.upper * 10) / 10),
+    }));
+    return [...hist, ...fore];
+  }, [result]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          <BrainCircuitIcon className="h-4 w-4 text-muted-foreground" />
+          <CardTitle>Прогнозирование частоты ЧС</CardTitle>
+          <Badge variant="secondary" className="text-xs ml-auto">Линейная регрессия</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Controls */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Исторический период от</p>
+            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Исторический период до</p>
+            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Горизонт прогноза (месяцев)</p>
+            <Select
+              value={String(horizonMonths)}
+              onValueChange={(v) => setHorizonMonths(Number(v))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 3, 6, 12, 18, 24].map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n} мес.</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Подразделение</p>
+            <Select value={deptId} onValueChange={(v) => setDeptId(v === 'all' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Все" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все подразделения</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button onClick={run} disabled={loading} className="w-full sm:w-auto">
+          {loading ? 'Вычисление...' : 'Построить прогноз'}
+        </Button>
+
+        {error && <p className="text-sm text-red-500">{error}</p>}
+
+        {result && (
+          <>
+            {/* Model stats */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border bg-muted/30 p-3 text-center space-y-0.5">
+                <p className="text-xs text-muted-foreground">R² модели</p>
+                <p className="text-xl font-bold">
+                  {(result.model.r2 * 100).toFixed(1)}%
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3 text-center space-y-0.5">
+                <p className="text-xs text-muted-foreground">RMSE</p>
+                <p className="text-xl font-bold">{result.model.rmse.toFixed(2)}</p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3 text-center space-y-0.5">
+                <p className="text-xs text-muted-foreground">Тренд (наклон)</p>
+                <p className="text-xl font-bold">
+                  {result.model.slope >= 0 ? '+' : ''}
+                  {result.model.slope.toFixed(2)}/мес
+                </p>
+              </div>
+            </div>
+
+            {/* Chart */}
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    const labels: Record<string, string> = {
+                      historical: 'История',
+                      predicted: 'Прогноз',
+                      lower: 'Нижняя граница (95%)',
+                      upper: 'Верхняя граница (95%)',
+                    };
+                    return [value ?? '—', labels[name] ?? name];
+                  }}
+                />
+                <Legend
+                  formatter={(value) =>
+                    ({ historical: 'История', predicted: 'Прогноз', lower: 'ДИ нижн.', upper: 'ДИ верхн.' })[value] ?? value
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="historical"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="predicted"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  connectNulls={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="lower"
+                  stroke="#d1d5db"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                  dot={false}
+                  connectNulls={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="upper"
+                  stroke="#d1d5db"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                  dot={false}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="text-xs text-muted-foreground text-center">
+              Прогноз построен: {new Date(result.meta.generatedAt).toLocaleString('ru-RU')}
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -7,7 +7,7 @@ import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import jwtConfig from '../../config/jwt.config';
-import { ConfigType } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
 
 export class InValidatedRefreshTokenError extends Error {}
 

@@ -5,11 +5,11 @@ import { User } from '../../../users/entities/user.entity';
 import { Document } from '../../../document/entities/document.entity';
 import { Task } from '../../../task/entities/task.entity';
 import { Role } from '../../../users/enums/role.enum';
-import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import { Policy } from './interfaces/policy.interface';
 import { PolicyHandler } from './interfaces/policy-handler.interface';
 import { PolicyHandlersStorage } from './policy-handlers.storage';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { ScopeService } from '../scope.service';
 
 class BaseScopePolicy implements Policy {

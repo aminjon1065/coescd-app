@@ -11,7 +11,7 @@ import { EdmDocument } from './entities/edm-document.entity';
 import { EdmRouteStage } from './entities/edm-route-stage.entity';
 import { EdmDocumentTimelineEvent } from './entities/edm-document-timeline-event.entity';
 import { User } from '../users/entities/user.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Role } from '../users/enums/role.enum';
 import { ScopeResolverService } from '../iam/authorization/scope-resolver.service';
 import { SavedDocumentsCriteriaDto } from './dto/saved-filters.dto';

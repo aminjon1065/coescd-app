@@ -6,7 +6,8 @@ import {
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
-import { Permission, PermissionType } from '../permission.type';
+import { Permission } from '../permission.type';
+import type { PermissionType } from '../permission.type';
 
 @Entity('permission_profiles')
 @Unique('UQ_PERMISSION_PROFILES_CODE', ['code'])

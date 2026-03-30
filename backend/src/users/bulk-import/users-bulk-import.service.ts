@@ -9,11 +9,9 @@ import { randomUUID } from 'crypto';
 import { Brackets, Repository } from 'typeorm';
 import { Department } from '../../department/entities/department.entity';
 import { HashingService } from '../../iam/hashing/hashing.service';
-import {
-  Permission,
-  PermissionType,
-} from '../../iam/authorization/permission.type';
-import { ActiveUserData } from '../../iam/interfaces/activate-user-data.interface';
+import { Permission } from '../../iam/authorization/permission.type';
+import type { PermissionType } from '../../iam/authorization/permission.type';
+import type { ActiveUserData } from '../../iam/interfaces/activate-user-data.interface';
 import { UserChangeAuditLog } from '../entities/user-change-audit-log.entity';
 import { User } from '../entities/user.entity';
 import { Role } from '../enums/role.enum';

@@ -28,6 +28,7 @@ export interface DashboardResponse {
       myUnreadAlerts: number;
       myApprovals: number;
       overdueStages: number;
+      avgProcessingHours: number;
     };
     admin?: {
       totalUsers: number;
@@ -64,7 +65,8 @@ export type DashboardWidgetId =
   | 'analytics_total_disasters'
   | 'analytics_active_disasters'
   | 'analytics_critical_disasters'
-  | 'analytics_monitoring_disasters';
+  | 'analytics_monitoring_disasters'
+  | 'edm_avg_processing_hours';
 
 export interface DashboardWidgetConfig {
   id: DashboardWidgetId;

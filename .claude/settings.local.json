@@ -47,7 +47,17 @@
       "Bash(echo \"=== $f ===\")",
       "Read(//Users/aminjon/Desktop/coescd-app/**)",
       "Bash(do echo:*)",
-      "Read(//Users/aminjon/Desktop/coescd-app/frontend/features/zones/admin/dashboard/components/**)"
+      "Read(//Users/aminjon/Desktop/coescd-app/frontend/features/zones/admin/dashboard/components/**)",
+      "Bash(npx bun:*)",
+      "Bash(npm run:*)",
+      "Bash(npx jest:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(find /Users/aminjon/Desktop/coescd-app/frontend -name *kpi* -o -name *analytic*)",
+      "Bash(head -15 grep -n \"assertUploadConstraints\\\\|getRuntimeConfig\\\\|getFilesRuntimeConfig\" /Users/aminjon/Desktop/coescd-app/backend/src/files/files.service.ts)",
+      "Bash(perl -i -pe \"s/^import \\\\{ ConfigType \\\\} from ''\\\\@nestjs\\\\/config'';/import type { ConfigType } from ''\\\\@nestjs\\\\/config'';/\" \"$f\")",
+      "Bash(echo \"Fixed: $f\")",
+      "Bash(xargs perl:*)",
+      "Bash(bun test:*)"
     ]
   }
 }

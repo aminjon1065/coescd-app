@@ -9,7 +9,7 @@ import { Task } from './entities/task.entity';
 import { User } from '../users/entities/user.entity';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Permission } from '../iam/authorization/permission.type';
 import { ScopeService } from '../iam/authorization/scope.service';
 import { FileLinkEntity } from '../files/entities/file-link.entity';

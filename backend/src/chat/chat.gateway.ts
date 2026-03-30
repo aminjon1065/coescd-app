@@ -10,13 +10,16 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import jwtConfig from '../iam/config/jwt.config';
-import { ConfigType } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
 import { ChatService } from './chat.service';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Role } from '../users/enums/role.enum';
+import { WsChatMessageDto } from './dto/ws-chat-message.dto';
+import { WsChatHistoryDto } from './dto/ws-chat-history.dto';
+import { WsChatJoinDto } from './dto/ws-chat-join.dto';
 
 // Roles that can write to the global room
 const GLOBAL_WRITE_ROLES = new Set<Role>([
@@ -34,6 +37,7 @@ function dmRoom(a: number, b: number): string {
 /** Regex that accepts dept, global, and DM rooms. */
 const VALID_ROOM_RE = /^(dept:\d+|global|dm:\d+_\d+)$/;
 
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false, transform: true }))
 @WebSocketGateway({
   namespace: '/chat',
   cors: {
@@ -107,7 +111,7 @@ export class ChatGateway
   @SubscribeMessage('chat:message')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { room: string; content: string },
+    @MessageBody() data: WsChatMessageDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
@@ -115,13 +119,9 @@ export class ChatGateway
         throw new WsException('Unauthorized');
       }
 
-      const { room, content } = data ?? {};
+      const { room, content } = data;
 
-      if (!room || !content?.trim()) {
-        throw new WsException('room and content are required');
-      }
-
-      // Validate room format
+      // Validate room format (DTO already does regex; guard business logic below)
       if (!VALID_ROOM_RE.test(room)) {
         throw new WsException('Invalid room');
       }
@@ -180,14 +180,14 @@ export class ChatGateway
   @SubscribeMessage('chat:history')
   async handleHistory(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { room: string; page?: number; limit?: number },
+    @MessageBody() data: WsChatHistoryDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
 
-      const { room, page = 1, limit = 50 } = data ?? {};
-      if (!room || !VALID_ROOM_RE.test(room)) {
+      const { room, page = 1, limit = 50 } = data;
+      if (!VALID_ROOM_RE.test(room)) {
         throw new WsException('Invalid room');
       }
 
@@ -208,14 +208,14 @@ export class ChatGateway
   @SubscribeMessage('chat:join')
   async handleJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { room: string },
+    @MessageBody() data: WsChatJoinDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
 
-      const { room } = data ?? {};
-      if (!room || !VALID_ROOM_RE.test(room)) {
+      const { room } = data;
+      if (!VALID_ROOM_RE.test(room)) {
         throw new WsException('Invalid room');
       }
 

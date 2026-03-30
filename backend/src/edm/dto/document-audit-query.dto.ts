@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { EdmDocumentTimelineEventType } from '../entities/edm-document-timeline-event.entity';
 import { EdmStageActionType } from '../entities/edm-stage-action.entity';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 const timelineEventTypes: EdmDocumentTimelineEventType[] = [
   'created',
@@ -48,79 +49,95 @@ const toStringArray = ({ value }: { value: unknown }): string[] | undefined => {
 };
 
 export class GetDocumentHistoryQueryDto {
+  @ApiPropertyOptional({ isArray: true, type: [String] })
   @IsOptional()
   @Transform(toStringArray)
   @IsArray()
   @IsIn(timelineEventTypes, { each: true })
   eventTypes?: EdmDocumentTimelineEventType[];
 
+  @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   actorUserId?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   fromUserId?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   toUserId?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   responsibleUserId?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   threadId?: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsISO8601()
   fromDate?: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsISO8601()
   toDate?: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   q?: string;
 }
 
 export class GetDocumentAuditQueryDto {
+  @ApiPropertyOptional({ isArray: true, type: [String] })
   @IsOptional()
   @Transform(toStringArray)
   @IsArray()
   @IsIn(stageActionTypes, { each: true })
   actions?: EdmStageActionType[];
 
+  @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   actorUserId?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   onBehalfOfUserId?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   stageId?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   reasonCode?: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsISO8601()
   fromDate?: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsISO8601()
   toDate?: string;

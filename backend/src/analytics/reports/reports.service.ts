@@ -5,7 +5,7 @@ import { Disaster } from '../disasters/entities/disaster.entity';
 import { User } from '../../users/entities/user.entity';
 import { Department } from '../../department/entities/department.entity';
 import { Task } from '../../task/entities/task.entity';
-import { ActiveUserData } from '../../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../../iam/interfaces/activate-user-data.interface';
 import { Role } from '../../users/enums/role.enum';
 import { Permission } from '../../iam/authorization/permission.type';
 import { EdmDocument } from '../../edm/entities/edm-document.entity';
@@ -197,6 +197,29 @@ export class ReportsService {
 
     const overdueStages = await overdueStagesBaseQb.getCount();
 
+    // Avg route processing time — finished routes in last 30 days
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const avgRouteQb = this.edmRouteRepo
+      .createQueryBuilder('route')
+      .select(
+        "AVG(EXTRACT(EPOCH FROM (route.finished_at - route.started_at)) / 3600)",
+        'avgHours',
+      )
+      .where('route.state = :state', { state: 'finished' })
+      .andWhere('route.finished_at >= :since', { since: thirtyDaysAgo });
+
+    if (isDepartmentHead && departmentId) {
+      avgRouteQb
+        .leftJoin('route.document', 'avgDoc')
+        .leftJoin('avgDoc.department', 'avgDept')
+        .andWhere('avgDept.id = :departmentId', { departmentId });
+    }
+
+    const avgRouteRaw = await avgRouteQb.getRawOne<{ avgHours: string | null }>();
+    const avgProcessingHours = avgRouteRaw?.avgHours
+      ? Number(Number(avgRouteRaw.avgHours).toFixed(1))
+      : 0;
+
     const result: {
       generatedAt: string;
       scope: 'global' | 'department' | 'self';
@@ -233,6 +256,7 @@ export class ReportsService {
           myUnreadAlerts: unreadAlerts,
           myApprovals,
           overdueStages,
+          avgProcessingHours,
         },
       },
     };

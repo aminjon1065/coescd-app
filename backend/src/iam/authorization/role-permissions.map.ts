@@ -1,5 +1,6 @@
 import { Role } from '../../users/enums/role.enum';
-import { Permission, PermissionType } from './permission.type';
+import { Permission } from './permission.type';
+import type { PermissionType } from './permission.type';
 
 const ALL_PERMISSIONS = Object.values(Permission) as PermissionType[];
 

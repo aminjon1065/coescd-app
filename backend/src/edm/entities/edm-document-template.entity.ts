@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Department } from '../../department/entities/department.entity';
-import { EdmDocumentType } from './edm-document.entity';
+import type { EdmDocumentType } from './edm-document.entity';
 import { EdmDocumentTemplateField } from './edm-document-template-field.entity';
 
 export type EdmDocumentTemplateScope = 'department' | 'global';

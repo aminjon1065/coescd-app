@@ -10,13 +10,18 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import jwtConfig from '../iam/config/jwt.config';
-import { ConfigType } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
 import { CallsService } from './calls.service';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import { WsCallInviteDto } from './dto/ws-call-invite.dto';
+import { WsCallActionDto } from './dto/ws-call-action.dto';
+import { WsCallSdpDto } from './dto/ws-call-sdp.dto';
+import { WsCallIceDto } from './dto/ws-call-ice.dto';
 
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false, transform: true }))
 @WebSocketGateway({
   namespace: '/calls',
   cors: {
@@ -82,14 +87,13 @@ export class CallsGateway
   @SubscribeMessage('call:invite')
   async handleInvite(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { receiverId: number; hasVideo?: boolean },
+    @MessageBody() data: WsCallInviteDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
 
-      const { receiverId, hasVideo = false } = data ?? {};
-      if (!receiverId) throw new WsException('receiverId is required');
+      const { receiverId, hasVideo = false } = data;
       if (receiverId === user.sub) throw new WsException('Cannot call yourself');
 
       const call = await this.callsService.createCall(
@@ -134,14 +138,13 @@ export class CallsGateway
   @SubscribeMessage('call:accept')
   async handleAccept(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { callId: number },
+    @MessageBody() data: WsCallActionDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
 
-      const { callId } = data ?? {};
-      if (!callId) throw new WsException('callId is required');
+      const { callId } = data;
 
       const existing = await this.callsService.findOne(callId);
       if (!existing) throw new WsException(`Call #${callId} not found`);
@@ -171,14 +174,13 @@ export class CallsGateway
   @SubscribeMessage('call:reject')
   async handleReject(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { callId: number },
+    @MessageBody() data: WsCallActionDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
 
-      const { callId } = data ?? {};
-      if (!callId) throw new WsException('callId is required');
+      const { callId } = data;
 
       const existing = await this.callsService.findOne(callId);
       if (!existing) throw new WsException(`Call #${callId} not found`);
@@ -205,14 +207,13 @@ export class CallsGateway
   @SubscribeMessage('call:hangup')
   async handleHangup(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { callId: number },
+    @MessageBody() data: WsCallActionDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
 
-      const { callId } = data ?? {};
-      if (!callId) throw new WsException('callId is required');
+      const { callId } = data;
 
       const existing = await this.callsService.findOne(callId);
       if (!existing) throw new WsException(`Call #${callId} not found`);
@@ -252,12 +253,12 @@ export class CallsGateway
   @SubscribeMessage('call:offer')
   async handleOffer(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { callId: number; sdp: RTCSessionDescriptionInit },
+    @MessageBody() data: WsCallSdpDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
-      await this.validateParticipant(data?.callId, user.sub);
+      await this.validateParticipant(data.callId, user.sub);
       // Relay to other participant, exclude sender
       client.to(`call:${data.callId}`).emit('call:offer', {
         callId: data.callId,
@@ -275,12 +276,12 @@ export class CallsGateway
   @SubscribeMessage('call:answer')
   async handleAnswer(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { callId: number; sdp: RTCSessionDescriptionInit },
+    @MessageBody() data: WsCallSdpDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
-      await this.validateParticipant(data?.callId, user.sub);
+      await this.validateParticipant(data.callId, user.sub);
       client.to(`call:${data.callId}`).emit('call:answer', {
         callId: data.callId,
         sdp: data.sdp,
@@ -297,12 +298,12 @@ export class CallsGateway
   @SubscribeMessage('call:ice-candidate')
   async handleIceCandidate(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { callId: number; candidate: RTCIceCandidateInit },
+    @MessageBody() data: WsCallIceDto,
   ) {
     try {
       const user = client.data.user as ActiveUserData | undefined;
       if (!user) throw new WsException('Unauthorized');
-      await this.validateParticipant(data?.callId, user.sub);
+      await this.validateParticipant(data.callId, user.sub);
       client.to(`call:${data.callId}`).emit('call:ice-candidate', {
         callId: data.callId,
         candidate: data.candidate,

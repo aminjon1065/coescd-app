@@ -18,7 +18,7 @@ import { EdmDocumentTimelineEvent } from './entities/edm-document-timeline-event
 import { IamDelegation } from './entities/iam-delegation.entity';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Permission } from '../iam/authorization/permission.type';
 import { EdmCoreService } from './edm-core.service';
 import { EdmTemplatesService } from './edm-templates.service';
@@ -93,7 +93,7 @@ export class EdmRouteService {
       throw new ConflictException('At least one route stage is required');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const latestRoute = await manager
         .getRepository(EdmDocumentRoute)
         .createQueryBuilder('route')
@@ -254,19 +254,20 @@ export class EdmRouteService {
         versionNo: route.versionNo,
         externalNumber: document.externalNumber,
       };
-    }).then((result) => {
-      this.eventEmitter.emit(
-        EdmEvents.DOCUMENT_SUBMITTED,
-        new EdmDocumentSubmittedEvent(
-          result.documentId,
-          actor.sub,
-          result.routeId,
-          result.versionNo,
-          result.externalNumber,
-        ),
-      );
-      return result;
     });
+
+    this.eventEmitter.emit(
+      EdmEvents.DOCUMENT_SUBMITTED,
+      new EdmDocumentSubmittedEvent(
+        result.documentId,
+        actor.sub,
+        result.routeId,
+        result.versionNo,
+        result.externalNumber,
+      ),
+    );
+
+    return result;
   }
 
   async executeStageAction(
@@ -282,7 +283,7 @@ export class EdmRouteService {
       throw new ConflictException('Document has no active route');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const stage = await manager.getRepository(EdmRouteStage).findOne({
         where: {
           id: stageId,
@@ -395,21 +396,22 @@ export class EdmRouteService {
         documentStatus: updatedDocument.status,
         actedAt: new Date().toISOString(),
       };
-    }).then((result) => {
-      this.eventEmitter.emit(
-        EdmEvents.STAGE_ACTION_EXECUTED,
-        new EdmStageActionExecutedEvent(
-          result.documentId,
-          result.routeId,
-          result.stageId,
-          result.action,
-          actor.sub,
-          result.documentStatus,
-          result.routeState,
-        ),
-      );
-      return result;
     });
+
+    this.eventEmitter.emit(
+      EdmEvents.STAGE_ACTION_EXECUTED,
+      new EdmStageActionExecutedEvent(
+        result.documentId,
+        result.routeId,
+        result.stageId,
+        result.action,
+        actor.sub,
+        result.documentStatus,
+        result.routeState,
+      ),
+    );
+
+    return result;
   }
 
   async override(
@@ -424,7 +426,7 @@ export class EdmRouteService {
       throw new ConflictException('Document has no active route');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const route = await manager.getRepository(EdmDocumentRoute).findOneBy({
         id: document.currentRoute!.id,
       });
@@ -513,18 +515,19 @@ export class EdmRouteService {
         status: document.status,
         overrideAction: dto.overrideAction,
       };
-    }).then((result) => {
-      this.eventEmitter.emit(
-        EdmEvents.DOCUMENT_OVERRIDDEN,
-        new EdmDocumentOverriddenEvent(
-          result.id,
-          actor.sub,
-          result.overrideAction,
-          result.status,
-        ),
-      );
-      return result;
     });
+
+    this.eventEmitter.emit(
+      EdmEvents.DOCUMENT_OVERRIDDEN,
+      new EdmDocumentOverriddenEvent(
+        result.id,
+        actor.sub,
+        result.overrideAction,
+        result.status,
+      ),
+    );
+
+    return result;
   }
 
   async findAudit(

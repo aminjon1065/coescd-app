@@ -10,13 +10,19 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AuthenticationService } from './authentication.service';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { Auth } from './decorators/auth.decorators';
 import { AuthType } from './enums/auth-type.enum';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { Roles } from '../authorization/decorators/roles.decorator';
 import { Role } from '../../users/enums/role.enum';
 import { Permissions } from '../authorization/decorators/permissions.decorator';
@@ -28,6 +34,8 @@ import { AuthAuditService } from './auth-audit.service';
 import { randomBytes } from 'crypto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
+@ApiTags('Authentication')
+@ApiBearerAuth()
 @Controller('authentication')
 export class AuthenticationController {
   constructor(
@@ -95,6 +103,10 @@ export class AuthenticationController {
     }
   }
 
+  @ApiOperation({ summary: 'Register a new user (admin only)' })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden – admin role required' })
   @Roles(Role.Admin)
   @Permissions(Permission.USERS_CREATE)
   @Post('sign-up')
@@ -102,6 +114,9 @@ export class AuthenticationController {
     return this.authService.signUp(signUpDto);
   }
 
+  @ApiOperation({ summary: 'Sign in and obtain access token' })
+  @ApiResponse({ status: 200, description: 'Sign-in successful, returns access token and user' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @HttpCode(HttpStatus.OK)
   @Auth(AuthType.None)
   @Post('sign-in')
@@ -151,6 +166,9 @@ export class AuthenticationController {
     }
   }
 
+  @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
+  @ApiResponse({ status: 200, description: 'Tokens refreshed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
   @HttpCode(HttpStatus.OK)
   @Auth(AuthType.None)
   @Post('refresh-tokens')
@@ -212,6 +230,8 @@ export class AuthenticationController {
     }
   }
 
+  @ApiOperation({ summary: 'Logout and clear session cookies' })
+  @ApiResponse({ status: 201, description: 'Logged out successfully' })
   @Auth(AuthType.None)
   @Post('logout')
   async logout(
@@ -239,6 +259,9 @@ export class AuthenticationController {
     return { success: true };
   }
 
+  @ApiOperation({ summary: 'Change the current user password' })
+  @ApiResponse({ status: 201, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @Post('change-password')
   async changePassword(
     @Req() request: Request,
@@ -265,6 +288,9 @@ export class AuthenticationController {
     return { success: true };
   }
 
+  @ApiOperation({ summary: 'Logout from all devices by revoking all refresh tokens' })
+  @ApiResponse({ status: 201, description: 'Logged out from all devices successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @Post('logout-all-devices')
   async logoutAllDevices(
     @Req() request: Request,
@@ -286,6 +312,9 @@ export class AuthenticationController {
     return { success: true };
   }
 
+  @ApiOperation({ summary: 'Get the currently authenticated user profile' })
+  @ApiResponse({ status: 200, description: 'Returns current user data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @Get('me')
   async me(@ActiveUser('sub') userId: number) {
     return this.authService.getMe(userId);

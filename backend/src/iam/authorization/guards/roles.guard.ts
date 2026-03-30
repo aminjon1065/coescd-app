@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../../../users/enums/role.enum';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import { REQUEST_USER_KEY } from '../../iam.constants';
 
 @Injectable()

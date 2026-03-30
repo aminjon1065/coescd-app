@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { EdmDocument } from './edm-document.entity';
 import { User } from '../../users/entities/user.entity';
@@ -31,7 +32,7 @@ export class EdmDocumentRoute {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'document_id' })
-  document: EdmDocument;
+  document: Relation<EdmDocument>;
 
   @Column({ name: 'version_no' })
   versionNo: number;
@@ -50,7 +51,7 @@ export class EdmDocumentRoute {
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'created_by' })
-  createdBy: User;
+  createdBy: Relation<User>;
 
   @Column({ name: 'override_reason', type: 'text', nullable: true })
   overrideReason: string | null;

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ActiveUserData } from '../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../interfaces/activate-user-data.interface';
 import { Role } from '../../users/enums/role.enum';
 import { User } from '../../users/entities/user.entity';
 import { OrgUnit } from '../entities/org-unit.entity';

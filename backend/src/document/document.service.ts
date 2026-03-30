@@ -6,7 +6,7 @@ import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { ScopeService } from '../iam/authorization/scope.service';
 import { FileLinkEntity } from '../files/entities/file-link.entity';
 import { FileEntity } from '../files/entities/file.entity';

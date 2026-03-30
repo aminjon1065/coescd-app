@@ -14,7 +14,7 @@ import { EdmDocumentTimelineEvent } from './entities/edm-document-timeline-event
 import { EdmDocumentReply } from './entities/edm-document-reply.entity';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Role } from '../users/enums/role.enum';
 import { FileAttachmentsService } from '../files/file-attachments.service';
 import { FileEntity } from '../files/entities/file.entity';

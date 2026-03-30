@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { EdmDocumentTemplate } from './edm-document-template.entity';
 
@@ -26,7 +27,7 @@ export class EdmDocumentTemplateField {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'template_id' })
-  template: EdmDocumentTemplate;
+  template: Relation<EdmDocumentTemplate>;
 
   @Column({ name: 'field_key', type: 'varchar' })
   fieldKey: EdmDocumentTemplateFieldKey;

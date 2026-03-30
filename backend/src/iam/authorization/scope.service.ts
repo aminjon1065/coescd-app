@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Brackets, SelectQueryBuilder } from 'typeorm';
-import { ActiveUserData } from '../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../interfaces/activate-user-data.interface';
 import { Role } from '../../users/enums/role.enum';
 import { User } from '../../users/entities/user.entity';
 import { Document } from '../../document/entities/document.entity';

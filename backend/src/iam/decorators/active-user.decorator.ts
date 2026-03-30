@@ -3,7 +3,7 @@ import {
   REQUEST_DELEGATION_CONTEXT_KEY,
   REQUEST_USER_KEY,
 } from '../iam.constants';
-import { ActiveUserData } from '../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../interfaces/activate-user-data.interface';
 
 export const ActiveUser = createParamDecorator(
   (field: keyof ActiveUserData | undefined, ctx: ExecutionContext) => {

@@ -14,7 +14,7 @@ import { CreateFileLinkDto } from './dto/create-file-link.dto';
 import { CreateFileShareDto } from './dto/create-file-share.dto';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { ScopeService } from '../iam/authorization/scope.service';
 import { FilesStorageService } from './storage/files-storage.service';
 import { createHash, randomUUID } from 'crypto';

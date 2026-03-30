@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { HttpMetricsService } from './http-metrics.service';
 
 @Injectable()

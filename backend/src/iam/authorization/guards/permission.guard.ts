@@ -1,12 +1,12 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Reflector } from '@nestjs/core';
-import { ActiveUserData } from '../../interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../../interfaces/activate-user-data.interface';
 import {
   REQUEST_DELEGATION_CONTEXT_KEY,
   REQUEST_USER_KEY,
 } from '../../iam.constants';
-import { PermissionType } from '../permission.type';
+import type { PermissionType } from '../permission.type';
 import { PERMISSION_KEY } from '../decorators/permissions.decorator';
 import { RolePermissionsService } from '../role-permissions.service';
 

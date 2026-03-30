@@ -12,7 +12,7 @@ import { UpdateGisLayerDto } from './dto/update-gis-layer.dto';
 import { CreateGisFeatureDto } from './dto/create-gis-feature.dto';
 import { UpdateGisFeatureDto } from './dto/update-gis-feature.dto';
 import { GetGisFeaturesQueryDto } from './dto/get-gis-features-query.dto';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Role } from '../users/enums/role.enum';
 import { Department } from '../department/entities/department.entity';
 import { User } from '../users/entities/user.entity';
@@ -43,6 +43,9 @@ export class GisService {
       ? await this.departmentRepo.findOneBy({ id: actor.departmentId })
       : null;
     const createdBy = await this.userRepo.findOneBy({ id: actor.sub });
+    if (!createdBy) {
+      throw new NotFoundException(`User ${actor.sub} not found`);
+    }
 
     const layer = this.layerRepo.create({
       name: dto.name,
@@ -50,7 +53,7 @@ export class GisService {
       description: dto.description ?? null,
       isActive: dto.isActive ?? true,
       department: department ?? null,
-      createdBy: createdBy ?? null,
+      createdBy,
     });
     return this.layerRepo.save(layer);
   }
@@ -122,6 +125,9 @@ export class GisService {
       ? await this.departmentRepo.findOneBy({ id: departmentId })
       : null;
     const createdBy = await this.userRepo.findOneBy({ id: actor.sub });
+    if (!createdBy) {
+      throw new NotFoundException(`User ${actor.sub} not found`);
+    }
 
     const layer =
       dto.layerId != null
@@ -139,7 +145,7 @@ export class GisService {
       properties: dto.properties ?? null,
       layer: layer ?? null,
       department: department ?? null,
-      createdBy: createdBy ?? null,
+      createdBy,
     });
     return this.featureRepo.save(feature);
   }

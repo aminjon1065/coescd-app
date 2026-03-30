@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  type Relation,
 } from 'typeorm';
 import { EdmRouteStage } from './edm-route-stage.entity';
 import { EdmDocument } from './edm-document.entity';
@@ -32,13 +33,13 @@ export class EdmStageAction {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'stage_id' })
-  stage: EdmRouteStage;
+  stage: Relation<EdmRouteStage>;
 
   @ManyToOne(() => EdmDocument, (document) => document.actions, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'document_id' })
-  document: EdmDocument;
+  document: Relation<EdmDocument>;
 
   @Column()
   action: EdmStageActionType;
@@ -48,11 +49,11 @@ export class EdmStageAction {
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'actor_user_id' })
-  actorUser: User;
+  actorUser: Relation<User>;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'on_behalf_of_user_id' })
-  onBehalfOfUser: User | null;
+  onBehalfOfUser: Relation<User> | null;
 
   @Column({ name: 'comment_text', type: 'text', nullable: true })
   commentText: string | null;

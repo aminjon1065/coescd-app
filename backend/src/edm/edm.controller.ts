@@ -12,11 +12,18 @@ import {
   Res,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { EdmService } from './edm.service';
 import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../iam/authorization/permission.type';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { CreateEdmDocumentDto } from './dto/create-edm-document.dto';
 import { UpdateEdmDocumentDto } from './dto/update-edm-document.dto';
 import { GetEdmDocumentsQueryDto } from './dto/get-edm-documents-query.dto';
@@ -64,12 +71,18 @@ import {
 } from './dto/document-template.dto';
 import { EdmDashboardQueryDto, EdmReportsQueryDto } from './dto/reports.dto';
 
+@ApiTags('EDM')
+@ApiBearerAuth()
 @Controller('edm')
 export class EdmController {
   constructor(private readonly edmService: EdmService) {}
 
   @Post('document-kinds')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Create a document kind' })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   createDocumentKind(
     @Body() dto: CreateDocumentKindDto,
     @ActiveUser() actor: ActiveUserData,
@@ -79,18 +92,34 @@ export class EdmController {
 
   @Get('document-kinds')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_READ)
+  @ApiOperation({ summary: 'List document kinds' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   listDocumentKinds(@Query() query: GetDocumentKindsQueryDto) {
     return this.edmService.listDocumentKinds(query);
   }
 
   @Get('document-kinds/:id')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_READ)
+  @ApiOperation({ summary: 'Find a document kind by id' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findDocumentKind(@Param('id', ParseIntPipe) id: number) {
     return this.edmService.findDocumentKind(id);
   }
 
   @Patch('document-kinds/:id')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Update a document kind' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   updateDocumentKind(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDocumentKindDto,
@@ -101,6 +130,12 @@ export class EdmController {
 
   @Delete('document-kinds/:id')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Delete a document kind' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async deleteDocumentKind(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -111,6 +146,10 @@ export class EdmController {
 
   @Post('document-templates')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Create a document template' })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   createDocumentTemplate(
     @Body() dto: CreateDocumentTemplateDto,
     @ActiveUser() actor: ActiveUserData,
@@ -120,6 +159,10 @@ export class EdmController {
 
   @Get('document-templates')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_READ)
+  @ApiOperation({ summary: 'List document templates' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   listDocumentTemplates(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetDocumentTemplatesQueryDto,
@@ -129,6 +172,12 @@ export class EdmController {
 
   @Get('document-templates/:id')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_READ)
+  @ApiOperation({ summary: 'Find a document template by id' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findDocumentTemplate(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -138,6 +187,12 @@ export class EdmController {
 
   @Patch('document-templates/:id')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Update a document template' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   updateDocumentTemplate(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDocumentTemplateDto,
@@ -148,6 +203,12 @@ export class EdmController {
 
   @Delete('document-templates/:id')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Delete a document template' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async deleteDocumentTemplate(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -158,6 +219,10 @@ export class EdmController {
 
   @Post('route-templates')
   @Permissions(Permission.DOCUMENTS_ROUTE_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Create a route template' })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   createRouteTemplate(
     @Body() dto: CreateRouteTemplateDto,
     @ActiveUser() actor: ActiveUserData,
@@ -167,6 +232,10 @@ export class EdmController {
 
   @Get('route-templates')
   @Permissions(Permission.DOCUMENTS_ROUTE_TEMPLATES_READ)
+  @ApiOperation({ summary: 'List route templates' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   listRouteTemplates(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetRouteTemplatesQueryDto,
@@ -176,6 +245,12 @@ export class EdmController {
 
   @Get('route-templates/:id')
   @Permissions(Permission.DOCUMENTS_ROUTE_TEMPLATES_READ)
+  @ApiOperation({ summary: 'Find a route template by id' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findRouteTemplate(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -185,6 +260,12 @@ export class EdmController {
 
   @Patch('route-templates/:id')
   @Permissions(Permission.DOCUMENTS_ROUTE_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Update a route template' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   updateRouteTemplate(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRouteTemplateDto,
@@ -195,6 +276,12 @@ export class EdmController {
 
   @Delete('route-templates/:id')
   @Permissions(Permission.DOCUMENTS_ROUTE_TEMPLATES_WRITE)
+  @ApiOperation({ summary: 'Delete a route template' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async deleteRouteTemplate(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -205,6 +292,12 @@ export class EdmController {
 
   @Post('documents/:id/register')
   @Permissions(Permission.DOCUMENTS_REGISTER)
+  @ApiOperation({ summary: 'Register a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   registerDocument(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -214,6 +307,12 @@ export class EdmController {
 
   @Patch('documents/:id/registration-status')
   @Permissions(Permission.DOCUMENTS_REGISTER)
+  @ApiOperation({ summary: 'Update document registration status' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   updateRegistrationStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRegistrationStatusDto,
@@ -224,6 +323,10 @@ export class EdmController {
 
   @Get('registration-journal')
   @Permissions(Permission.DOCUMENTS_REGISTER)
+  @ApiOperation({ summary: 'List registration journal' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   listRegistrationJournal(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetRegistrationJournalQueryDto,
@@ -233,6 +336,12 @@ export class EdmController {
 
   @Post('documents/:id/resolution-tasks')
   @Permissions(Permission.DOCUMENTS_UPDATE, Permission.TASKS_CREATE)
+  @ApiOperation({ summary: 'Create resolution tasks for a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   createResolutionTasks(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateResolutionTasksDto,
@@ -243,6 +352,12 @@ export class EdmController {
 
   @Get('documents/:id/tasks')
   @Permissions(Permission.DOCUMENTS_READ, Permission.TASKS_READ)
+  @ApiOperation({ summary: 'List tasks for a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   listDocumentTasks(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -252,6 +367,12 @@ export class EdmController {
 
   @Get('documents/:id/task-progress')
   @Permissions(Permission.DOCUMENTS_READ, Permission.TASKS_READ)
+  @ApiOperation({ summary: 'Get task progress for a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   getDocumentTaskProgress(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -261,12 +382,20 @@ export class EdmController {
 
   @Post('alerts/process')
   @Permissions(Permission.DOCUMENTS_ALERTS_MANAGE)
+  @ApiOperation({ summary: 'Process deadline alerts' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   processDeadlineAlerts(@ActiveUser() actor: ActiveUserData) {
     return this.edmService.processDeadlineAlerts(actor);
   }
 
   @Get('alerts/my')
   @Permissions(Permission.DOCUMENTS_ALERTS_READ)
+  @ApiOperation({ summary: 'List my alerts' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   listMyAlerts(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetAlertsQueryDto,
@@ -276,6 +405,12 @@ export class EdmController {
 
   @Patch('alerts/:id/ack')
   @Permissions(Permission.DOCUMENTS_ALERTS_READ)
+  @ApiOperation({ summary: 'Acknowledge an alert' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   acknowledgeAlert(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -285,6 +420,10 @@ export class EdmController {
 
   @Post('saved-filters')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'Create a saved filter' })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   createSavedFilter(
     @Body() dto: CreateSavedFilterDto,
     @ActiveUser() actor: ActiveUserData,
@@ -294,6 +433,10 @@ export class EdmController {
 
   @Get('saved-filters')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List saved filters' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   listSavedFilters(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetSavedFiltersQueryDto,
@@ -303,6 +446,12 @@ export class EdmController {
 
   @Patch('saved-filters/:id')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'Update a saved filter' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   updateSavedFilter(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSavedFilterDto,
@@ -313,6 +462,12 @@ export class EdmController {
 
   @Delete('saved-filters/:id')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'Delete a saved filter' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async deleteSavedFilter(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -323,6 +478,10 @@ export class EdmController {
 
   @Get('reports/sla')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Get SLA report' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   getSlaReport(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -332,6 +491,10 @@ export class EdmController {
 
   @Get('reports/sla/export')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Export SLA report as CSV' })
+  @ApiResponse({ status: 200, description: 'CSV file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async exportSlaReportCsv(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -345,6 +508,10 @@ export class EdmController {
 
   @Get('reports/sla/export/xlsx')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Export SLA report as XLSX' })
+  @ApiResponse({ status: 200, description: 'XLSX file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async exportSlaReportXlsx(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -361,6 +528,10 @@ export class EdmController {
 
   @Get('reports/overdue')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Get overdue report' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   getOverdueReport(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -370,6 +541,10 @@ export class EdmController {
 
   @Get('reports/overdue/export')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Export overdue report as CSV' })
+  @ApiResponse({ status: 200, description: 'CSV file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async exportOverdueReportCsv(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -383,6 +558,10 @@ export class EdmController {
 
   @Get('reports/overdue/export/xlsx')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Export overdue report as XLSX' })
+  @ApiResponse({ status: 200, description: 'XLSX file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async exportOverdueReportXlsx(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -399,6 +578,10 @@ export class EdmController {
 
   @Get('reports/workload')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Get workload report' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   getWorkloadReport(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -408,6 +591,10 @@ export class EdmController {
 
   @Get('reports/workload/export')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Export workload report as CSV' })
+  @ApiResponse({ status: 200, description: 'CSV file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async exportWorkloadReportCsv(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -421,6 +608,10 @@ export class EdmController {
 
   @Get('reports/workload/export/xlsx')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Export workload report as XLSX' })
+  @ApiResponse({ status: 200, description: 'XLSX file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async exportWorkloadReportXlsx(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
@@ -437,6 +628,10 @@ export class EdmController {
 
   @Get('reports/dashboard')
   @Permissions(Permission.REPORTS_READ)
+  @ApiOperation({ summary: 'Get dashboard summary' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   getDashboardSummary(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmDashboardQueryDto,
@@ -446,6 +641,10 @@ export class EdmController {
 
   @Post('documents')
   @Permissions(Permission.DOCUMENTS_CREATE)
+  @ApiOperation({ summary: 'Create a document draft' })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   createDraft(
     @Body() dto: CreateEdmDocumentDto,
     @ActiveUser() actor: ActiveUserData,
@@ -455,6 +654,12 @@ export class EdmController {
 
   @Patch('documents/:id')
   @Permissions(Permission.DOCUMENTS_UPDATE)
+  @ApiOperation({ summary: 'Update a document draft' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   updateDraft(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateEdmDocumentDto,
@@ -465,6 +670,12 @@ export class EdmController {
 
   @Post('documents/:id/submit')
   @Permissions(Permission.DOCUMENTS_UPDATE)
+  @ApiOperation({ summary: 'Submit a document to route' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   submitToRoute(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SubmitEdmDocumentDto,
@@ -475,6 +686,13 @@ export class EdmController {
 
   @Post('documents/:id/stages/:stageId/actions')
   @Permissions(Permission.DOCUMENTS_ROUTE_EXECUTE)
+  @ApiOperation({ summary: 'Execute a stage action on a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiParam({ name: 'stageId', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   executeStageAction(
     @Param('id', ParseIntPipe) id: number,
     @Param('stageId', ParseIntPipe) stageId: number,
@@ -493,6 +711,12 @@ export class EdmController {
 
   @Post('documents/:id/override')
   @Permissions(Permission.DOCUMENTS_ROUTE_EXECUTE)
+  @ApiOperation({ summary: 'Override document route outcome' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   override(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: EdmOverrideDto,
@@ -504,6 +728,12 @@ export class EdmController {
 
   @Post('documents/:id/archive')
   @Permissions(Permission.DOCUMENTS_ARCHIVE)
+  @ApiOperation({ summary: 'Archive a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   archive(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -513,6 +743,10 @@ export class EdmController {
 
   @Get('documents')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List all documents' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   findAll(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmDocumentsQueryDto,
@@ -522,6 +756,12 @@ export class EdmController {
 
   @Get('documents/:id')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'Find a document by id' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -531,6 +771,10 @@ export class EdmController {
 
   @Get('queues/inbox')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List inbox queue' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   inbox(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
@@ -540,6 +784,10 @@ export class EdmController {
 
   @Get('queues/outbox')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List outbox queue' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   outbox(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
@@ -549,6 +797,10 @@ export class EdmController {
 
   @Get('queues/my-approvals')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List my approvals queue' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   myApprovals(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
@@ -558,6 +810,10 @@ export class EdmController {
 
   @Get('mailboxes/incoming')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List incoming mailbox' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   incomingMailbox(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
@@ -567,6 +823,10 @@ export class EdmController {
 
   @Get('mailboxes/outgoing')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List outgoing mailbox' })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   outgoingMailbox(
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
@@ -576,6 +836,12 @@ export class EdmController {
 
   @Get('documents/:id/route')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'Get document route details' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findRoute(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -585,6 +851,12 @@ export class EdmController {
 
   @Get('documents/:id/audit')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  @ApiOperation({ summary: 'Get document audit log' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findAudit(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -595,6 +867,12 @@ export class EdmController {
 
   @Get('documents/:id/audit/export')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  @ApiOperation({ summary: 'Export document audit log as CSV' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'CSV file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async exportAuditCsv(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -609,6 +887,12 @@ export class EdmController {
 
   @Get('documents/:id/audit/export/xlsx')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  @ApiOperation({ summary: 'Export document audit log as XLSX' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'XLSX file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async exportAuditXlsx(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -626,6 +910,12 @@ export class EdmController {
 
   @Get('documents/:id/history')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  @ApiOperation({ summary: 'Get document history' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findHistory(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -636,6 +926,12 @@ export class EdmController {
 
   @Get('documents/:id/history/export')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  @ApiOperation({ summary: 'Export document history as CSV' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'CSV file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async exportHistoryCsv(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -650,6 +946,12 @@ export class EdmController {
 
   @Get('documents/:id/history/export/xlsx')
   @Permissions(Permission.DOCUMENTS_AUDIT_READ)
+  @ApiOperation({ summary: 'Export document history as XLSX' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'XLSX file stream' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   async exportHistoryXlsx(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -667,6 +969,12 @@ export class EdmController {
 
   @Post('documents/:id/forward')
   @Permissions(Permission.DOCUMENTS_ROUTE_EXECUTE)
+  @ApiOperation({ summary: 'Forward a document to another user' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   forwardDocument(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ForwardEdmDocumentDto,
@@ -683,6 +991,12 @@ export class EdmController {
 
   @Post('documents/:id/responsible')
   @Permissions(Permission.DOCUMENTS_UPDATE)
+  @ApiOperation({ summary: 'Assign responsible user to a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   assignResponsible(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignDocumentResponsibleDto,
@@ -699,6 +1013,12 @@ export class EdmController {
 
   @Post('documents/:id/replies')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'Create a reply on a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Created' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   createReply(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateDocumentReplyDto,
@@ -710,6 +1030,12 @@ export class EdmController {
 
   @Get('documents/:id/replies')
   @Permissions(Permission.DOCUMENTS_READ)
+  @ApiOperation({ summary: 'List replies on a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   listReplies(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -719,6 +1045,12 @@ export class EdmController {
 
   @Get('documents/:id/files')
   @Permissions(Permission.DOCUMENTS_READ, Permission.FILES_READ)
+  @ApiOperation({ summary: 'List files attached to a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   findFiles(
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
@@ -728,6 +1060,13 @@ export class EdmController {
 
   @Post('documents/:id/files/:fileId')
   @Permissions(Permission.DOCUMENTS_UPDATE, Permission.FILES_WRITE)
+  @ApiOperation({ summary: 'Link a file to a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiParam({ name: 'fileId', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   linkFile(
     @Param('id', ParseIntPipe) id: number,
     @Param('fileId', ParseIntPipe) fileId: number,
@@ -739,6 +1078,13 @@ export class EdmController {
 
   @Delete('documents/:id/files/:fileId')
   @Permissions(Permission.DOCUMENTS_UPDATE, Permission.FILES_WRITE)
+  @ApiOperation({ summary: 'Unlink a file from a document' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiParam({ name: 'fileId', type: Number })
+  @ApiResponse({ status: 200, description: 'Success' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Not found' })
   unlinkFile(
     @Param('id', ParseIntPipe) id: number,
     @Param('fileId', ParseIntPipe) fileId: number,

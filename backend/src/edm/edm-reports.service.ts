@@ -10,7 +10,7 @@ import { EdmDocumentRoute } from './entities/edm-document-route.entity';
 import { EdmRouteStage } from './entities/edm-route-stage.entity';
 import { EdmAlert } from './entities/edm-alert.entity';
 import { User } from '../users/entities/user.entity';
-import { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
+import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
 import { Role } from '../users/enums/role.enum';
 import { EdmCoreService } from './edm-core.service';
 import { GetAlertsQueryDto } from './dto/alerts.dto';
