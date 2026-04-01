@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   BarChart3,
   ListTodoIcon,
+  KanbanSquare,
   MapPinnedIcon,
   MessageCircleIcon,
   PhoneIcon,
@@ -44,6 +45,7 @@ const departmentsPolicy = getRoutePolicy('dashboard.departments');
 const auditLogsPolicy = getRoutePolicy('dashboard.auditLogs');
 const analyticsPolicy = getRoutePolicy('dashboard.analytics');
 const tasksPolicy = getRoutePolicy('dashboard.tasks');
+const taskManagementPolicy = getRoutePolicy('dashboard.taskManagement');
 const documentsPolicy = getRoutePolicy('dashboard.documents');
 const filesPolicy = getRoutePolicy('dashboard.files');
 
@@ -66,6 +68,19 @@ export const navItems: NavItem[] = [
     icon: ListTodoIcon,
     policyKey: 'dashboard.tasks',
     requiredAnyPermissions: tasksPolicy.anyPermissions,
+  },
+  {
+    title: 'Task Management',
+    url: '/dashboard/task-management',
+    icon: KanbanSquare,
+    policyKey: 'dashboard.taskManagement',
+    requiredAnyPermissions: taskManagementPolicy.anyPermissions,
+    items: [
+      { title: 'Board', url: '/dashboard/task-management/board' },
+      { title: 'List', url: '/dashboard/task-management/list' },
+      { title: 'Timeline', url: '/dashboard/task-management/timeline' },
+      { title: 'Reports', url: '/dashboard/task-management/reports' },
+    ],
   },
   {
     title: 'Documentation',

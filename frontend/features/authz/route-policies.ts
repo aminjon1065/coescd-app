@@ -16,6 +16,15 @@ export const ROUTE_POLICIES = {
   'dashboard.tasks.detail': {
     anyPermissions: ['tasks.read'],
   },
+  'dashboard.taskManagement': {
+    anyPermissions: ['task_management.tasks.read'],
+  },
+  'dashboard.taskManagement.boards': {
+    anyPermissions: ['task_management.boards.read'],
+  },
+  'dashboard.taskManagement.reports': {
+    anyPermissions: ['task_management.reports.read'],
+  },
   'dashboard.documents': {
     anyPermissions: ['documents.read'],
   },

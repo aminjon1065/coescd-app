@@ -39,6 +39,19 @@ export enum Permission {
   CHAT_WRITE = 'chat.write',
   CALLS_READ = 'calls.read',
   CALLS_WRITE = 'calls.write',
+
+  // Task Management (enterprise)
+  TM_TASKS_READ              = 'task_management.tasks.read',
+  TM_TASKS_CREATE            = 'task_management.tasks.create',
+  TM_TASKS_UPDATE            = 'task_management.tasks.update',
+  TM_TASKS_DELETE            = 'task_management.tasks.delete',
+  TM_TASKS_ASSIGN            = 'task_management.tasks.assign',
+  TM_TASKS_DELEGATE          = 'task_management.tasks.delegate',
+  TM_TASKS_CLOSE             = 'task_management.tasks.close',
+  TM_BOARDS_READ             = 'task_management.boards.read',
+  TM_BOARDS_MANAGE           = 'task_management.boards.manage',
+  TM_REPORTS_READ            = 'task_management.reports.read',
+  TM_ESCALATION_MANAGE       = 'task_management.escalation.manage',
 }
 
 export type PermissionType = `${Permission}`;

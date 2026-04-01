@@ -24,6 +24,7 @@ import { AnalyticsPlatformModule } from './analytics-platform/analytics-platform
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
+import { TaskManagementModule } from './task-management/task-management.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
     NotificationsModule,
     EdmEnterpriseModule,
     AnalyticsPlatformModule,
+    TaskManagementModule,
   ],
   controllers: [AppController],
   providers: [
