@@ -46,7 +46,7 @@ export default function ReportsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => requestReport({ templateId, params: {} }),
+    mutationFn: () => requestReport({ template: templateId, params: {} }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reports'] });
       setShowCreate(false);
@@ -88,15 +88,15 @@ export default function ReportsPage() {
                 <div className="flex items-center gap-3">
                   {STATUS_ICON[r.status] ?? <RefreshCw className="w-4 h-4 text-muted-foreground" />}
                   <div>
-                    <p className="text-sm font-medium">{TEMPLATES.find(t => t.id === r.templateId)?.name ?? r.templateId}</p>
+                    <p className="text-sm font-medium">{TEMPLATES.find(t => t.id === r.template)?.name ?? r.template}</p>
                     <p className="text-xs text-muted-foreground">
-                      {STATUS_LABEL[r.status] ?? r.status} · {formatDistanceToNow(new Date(r.createdAt), { locale: ru, addSuffix: true })}
+                      {STATUS_LABEL[r.status] ?? r.status} · {formatDistanceToNow(new Date(r.requestedAt), { locale: ru, addSuffix: true })}
                     </p>
                   </div>
                 </div>
-                {r.status === 'completed' && r.downloadUrl && (
+                {r.status === 'completed' && r.fileKey && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={r.downloadUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={`/api/analytics/reports/${r.id}/download`} target="_blank" rel="noopener noreferrer">
                       <Download className="w-4 h-4 mr-1.5" /> Скачать
                     </a>
                   </Button>

@@ -171,6 +171,9 @@ export interface IDataset {
   name: string;
   description: string | null;
   sourceType: string;
+  format: string;
+  rowCount: number | null;
+  status: 'pending' | 'processing' | 'ready' | 'error';
   schemaDef: Record<string, { type: string; nullable: boolean; description?: string }> | null;
   ownerId: number;
   isPublic: boolean;

@@ -67,10 +67,10 @@ export default function DatasetViewerPage() {
       {dataset.schemaDef && (
         <div className="px-6 py-3 border-b bg-muted/20">
           <div className="flex gap-2 flex-wrap">
-            {Object.entries(dataset.schemaDef as Record<string, string>).map(([col, type]) => (
+            {Object.entries(dataset.schemaDef).map(([col, meta]) => (
               <span key={col} className="inline-flex items-center gap-1 text-xs bg-card border rounded px-2 py-0.5">
                 <span className="font-mono font-medium">{col}</span>
-                <span className="text-muted-foreground">{type}</span>
+                <span className="text-muted-foreground">{meta.type}</span>
               </span>
             ))}
           </div>

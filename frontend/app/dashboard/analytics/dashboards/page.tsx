@@ -16,8 +16,7 @@ import { ru } from 'date-fns/locale';
 export default function DashboardsPage() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState('');
 
   const { data: dashboards = [], isLoading } = useQuery({
     queryKey: ['dashboards'],
@@ -26,12 +25,11 @@ export default function DashboardsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createDashboard({ name, description }),
+    mutationFn: () => createDashboard({ title }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['dashboards'] });
       setShowCreate(false);
-      setName('');
-      setDescription('');
+      setTitle('');
     },
   });
 
@@ -72,8 +70,7 @@ export default function DashboardsPage() {
                     <LayoutDashboard className="w-5 h-5 text-blue-500" />
                     <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <p className="font-medium text-sm mb-1 flex-1">{d.name}</p>
-                  {d.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{d.description}</p>}
+                  <p className="font-medium text-sm mb-1 flex-1">{d.title}</p>
                   <div className="flex items-center justify-between mt-auto">
                     <span className="text-xs text-muted-foreground">
                       {d.layout?.widgets?.length ?? 0} виджетов
@@ -97,16 +94,12 @@ export default function DashboardsPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label>Название</Label>
-              <Input placeholder="Оперативный дашборд" value={name} onChange={e => setName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Описание (необязательно)</Label>
-              <Input placeholder="Краткое описание..." value={description} onChange={e => setDescription(e.target.value)} />
+              <Input placeholder="Оперативный дашборд" value={title} onChange={e => setTitle(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Отмена</Button>
-            <Button onClick={() => createMutation.mutate()} disabled={!name || createMutation.isPending}>
+            <Button onClick={() => createMutation.mutate()} disabled={!title || createMutation.isPending}>
               {createMutation.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Создать
             </Button>

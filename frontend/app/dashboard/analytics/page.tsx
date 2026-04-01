@@ -6,7 +6,7 @@ import { KpiGrid } from '@/components/analytics/kpi/KpiGrid';
 import { TimeSeriesChart } from '@/components/analytics/charts/TimeSeriesChart';
 import { HeatCalendar } from '@/components/analytics/charts/HeatCalendar';
 import { getIncidentTrend } from '@/lib/api/analytics-platform';
-import { useAnalyticsFiltersStore } from '@/lib/stores/analytics-filters-store';
+import { useAnalyticsFilters } from '@/lib/stores/analytics-filters-store';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
@@ -21,7 +21,7 @@ const KPI_CODES = [
 ];
 
 export default function AnalyticsPage() {
-  const { groupBy, setGroupBy } = useAnalyticsFiltersStore();
+  const { groupBy, setGroupBy } = useAnalyticsFilters();
 
   const { data: trendData = [] } = useQuery({
     queryKey: ['incidents-trend', groupBy],

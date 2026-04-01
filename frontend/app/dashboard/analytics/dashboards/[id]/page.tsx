@@ -48,10 +48,7 @@ export default function DashboardViewerPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-lg font-semibold">{dashboard.name}</h1>
-            {dashboard.description && (
-              <p className="text-xs text-muted-foreground">{dashboard.description}</p>
-            )}
+            <h1 className="text-lg font-semibold">{dashboard.title}</h1>
           </div>
         </div>
         <Button

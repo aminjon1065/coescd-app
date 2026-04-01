@@ -6,6 +6,7 @@ import {
   FileChartColumnIcon,
   FileText,
   FolderOpenIcon,
+  BarChart3,
   ListTodoIcon,
   MapPinnedIcon,
   MessageCircleIcon,
@@ -97,6 +98,20 @@ export const navItems: NavItem[] = [
         title: 'Document Kinds',
         url: '/dashboard/documentation/types',
       },
+    ],
+  },
+  {
+    title: 'Аналитика',
+    url: '/dashboard/analytics',
+    icon: BarChart3,
+    items: [
+      { title: 'Обзор', url: '/dashboard/analytics' },
+      { title: 'ГИС карта', url: '/dashboard/analytics/map' },
+      { title: 'Дашборды', url: '/dashboard/analytics/dashboards' },
+      { title: 'Обозреватель', url: '/dashboard/analytics/explorer' },
+      { title: 'Данные', url: '/dashboard/analytics/datasets' },
+      { title: 'Отчёты', url: '/dashboard/analytics/reports' },
+      { title: 'KPI', url: '/dashboard/analytics/kpi' },
     ],
   },
   {
