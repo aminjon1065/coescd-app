@@ -178,7 +178,6 @@ export class TaskManagementController {
     @Body() dto: CreateTaskDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    dto['parentTaskId' as keyof CreateTaskDto] = id as any;
     return this.taskService.create({ ...dto, parentTaskId: id }, actor);
   }
 

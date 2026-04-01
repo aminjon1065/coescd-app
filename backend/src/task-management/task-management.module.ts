@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Entities
@@ -36,10 +38,13 @@ import { TaskManagementController } from './task-management.controller';
 
 // IAM
 import { IamModule } from '../iam/iam.module';
+import jwtConfig from '../iam/config/jwt.config';
 
 @Module({
   imports: [
     IamModule,
+    ConfigModule.forFeature(jwtConfig),
+    JwtModule.registerAsync(jwtConfig.asProvider()),
     TypeOrmModule.forFeature([
       TmTask,
       TmTaskAssignment,

@@ -29,7 +29,7 @@ import {
 import { TaskGateway } from '../gateways/task.gateway';
 import { TmTaskCacheService } from './tm-task-cache.service';
 import { TmTaskReportingService } from './tm-task-reporting.service';
-import { PermissionType } from '../../iam/authorization/permission.type';
+import { Permission } from '../../iam/authorization/permission.type';
 
 @Injectable()
 export class TmTaskService {
@@ -198,7 +198,7 @@ export class TmTaskService {
     }
 
     // Scope filtering: non-global users only see tasks they're involved with or in their dept
-    const hasGlobalRead = actor.permissions?.includes(PermissionType.TASK_MANAGEMENT_TASKS_READ);
+    const hasGlobalRead = actor.permissions?.includes(Permission.TM_TASKS_READ);
     if (!hasGlobalRead || (actor as any).scope !== 'global') {
       qb.andWhere(
         new Brackets((b) =>
@@ -529,18 +529,16 @@ export class TmTaskService {
       );
     }
 
-    const update: Partial<TmTask> = {};
-    if (dto.assigneeUserId) update.assigneeUser = { id: dto.assigneeUserId } as User;
-    if (dto.assigneeDepartmentId) update.assigneeDepartment = { id: dto.assigneeDepartmentId } as Department;
-    if (dto.assigneeRole) update.assigneeRole = dto.assigneeRole;
-    update.status = TaskStatus.Assigned;
-
-    await this.taskRepo
-      .createQueryBuilder()
-      .update(TmTask)
-      .set(update)
-      .whereInIds(dto.ids)
-      .execute();
+    const tasks = await this.taskRepo.findBy(dto.ids.map((id) => ({ id })));
+    for (const task of tasks) {
+      task.assigneeUser = dto.assigneeUserId ? ({ id: dto.assigneeUserId } as User) : null;
+      task.assigneeDepartment = dto.assigneeDepartmentId
+        ? ({ id: dto.assigneeDepartmentId } as Department)
+        : null;
+      task.assigneeRole = dto.assigneeRole ?? null;
+      task.status = TaskStatus.Assigned;
+    }
+    await this.taskRepo.save(tasks);
 
     const historyRows = dto.ids.map((id) =>
       this.historyRepo.create({

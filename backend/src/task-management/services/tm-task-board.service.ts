@@ -61,7 +61,7 @@ export class TmTaskBoardService {
     return this.findOne(saved.id);
   }
 
-  async findAll(): Promise<TmTaskBoard[]> {
+  async findAll(_actor?: ActiveUserData): Promise<TmTaskBoard[]> {
     return this.boardRepo
       .createQueryBuilder('board')
       .leftJoinAndSelect('board.columns', 'columns')
@@ -124,6 +124,7 @@ export class TmTaskBoardService {
   async addColumn(
     boardId: string,
     dto: { name: string; status: string; color?: string; wipLimit?: number },
+    _actor?: ActiveUserData,
   ): Promise<TmTaskBoardColumn> {
     const board = await this.boardRepo.findOne({ where: { id: boardId } });
     if (!board) throw new NotFoundException(`Board ${boardId} not found`);

@@ -53,7 +53,11 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Query() query: SearchDocumentsDto,
   ) {
-    const [items, total] = await this.documentsService.search(query);
+    const [items, total] = await this.documentsService.search({
+      ...query,
+      dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
+      dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
+    });
     return {
       items,
       total,

@@ -8,17 +8,17 @@ export class AnlDimDataset {
   @Column()
   name: string;
 
-  @Column({ nullable: true })
-  description: string;
+  @Column({ type: 'varchar', nullable: true })
+  description: string | null;
 
   @Column({ name: 'source_type' })
   sourceType: string;
 
   @Column({ name: 'schema_def', type: 'jsonb', nullable: true })
-  schemaDef: Record<string, unknown>;
+  schemaDef: Record<string, unknown> | null;
 
-  @Column({ name: 'owner_id', nullable: true })
-  ownerId: number;
+  @Column({ name: 'owner_id', type: 'int', nullable: true })
+  ownerId: number | null;
 
   @Column({ name: 'is_public', default: false })
   isPublic: boolean;

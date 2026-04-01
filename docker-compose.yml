@@ -2,9 +2,10 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:16
+    image: parjom/timescaledb-postgis:latest-pg16-postgis350
     container_name: coescd-postgres
     restart: unless-stopped
+    command: ["postgres", "-c", "shared_preload_libraries=timescaledb"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

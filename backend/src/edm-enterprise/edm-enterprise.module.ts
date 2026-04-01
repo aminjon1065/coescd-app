@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EdmEnterpriseController } from './edm-enterprise.controller';
 import { EdmDocumentsService } from './services/edm-documents.service';
@@ -20,10 +22,13 @@ import { EdmV2Attachment } from './entities/edm-attachment.entity';
 import { EdmV2AuditLog } from './entities/edm-audit-log.entity';
 import { User } from '../users/entities/user.entity';
 import { IamModule } from '../iam/iam.module';
+import jwtConfig from '../iam/config/jwt.config';
 
 @Module({
   imports: [
     IamModule,
+    ConfigModule.forFeature(jwtConfig),
+    JwtModule.registerAsync(jwtConfig.asProvider()),
     TypeOrmModule.forFeature([
       EdmV2Document,
       EdmV2DocumentVersion,

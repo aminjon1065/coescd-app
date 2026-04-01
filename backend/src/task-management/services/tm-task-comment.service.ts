@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { TmTaskComment } from '../entities/tm-task-comment.entity';
 import { TmTask } from '../entities/tm-task.entity';
 import { TmTaskHistory } from '../entities/tm-task-history.entity';
@@ -86,7 +86,7 @@ export class TmTaskCommentService {
 
   async findAll(taskId: string): Promise<TmTaskComment[]> {
     return this.commentRepo.find({
-      where: { task: { id: taskId }, parent: null },
+      where: { task: { id: taskId }, parent: IsNull() },
       relations: { author: true, replies: { author: true } },
       order: { createdAt: 'ASC' },
       withDeleted: false,

@@ -89,7 +89,14 @@ import { EnterpriseIamSeed } from './seeds/enterprise.seed';
     RolePermissionsService,
     AuditLogsAdminService,
   ],
-  exports: [RefreshTokenIdsStorage, ScopeService, ScopeResolverService],
+  exports: [
+    JwtModule,
+    AccessTokenGuard,
+    DelegationContextService,
+    RefreshTokenIdsStorage,
+    ScopeService,
+    ScopeResolverService,
+  ],
   controllers: [
     AuthenticationController,
     AuthorizationAdminController,

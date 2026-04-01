@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRedis } from '@nestjs-modules/ioredis';
 import { DataSource } from 'typeorm';
-import Redis from 'ioredis';
-// @mapbox/tilebelt: tileToBBOX converts z/x/y to [west, south, east, north]
-import { tileToBBOX } from '@mapbox/tilebelt';
+import { AnalyticsRedisService } from '../analytics-redis.service';
+
+const { tileToBBOX } = require('@mapbox/tilebelt') as {
+  tileToBBOX: (tile: [number, number, number]) => [number, number, number, number];
+};
 
 @Injectable()
 export class TileService {
   constructor(
-    @InjectRedis() private readonly redis: Redis,
+    private readonly redis: AnalyticsRedisService,
     private readonly dataSource: DataSource,
   ) {}
 

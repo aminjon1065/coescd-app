@@ -1,12 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { InjectRedis } from '@nestjs-modules/ioredis';
 import { Repository, DataSource } from 'typeorm';
-import Redis from 'ioredis';
 import { AnlKpiDefinition } from '../entities/anl-kpi-definition.entity';
 import { AnlKpiSnapshot } from '../entities/anl-kpi-snapshot.entity';
 import { KPI_REGISTRY } from './definitions/kpi-registry';
 import { KpiValueResponseDto } from './dto/kpi.dto';
+import { AnalyticsRedisService } from '../analytics-redis.service';
 
 export interface KpiScope {
   scopeType?: string;
@@ -22,7 +21,7 @@ export class KpiService {
     private readonly defRepo: Repository<AnlKpiDefinition>,
     @InjectRepository(AnlKpiSnapshot)
     private readonly snapshotRepo: Repository<AnlKpiSnapshot>,
-    @InjectRedis() private readonly redis: Redis,
+    private readonly redis: AnalyticsRedisService,
     private readonly dataSource: DataSource,
   ) {}
 

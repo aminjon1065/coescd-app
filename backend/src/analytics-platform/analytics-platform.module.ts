@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { IamModule } from '../iam/iam.module';
+import { User } from '../users/entities/user.entity';
+import jwtConfig from '../iam/config/jwt.config';
 
 // Entities
 import {
@@ -33,8 +36,10 @@ import { ExplorerController } from './explorer/explorer.controller';
 import { ReportsService } from './reports/reports.service';
 import { ReportsController } from './reports/reports.controller';
 import { AnalyticsGateway } from './gateways/analytics.gateway';
+import { AnalyticsRedisService } from './analytics-redis.service';
 
 const ENTITIES = [
+  User,
   AnlFactIncident, AnlFactWeather, AnlFactSeismic, AnlFactResourceDeployment,
   AnlKpiSnapshot, AnlKpiDefinition,
   AnlDimGeography, AnlDimIncidentType, AnlDimResource, AnlDimDataset,
@@ -45,6 +50,8 @@ const ENTITIES = [
 
 @Module({
   imports: [
+    IamModule,
+    ConfigModule.forFeature(jwtConfig),
     TypeOrmModule.forFeature(ENTITIES),
     BullModule.forRootAsync({
       imports: [ConfigModule],
@@ -86,6 +93,7 @@ const ENTITIES = [
     ExplorerService,
     ReportsService,
     AnalyticsGateway,
+    AnalyticsRedisService,
   ],
   exports: [KpiService, GeoService, AnalyticsGateway],
 })

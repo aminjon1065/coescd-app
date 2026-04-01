@@ -32,7 +32,7 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
         doc_type          VARCHAR(100) NOT NULL,
         status            VARCHAR(50)  NOT NULL DEFAULT 'draft',
         owner_id          INTEGER      NOT NULL REFERENCES "user"(id) ON DELETE RESTRICT,
-        department_id     INTEGER      REFERENCES department(id) ON DELETE SET NULL,
+        department_id     INTEGER      REFERENCES departments(id) ON DELETE SET NULL,
         current_version   INTEGER      NOT NULL DEFAULT 1,
         is_deleted        BOOLEAN      NOT NULL DEFAULT FALSE,
         locked_by_id      INTEGER      REFERENCES "user"(id) ON DELETE SET NULL,
@@ -48,13 +48,27 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_docs_status      ON edm_v2_documents(status)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_docs_owner        ON edm_v2_documents(owner_id)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_docs_dept         ON edm_v2_documents(department_id)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_docs_deleted      ON edm_v2_documents(is_deleted)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_docs_tags         ON edm_v2_documents USING GIN(tags)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_docs_metadata     ON edm_v2_documents USING GIN(metadata)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_docs_created_at   ON edm_v2_documents(created_at DESC)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_docs_status      ON edm_v2_documents(status)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_docs_owner        ON edm_v2_documents(owner_id)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_docs_dept         ON edm_v2_documents(department_id)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_docs_deleted      ON edm_v2_documents(is_deleted)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_docs_tags         ON edm_v2_documents USING GIN(tags)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_docs_metadata     ON edm_v2_documents USING GIN(metadata)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_docs_created_at   ON edm_v2_documents(created_at DESC)`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 2. DOCUMENT VERSIONS  (immutable)
@@ -74,7 +88,9 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_vers_doc ON edm_v2_document_versions(document_id, version_number DESC)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_vers_doc ON edm_v2_document_versions(document_id, version_number DESC)`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 3. DOCUMENT PERMISSIONS
@@ -94,8 +110,12 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_perms_lookup ON edm_v2_document_permissions(document_id, principal_type, principal_id)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_perms_principal ON edm_v2_document_permissions(principal_type, principal_id)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_perms_lookup ON edm_v2_document_permissions(document_id, principal_type, principal_id)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_perms_principal ON edm_v2_document_permissions(principal_type, principal_id)`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 4. WORKFLOW DEFINITIONS
@@ -133,8 +153,12 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_wi_status ON edm_v2_workflow_instances(status)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_wi_deadline ON edm_v2_workflow_instances(deadline) WHERE status = 'active'`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_wi_status ON edm_v2_workflow_instances(status)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_wi_deadline ON edm_v2_workflow_instances(deadline) WHERE status = 'active'`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 6. WORKFLOW ASSIGNMENTS  (who must act at a step)
@@ -155,8 +179,12 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_wa_assignee ON edm_v2_workflow_assignments(assignee_id) WHERE acted_at IS NULL`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_wa_instance ON edm_v2_workflow_assignments(instance_id, step_id)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_wa_assignee ON edm_v2_workflow_assignments(assignee_id) WHERE acted_at IS NULL`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_wa_instance ON edm_v2_workflow_assignments(instance_id, step_id)`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 7. WORKFLOW TRANSITIONS  (full history)
@@ -175,7 +203,9 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_wt_instance ON edm_v2_workflow_transitions(instance_id, transitioned_at DESC)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_wt_instance ON edm_v2_workflow_transitions(instance_id, transitioned_at DESC)`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 8. COMMENTS  (threaded, with anchor)
@@ -198,8 +228,12 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_comments_doc ON edm_v2_comments(document_id, created_at DESC)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_comments_parent ON edm_v2_comments(parent_id) WHERE parent_id IS NOT NULL`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_comments_doc ON edm_v2_comments(document_id, created_at DESC)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_comments_parent ON edm_v2_comments(parent_id) WHERE parent_id IS NOT NULL`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 9. ATTACHMENTS
@@ -220,7 +254,9 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_attach_doc ON edm_v2_attachments(document_id)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_attach_doc ON edm_v2_attachments(document_id)`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * 10. AUDIT LOGS  (append-only, never DELETE)
@@ -240,9 +276,15 @@ export class EdmEnterpriseSchema20260330150000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_audit_entity  ON edm_v2_audit_logs(entity_type, entity_id)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_audit_actor   ON edm_v2_audit_logs(actor_id)`);
-    await queryRunner.query(`CREATE INDEX idx_edm_v2_audit_ts      ON edm_v2_audit_logs(occurred_at DESC)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_audit_entity  ON edm_v2_audit_logs(entity_type, entity_id)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_audit_actor   ON edm_v2_audit_logs(actor_id)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_edm_v2_audit_ts      ON edm_v2_audit_logs(occurred_at DESC)`,
+    );
 
     /* ──────────────────────────────────────────────────────────
      * Seed: default workflow definition
