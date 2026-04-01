@@ -4,6 +4,7 @@ import {
   ClipboardListIcon,
   ContactRound,
   FileChartColumnIcon,
+  FileText,
   FolderOpenIcon,
   ListTodoIcon,
   MapPinnedIcon,
@@ -96,6 +97,15 @@ export const navItems: NavItem[] = [
         title: 'Document Kinds',
         url: '/dashboard/documentation/types',
       },
+    ],
+  },
+  {
+    title: 'Документы ЭДМ',
+    url: '/dashboard/documents',
+    icon: FileText,
+    items: [
+      { title: 'Все документы', url: '/dashboard/documents' },
+      { title: 'Мои задачи', url: '/dashboard/documents?tab=mine' },
     ],
   },
   {

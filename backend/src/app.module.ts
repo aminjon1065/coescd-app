@@ -19,6 +19,8 @@ import { GisModule } from './gis/gis.module';
 import { ChatModule } from './chat/chat.module';
 import { CallsModule } from './calls/calls.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { EdmEnterpriseModule } from './edm-enterprise/edm-enterprise.module';
+import { AnalyticsPlatformModule } from './analytics-platform/analytics-platform.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
@@ -80,6 +82,8 @@ import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
     ChatModule,
     CallsModule,
     NotificationsModule,
+    EdmEnterpriseModule,
+    AnalyticsPlatformModule,
   ],
   controllers: [AppController],
   providers: [

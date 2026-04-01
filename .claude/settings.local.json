@@ -57,7 +57,17 @@
       "Bash(perl -i -pe \"s/^import \\\\{ ConfigType \\\\} from ''\\\\@nestjs\\\\/config'';/import type { ConfigType } from ''\\\\@nestjs\\\\/config'';/\" \"$f\")",
       "Bash(echo \"Fixed: $f\")",
       "Bash(xargs perl:*)",
-      "Bash(bun test:*)"
+      "Bash(bun test:*)",
+      "Bash(/tmp/tree_structure.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(sudo rm:*)",
+      "Read(//Users/aminjon/.npm/_cacache/content-v2/sha512/0a/**)",
+      "Bash(npm cache:*)",
+      "Bash(chown -R aminjon /Users/aminjon/.npm)",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(bun add:*)",
+      "Bash(mkdir -p \"/Users/aminjon/Desktop/coescd-app/frontend/app/dashboard/analytics/dashboards/[id]\")",
+      "Bash(mkdir -p \"/Users/aminjon/Desktop/coescd-app/frontend/app/dashboard/analytics/datasets/[id]\")"
     ]
   }
 }
