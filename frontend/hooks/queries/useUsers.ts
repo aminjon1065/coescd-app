@@ -10,6 +10,10 @@ export interface UsersQueryFilters {
   search?: string;
   /** 'all' means no department filter */
   departmentId?: number | string;
+  /** 'all' means no org unit filter */
+  orgUnitId?: number | string;
+  /** 'all' means no business role filter */
+  businessRole?: string;
   /** When true, the query automatically restricts to managerDepartmentId */
   isManager?: boolean;
   managerDepartmentId?: number | null;
@@ -40,6 +44,14 @@ export function useUsersQuery(filters: UsersQueryFilters, enabled = true) {
         filters.departmentId !== 'all'
       ) {
         params.departmentId = Number(filters.departmentId);
+      }
+
+      if (filters.orgUnitId && filters.orgUnitId !== 'all') {
+        params.orgUnitId = Number(filters.orgUnitId);
+      }
+
+      if (filters.businessRole && filters.businessRole !== 'all') {
+        params.businessRole = filters.businessRole;
       }
 
       if (filters.search?.trim()) {

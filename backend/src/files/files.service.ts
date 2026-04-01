@@ -233,6 +233,7 @@ export class FilesService {
     const qb = this.fileRepository
       .createQueryBuilder('file')
       .leftJoinAndSelect('file.owner', 'owner')
+      .leftJoinAndSelect('owner.orgUnit', 'ownerOrgUnit')
       .leftJoinAndSelect('file.department', 'department')
       .orderBy('file.createdAt', query.sortOrder === 'asc' ? 'ASC' : 'DESC');
 
@@ -260,7 +261,11 @@ export class FilesService {
     this.scopeService.applyFileScope(
       qb,
       actor,
-      { ownerAlias: 'owner', departmentAlias: 'department' },
+      {
+        ownerAlias: 'owner',
+        departmentAlias: 'department',
+        ownerOrgUnitPathAlias: 'ownerOrgUnit.path',
+      },
       { extraOrCondition: shareCondition, extraOrParams: shareParams },
     );
 
@@ -272,7 +277,7 @@ export class FilesService {
     const file = await this.fileRepository.findOne({
       where: { id },
       relations: {
-        owner: true,
+        owner: { orgUnit: true },
         department: true,
       },
     });

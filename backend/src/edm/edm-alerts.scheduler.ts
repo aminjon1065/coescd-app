@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
-import { EdmService } from './edm.service';
+import { DocumentsFacade } from '../modules/documents/documents.facade';
 
 const EDM_ALERTS_CRON_JOB = 'edm-alerts-process';
 
@@ -19,7 +19,7 @@ export class EdmAlertsScheduler implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
-    private readonly edmService: EdmService,
+    private readonly documentsFacade: DocumentsFacade,
   ) {}
 
   onModuleInit() {
@@ -73,7 +73,8 @@ export class EdmAlertsScheduler implements OnModuleInit, OnModuleDestroy {
     this.isRunning = true;
 
     try {
-      const result = await this.edmService.processDeadlineAlertsBySystem();
+      const result =
+        await this.documentsFacade.edm.processDeadlineAlertsBySystem();
       this.logger.log(
         `EDM alerts tick finished: processedStages=${result.processedStages}, createdAlerts=${result.createdAlerts}`,
       );

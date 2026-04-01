@@ -1,5 +1,6 @@
 import { Role } from '@/enums/RoleEnum';
 import { IDepartment } from './IDepartment';
+import { IOrgUnit } from './IOrgUnit';
 
 export interface IUser {
   id: number;
@@ -11,7 +12,9 @@ export interface IUser {
   isActive: boolean;
   role: Role;
   permissions: string[];
+  businessRole?: string | null;
   department?: IDepartment | null;
+  orgUnit?: IOrgUnit | null;
   createdAt: string;
   updatedAt: string;
 }

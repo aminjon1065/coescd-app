@@ -1,6 +1,7 @@
 import type { PermissionType } from 'src/iam/authorization/permission.type';
 import { Role } from '../../../users/enums/role.enum';
 import { Department } from 'src/department/entities/department.entity';
+import { OrgUnit } from '../../entities/org-unit.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SafeUserDto {
@@ -24,6 +25,12 @@ export class SafeUserDto {
 
   @ApiPropertyOptional()
   department?: Department;
+
+  @ApiPropertyOptional()
+  businessRole?: string | null;
+
+  @ApiPropertyOptional()
+  orgUnit?: OrgUnit | null;
 
   @ApiProperty()
   createdAt: Date;

@@ -7,6 +7,8 @@ import type { ActiveUserData } from '../../iam/interfaces/activate-user-data.int
 import { Permissions } from '../../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../../iam/authorization/permission.type';
 import { IncidentsTrendQueryDto } from './dto/incidents-trend-query.dto';
+import { Roles } from '../../iam/authorization/decorators/roles.decorator';
+import { Role } from '../../users/enums/role.enum';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
@@ -34,6 +36,7 @@ export class ReportsController {
 
   @Get('incidents-trend')
   @Throttle({ heavy: { ttl: 60_000, limit: 10 } })
+  @Roles(Role.Admin, Role.Analyst)
   @Permissions(Permission.ANALYTICS_READ)
   @ApiOperation({ summary: 'Get incident count trend over a date range' })
   @ApiResponse({ status: 200, description: 'Success' })
@@ -48,6 +51,7 @@ export class ReportsController {
 
   @Get('tasks-by-department')
   @Throttle({ heavy: { ttl: 60_000, limit: 10 } })
+  @Roles(Role.Admin, Role.Analyst)
   @Permissions(Permission.ANALYTICS_READ)
   @ApiOperation({ summary: 'Get task counts grouped by department' })
   @ApiResponse({ status: 200, description: 'Success' })

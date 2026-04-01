@@ -290,6 +290,10 @@ export class ScopeResolverService {
     const orgUnitPath =
       raw.orgUnitPath ??
       raw?.orgUnit?.path ??
+      raw?.creator?.orgUnit?.path ??
+      raw?.receiver?.orgUnit?.path ??
+      raw?.sender?.orgUnit?.path ??
+      raw?.owner?.orgUnit?.path ??
       raw?.scopeOrgUnit?.path ??
       raw?.department?.orgUnit?.path ??
       null;

@@ -1,5 +1,4 @@
-email,name,role,department_id,department_name,position,is_active,permissions,password
-jane.doe@example.com,Jane Doe,regular,1,,Operator,true,"tasks.read,documents.read,files.read",
-john.manager@example.com,John Manager,manager,,Operations,Department Manager,true,"users.read,tasks.assign,reports.read",
-sara.admin@example.com,Sara Admin,admin,1,,Platform Admin,true,"users.create,users.update,users.delete,departments.update",TempPass123!
-
+email,name,role,department_id,department_name,org_unit_id,org_unit_name,org_unit_path,business_role,position,is_active,permissions,password
+jane.doe@example.com,Jane Doe,employee,1,,12,Operations Division,committee.operations_division,Employee,Operator,true,"tasks.read,documents.read,files.read",
+john.manager@example.com,John Manager,department_head,,Operations,7,Operations Department,committee.operations_department,Department Head,Department Manager,true,"users.read,tasks.assign,reports.read",
+sara.admin@example.com,Sara Admin,admin,1,,1,Chairperson Office,committee,Admin,Platform Admin,true,"users.create,users.update,users.delete,departments.update",TempPass123!

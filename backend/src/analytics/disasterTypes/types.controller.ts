@@ -11,14 +11,20 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@ne
 import { CreateDisasterTypeDto } from './dto/create-disaster-type.dto';
 import { UpdateDisasterTypeDto } from './dto/update-disaster-type.dto';
 import { TypesService } from './types.service';
+import { Roles } from '../../iam/authorization/decorators/roles.decorator';
+import { Permissions } from '../../iam/authorization/decorators/permissions.decorator';
+import { Role } from '../../users/enums/role.enum';
+import { Permission } from '../../iam/authorization/permission.type';
 
 @ApiTags('Disaster Types')
 @ApiBearerAuth()
+@Roles(Role.Admin, Role.Analyst)
 @Controller('types')
 export class TypesController {
   constructor(private readonly service: TypesService) {}
 
   @Post()
+  @Permissions(Permission.ANALYTICS_WRITE)
   @ApiOperation({ summary: 'Create a new disaster type' })
   @ApiResponse({ status: 201, description: 'Created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -28,6 +34,7 @@ export class TypesController {
   }
 
   @Get()
+  @Permissions(Permission.ANALYTICS_READ)
   @ApiOperation({ summary: 'Retrieve all disaster types' })
   @ApiResponse({ status: 200, description: 'Success' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -36,6 +43,7 @@ export class TypesController {
   }
 
   @Get(':id')
+  @Permissions(Permission.ANALYTICS_READ)
   @ApiOperation({ summary: 'Retrieve a single disaster type by ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Success' })
@@ -46,6 +54,7 @@ export class TypesController {
   }
 
   @Patch(':id')
+  @Permissions(Permission.ANALYTICS_WRITE)
   @ApiOperation({ summary: 'Update a disaster type by ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Success' })
@@ -57,6 +66,7 @@ export class TypesController {
   }
 
   @Delete(':id')
+  @Permissions(Permission.ANALYTICS_WRITE)
   @ApiOperation({ summary: 'Delete a disaster type by ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Success' })

@@ -34,18 +34,40 @@ import {
   useToggleUserActiveMutation,
 } from '@/hooks/queries/useUsers';
 import { useDepartmentsQuery } from '@/hooks/queries/useDepartments';
+import { useOrgUnitsQuery } from '@/hooks/queries/useOrgUnits';
+import { useBusinessRolesQuery } from '@/hooks/queries/useBusinessRoles';
+import { IBusinessRole } from '@/interfaces/IBusinessRole';
+import { IOrgUnit } from '@/interfaces/IOrgUnit';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const NO_DEPARTMENT_VALUE = '__none__';
+const NO_ORG_UNIT_VALUE = '__none_org_unit__';
+const NO_BUSINESS_ROLE_VALUE = '__none_business_role__';
 
 const ROLE_LABEL: Record<Role, string> = {
+  [Role.Chairperson]: 'Председатель',
+  [Role.FirstDeputy]: 'Первый заместитель',
+  [Role.Deputy]: 'Заместитель',
+  [Role.DepartmentHead]: 'Начальник управления',
+  [Role.DivisionHead]: 'Начальник отдела',
+  [Role.Analyst]: 'Аналитик',
+  [Role.Chancellery]: 'Канцелярия',
+  [Role.Employee]: 'Сотрудник',
   [Role.Admin]:   'Администратор',
   [Role.Manager]: 'Руководитель',
   [Role.Regular]: 'Сотрудник',
 };
 
 const ROLE_CLASSES: Record<Role, string> = {
+  [Role.Chairperson]: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  [Role.FirstDeputy]: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+  [Role.Deputy]: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+  [Role.DepartmentHead]: 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
+  [Role.DivisionHead]: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300',
+  [Role.Analyst]: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+  [Role.Chancellery]: 'bg-stone-100 text-stone-700 dark:bg-stone-900 dark:text-stone-300',
+  [Role.Employee]: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300',
   [Role.Admin]:   'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
   [Role.Manager]: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
   [Role.Regular]: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
@@ -60,6 +82,8 @@ type CreateUserForm = {
   position: string;
   role: Role;
   departmentId: string;
+  orgUnitId: string;
+  businessRole: string;
 };
 
 const initialCreateForm: CreateUserForm = {
@@ -69,7 +93,17 @@ const initialCreateForm: CreateUserForm = {
   position: '',
   role: Role.Regular,
   departmentId: '',
+  orgUnitId: '',
+  businessRole: '',
 };
+
+function formatOrgUnitLabel(orgUnit: IOrgUnit): string {
+  return `${orgUnit.name} (${orgUnit.type})`;
+}
+
+function formatBusinessRoleLabel(businessRole: IBusinessRole): string {
+  return `${businessRole.name} [${businessRole.defaultScope}]`;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -152,17 +186,25 @@ export default function UsersTable() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [search, setSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [orgUnitFilter, setOrgUnitFilter] = useState<string>('all');
+  const [businessRoleFilter, setBusinessRoleFilter] = useState<string>('all');
   const [pageError, setPageError] = useState<string | null>(null);
   const [busyByUserId, setBusyByUserId] = useState<Record<number, boolean>>({});
 
   const isAdmin = user?.role === Role.Admin;
   const isManager = user?.role === Role.Manager;
-  const canReadUsers = isAdmin || isManager;
+  const canReadUsers = hasAnyPermission(user, [Permission.USERS_READ]);
   const canCreateUsers = hasAnyPermission(user, [Permission.USERS_CREATE]);
   const canUpdateUsers = hasAnyPermission(user, [Permission.USERS_UPDATE]);
   const managerDepartmentId = user?.department?.id ?? null;
 
   const { data: departments = [], isError: deptError } = useDepartmentsQuery(
+    !!accessToken && canReadUsers,
+  );
+  const { data: orgUnits = [], isError: orgUnitsError } = useOrgUnitsQuery(
+    !!accessToken && canReadUsers,
+  );
+  const { data: businessRoles = [], isError: businessRolesError } = useBusinessRolesQuery(
     !!accessToken && canReadUsers,
   );
 
@@ -171,7 +213,14 @@ export default function UsersTable() {
     isLoading: usersLoading,
     isError: usersError,
   } = useUsersQuery(
-    { search, departmentId: departmentFilter, isManager, managerDepartmentId },
+    {
+      search,
+      departmentId: departmentFilter,
+      orgUnitId: orgUnitFilter,
+      businessRole: businessRoleFilter,
+      isManager,
+      managerDepartmentId,
+    },
     !!accessToken && canReadUsers,
   );
 
@@ -193,6 +242,8 @@ export default function UsersTable() {
         position: createForm.position || undefined,
         role: createForm.role,
         departmentId: createForm.departmentId ? Number(createForm.departmentId) : undefined,
+        orgUnitId: createForm.orgUnitId ? Number(createForm.orgUnitId) : undefined,
+        businessRole: createForm.businessRole || undefined,
       });
       setCreateForm({
         ...initialCreateForm,
@@ -219,6 +270,36 @@ export default function UsersTable() {
     }
   };
 
+  const onUpdateBusinessRole = async (target: IUser, businessRole: string) => {
+    setRowBusy(target.id, true);
+    setPageError(null);
+    try {
+      await updateUserMutation.mutateAsync({
+        userId: target.id,
+        data: { businessRole: businessRole || null },
+      });
+    } catch (error: unknown) {
+      setPageError(getApiErrorMessage(error, 'Не удалось обновить бизнес-роль'));
+    } finally {
+      setRowBusy(target.id, false);
+    }
+  };
+
+  const onUpdateOrgUnit = async (target: IUser, orgUnitId: string) => {
+    setRowBusy(target.id, true);
+    setPageError(null);
+    try {
+      await updateUserMutation.mutateAsync({
+        userId: target.id,
+        data: { orgUnitId: orgUnitId ? Number(orgUnitId) : null },
+      });
+    } catch (error: unknown) {
+      setPageError(getApiErrorMessage(error, 'Не удалось обновить оргединицу'));
+    } finally {
+      setRowBusy(target.id, false);
+    }
+  };
+
   const onToggleActive = async (target: IUser) => {
     if (!isAdmin) return;
     setRowBusy(target.id, true);
@@ -233,8 +314,22 @@ export default function UsersTable() {
   };
 
   const allowedCreateRoles = useMemo(() => {
-    if (isAdmin) return [Role.Regular, Role.Manager];
-    if (isManager) return [Role.Regular];
+    if (isAdmin) {
+      return [
+        Role.Admin,
+        Role.Chairperson,
+        Role.FirstDeputy,
+        Role.Deputy,
+        Role.DepartmentHead,
+        Role.DivisionHead,
+        Role.Analyst,
+        Role.Chancellery,
+        Role.Employee,
+        Role.Manager,
+        Role.Regular,
+      ];
+    }
+    if (isManager) return [Role.Employee, Role.Regular];
     return [];
   }, [isAdmin, isManager]);
 
@@ -244,7 +339,7 @@ export default function UsersTable() {
     return (
       <Card>
         <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Доступ запрещён. Только Администратор и Руководитель могут просматривать этот раздел.
+          Доступ запрещён. Для просмотра раздела требуется право `users.read`.
         </CardContent>
       </Card>
     );
@@ -283,11 +378,17 @@ export default function UsersTable() {
       </div>
 
       {/* ── Error banner ─────────────────────────────────────────────────── */}
-      {(pageError || usersError || deptError) && (
+      {(pageError || usersError || deptError || orgUnitsError || businessRolesError) && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {pageError ??
-            (usersError ? 'Не удалось загрузить список сотрудников.' : 'Не удалось загрузить подразделения.')}
+            (usersError
+              ? 'Не удалось загрузить список сотрудников.'
+              : deptError
+                ? 'Не удалось загрузить подразделения.'
+                : orgUnitsError
+                  ? 'Не удалось загрузить оргединицы.'
+                  : 'Не удалось загрузить бизнес-роли.')}
         </div>
       )}
 
@@ -387,6 +488,54 @@ export default function UsersTable() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label>Оргединица</Label>
+                <Select
+                  value={createForm.orgUnitId || NO_ORG_UNIT_VALUE}
+                  onValueChange={(v) =>
+                    setCreateForm((p) => ({
+                      ...p,
+                      orgUnitId: v === NO_ORG_UNIT_VALUE ? '' : v,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Не указано" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_ORG_UNIT_VALUE}>Не указано</SelectItem>
+                    {orgUnits.map((orgUnit) => (
+                      <SelectItem key={orgUnit.id} value={String(orgUnit.id)}>
+                        {formatOrgUnitLabel(orgUnit)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Бизнес-роль</Label>
+                <Select
+                  value={createForm.businessRole || NO_BUSINESS_ROLE_VALUE}
+                  onValueChange={(v) =>
+                    setCreateForm((p) => ({
+                      ...p,
+                      businessRole: v === NO_BUSINESS_ROLE_VALUE ? '' : v,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Не указано" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_BUSINESS_ROLE_VALUE}>Не указано</SelectItem>
+                    {businessRoles.map((businessRole) => (
+                      <SelectItem key={businessRole.id} value={businessRole.code}>
+                        {formatBusinessRoleLabel(businessRole)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-2 md:col-span-2">
                 <Button type="submit" disabled={createUserMutation.isPending} className="gap-1.5">
                   {createUserMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -434,6 +583,38 @@ export default function UsersTable() {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={orgUnitFilter}
+              onValueChange={setOrgUnitFilter}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Все оргединицы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все оргединицы</SelectItem>
+                {orgUnits.map((orgUnit) => (
+                  <SelectItem key={orgUnit.id} value={String(orgUnit.id)}>
+                    {formatOrgUnitLabel(orgUnit)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={businessRoleFilter}
+              onValueChange={setBusinessRoleFilter}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Все бизнес-роли" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все бизнес-роли</SelectItem>
+                {businessRoles.map((businessRole) => (
+                  <SelectItem key={businessRole.id} value={businessRole.code}>
+                    {businessRole.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
 
@@ -463,7 +644,11 @@ export default function UsersTable() {
                   canUpdate={canUpdateUsers}
                   isAdmin={isAdmin}
                   isBusy={!!busyByUserId[item.id]}
+                  businessRoles={businessRoles}
+                  orgUnits={orgUnits}
                   onUpdatePosition={onUpdatePosition}
+                  onUpdateBusinessRole={onUpdateBusinessRole}
+                  onUpdateOrgUnit={onUpdateOrgUnit}
                   onToggleActive={onToggleActive}
                 />
               ))}
@@ -482,14 +667,22 @@ function UserRow({
   canUpdate,
   isAdmin,
   isBusy,
+  businessRoles,
+  orgUnits,
   onUpdatePosition,
+  onUpdateBusinessRole,
+  onUpdateOrgUnit,
   onToggleActive,
 }: {
   item: IUser;
   canUpdate: boolean;
   isAdmin: boolean;
   isBusy: boolean;
+  businessRoles: IBusinessRole[];
+  orgUnits: IOrgUnit[];
   onUpdatePosition: (user: IUser, pos: string) => void;
+  onUpdateBusinessRole: (user: IUser, businessRole: string) => void;
+  onUpdateOrgUnit: (user: IUser, orgUnitId: string) => void;
   onToggleActive: (user: IUser) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -509,6 +702,8 @@ function UserRow({
             <p className="mt-0.5 text-xs text-muted-foreground">{item.email}</p>
             <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
               {item.department && <span>{item.department.name}</span>}
+              {item.orgUnit && <span>{formatOrgUnitLabel(item.orgUnit)}</span>}
+              {item.businessRole && <span>{item.businessRole}</span>}
               {item.position && <span>{item.position}</span>}
             </div>
           </div>
@@ -546,6 +741,58 @@ function UserRow({
               }}
             />
           </div>
+          {isAdmin && (
+            <div className="min-w-56 space-y-1">
+              <Label className="text-xs">Бизнес-роль</Label>
+              <Select
+                value={item.businessRole || NO_BUSINESS_ROLE_VALUE}
+                onValueChange={(value) =>
+                  onUpdateBusinessRole(
+                    item,
+                    value === NO_BUSINESS_ROLE_VALUE ? '' : value,
+                  )
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Не указано" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_BUSINESS_ROLE_VALUE}>Не указано</SelectItem>
+                  {businessRoles.map((businessRole) => (
+                    <SelectItem key={businessRole.id} value={businessRole.code}>
+                      {formatBusinessRoleLabel(businessRole)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {isAdmin && (
+            <div className="min-w-56 space-y-1">
+              <Label className="text-xs">Оргединица</Label>
+              <Select
+                value={item.orgUnit ? String(item.orgUnit.id) : NO_ORG_UNIT_VALUE}
+                onValueChange={(value) =>
+                  onUpdateOrgUnit(
+                    item,
+                    value === NO_ORG_UNIT_VALUE ? '' : value,
+                  )
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Не указано" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ORG_UNIT_VALUE}>Не указано</SelectItem>
+                  {orgUnits.map((orgUnit) => (
+                    <SelectItem key={orgUnit.id} value={String(orgUnit.id)}>
+                      {formatOrgUnitLabel(orgUnit)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {isAdmin && (
             <Button
               size="sm"

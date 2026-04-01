@@ -28,4 +28,16 @@ export class GetUsersQueryDto extends PaginationQueryDto {
   @IsInt()
   @Min(1)
   departmentId?: number;
+
+  @ApiPropertyOptional({ type: Number, description: 'Filter by org unit ID' })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  orgUnitId?: number;
+
+  @ApiPropertyOptional({ description: 'Filter by business role code' })
+  @IsOptional()
+  @IsString()
+  businessRole?: string;
 }

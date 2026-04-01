@@ -4,6 +4,7 @@ import { Brackets, Repository } from 'typeorm';
 import { Document } from './entities/document.entity';
 import { User } from '../users/entities/user.entity';
 import { Department } from '../department/entities/department.entity';
+import { OrgUnit } from '../iam/entities/org-unit.entity';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
@@ -23,12 +24,18 @@ export class DocumentService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Department)
     private readonly departmentRepo: Repository<Department>,
+    @InjectRepository(OrgUnit)
+    private readonly orgUnitRepo: Repository<OrgUnit>,
     private readonly scopeService: ScopeService,
     private readonly fileAttachmentsService: FileAttachmentsService,
   ) {}
 
-  async create(dto: CreateDocumentDto, senderId: number): Promise<Document> {
-    const sender = await this.userRepo.findOneBy({ id: senderId });
+  async create(dto: CreateDocumentDto, actor: ActiveUserData): Promise<Document> {
+    const senderId = actor.sub;
+    const sender = await this.userRepo.findOne({
+      where: { id: senderId },
+      relations: { department: true, orgUnit: true },
+    });
     if (!sender) throw new NotFoundException('Sender not found');
 
     const doc = this.documentRepo.create({
@@ -42,8 +49,12 @@ export class DocumentService {
     });
 
     if (dto.receiverId) {
-      const receiver = await this.userRepo.findOneBy({ id: dto.receiverId });
+      const receiver = await this.userRepo.findOne({
+        where: { id: dto.receiverId },
+        relations: { department: true, orgUnit: true },
+      });
       if (!receiver) throw new NotFoundException('Receiver not found');
+      this.scopeService.assertUserScope(actor, receiver);
       doc.receiver = receiver;
     }
 
@@ -53,6 +64,15 @@ export class DocumentService {
       });
       if (!dept) throw new NotFoundException('Department not found');
       doc.department = dept;
+    }
+
+    if (dto.orgUnitId) {
+      const orgUnit = await this.orgUnitRepo.findOneBy({ id: dto.orgUnitId });
+      if (!orgUnit) throw new NotFoundException('Org unit not found');
+      await this.scopeService.assertOrgUnitScope(actor, orgUnit.id);
+      doc.orgUnit = orgUnit;
+    } else {
+      doc.orgUnit = sender.orgUnit ?? doc.receiver?.orgUnit ?? null;
     }
 
     return this.documentRepo.save(doc);
@@ -71,9 +91,12 @@ export class DocumentService {
       .createQueryBuilder('document')
       .leftJoinAndSelect('document.sender', 'sender')
       .leftJoinAndSelect('sender.department', 'senderDepartment')
+      .leftJoinAndSelect('sender.orgUnit', 'senderOrgUnit')
       .leftJoinAndSelect('document.receiver', 'receiver')
       .leftJoinAndSelect('receiver.department', 'receiverDepartment')
+      .leftJoinAndSelect('receiver.orgUnit', 'receiverOrgUnit')
       .leftJoinAndSelect('document.department', 'department')
+      .leftJoinAndSelect('document.orgUnit', 'documentOrgUnit')
       .orderBy('document.createdAt', 'DESC');
 
     if (query.type) {
@@ -96,10 +119,19 @@ export class DocumentService {
       );
     }
 
+    if (query.orgUnitId) {
+      qb.andWhere('documentOrgUnit.id = :orgUnitId', {
+        orgUnitId: Number(query.orgUnitId),
+      });
+    }
+
     this.scopeService.applyDocumentScope(qb, actor, {
       senderAlias: 'sender',
       receiverAlias: 'receiver',
       departmentAlias: 'department',
+      documentOrgUnitPathAlias: 'documentOrgUnit.path',
+      senderOrgUnitPathAlias: 'senderOrgUnit.path',
+      receiverOrgUnitPathAlias: 'receiverOrgUnit.path',
     });
 
     const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
@@ -115,9 +147,10 @@ export class DocumentService {
     const doc = await this.documentRepo.findOne({
       where: { id },
       relations: {
-        sender: { department: true },
-        receiver: { department: true },
+        sender: { department: true, orgUnit: true },
+        receiver: { department: true, orgUnit: true },
         department: true,
+        orgUnit: true,
       },
     });
     if (!doc) throw new NotFoundException('Document not found');
@@ -133,17 +166,22 @@ export class DocumentService {
     const doc = await this.documentRepo.findOne({
       where: { id },
       relations: {
-        sender: { department: true },
-        receiver: { department: true },
+        sender: { department: true, orgUnit: true },
+        receiver: { department: true, orgUnit: true },
         department: true,
+        orgUnit: true,
       },
     });
     if (!doc) throw new NotFoundException('Document not found');
     this.scopeService.assertDocumentScope(actor, doc);
 
     if (dto.receiverId) {
-      const receiver = await this.userRepo.findOneBy({ id: dto.receiverId });
+      const receiver = await this.userRepo.findOne({
+        where: { id: dto.receiverId },
+        relations: { department: true, orgUnit: true },
+      });
       if (!receiver) throw new NotFoundException('Receiver not found');
+      this.scopeService.assertUserScope(actor, receiver);
       doc.receiver = receiver;
     }
 
@@ -153,6 +191,13 @@ export class DocumentService {
       });
       if (!dept) throw new NotFoundException('Department not found');
       doc.department = dept;
+    }
+
+    if (dto.orgUnitId) {
+      const orgUnit = await this.orgUnitRepo.findOneBy({ id: dto.orgUnitId });
+      if (!orgUnit) throw new NotFoundException('Org unit not found');
+      await this.scopeService.assertOrgUnitScope(actor, orgUnit.id);
+      doc.orgUnit = orgUnit;
     }
 
     if (dto.title) doc.title = dto.title;
@@ -169,9 +214,10 @@ export class DocumentService {
     const doc = await this.documentRepo.findOne({
       where: { id },
       relations: {
-        sender: true,
-        receiver: true,
+        sender: { orgUnit: true },
+        receiver: { orgUnit: true },
         department: true,
+        orgUnit: true,
       },
     });
     if (!doc) throw new NotFoundException('Document not found');

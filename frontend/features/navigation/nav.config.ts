@@ -119,6 +119,8 @@ export const navItems: NavItem[] = [
     title: 'Аналитика',
     url: '/dashboard/analytics',
     icon: BarChart3,
+    policyKey: 'dashboard.analytics',
+    requiredAnyPermissions: analyticsPolicy.anyPermissions,
     items: [
       { title: 'Обзор', url: '/dashboard/analytics' },
       { title: 'ГИС карта', url: '/dashboard/analytics/map' },

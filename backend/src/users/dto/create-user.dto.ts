@@ -6,6 +6,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Role } from '../enums/role.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -41,6 +42,18 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({ type: Number, example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   departmentId?: number;
+
+  @ApiPropertyOptional({ type: Number, example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  orgUnitId?: number;
+
+  @ApiPropertyOptional({ example: 'Analyst' })
+  @IsOptional()
+  @IsString()
+  businessRole?: string;
 }

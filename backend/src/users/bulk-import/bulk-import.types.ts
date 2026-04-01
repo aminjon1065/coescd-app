@@ -7,6 +7,8 @@ export type BulkImportRow = {
   name: string;
   role: Role;
   departmentId: number | null;
+  orgUnitId: number | null;
+  businessRole: string | null;
   position: string | null;
   isActive: boolean;
   permissions: PermissionType[];

@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsEmail, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { Role } from '../enums/role.enum';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -30,6 +31,18 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({ type: Number, example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   departmentId?: number;
+
+  @ApiPropertyOptional({ type: Number, example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  orgUnitId?: number;
+
+  @ApiPropertyOptional({ example: 'Department Head' })
+  @IsOptional()
+  @IsString()
+  businessRole?: string;
 }

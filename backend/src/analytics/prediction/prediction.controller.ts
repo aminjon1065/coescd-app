@@ -5,9 +5,12 @@ import { PredictionService } from './prediction.service';
 import { PredictDisastersDto } from './dto/predict-disasters.dto';
 import { Permissions } from '../../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../../iam/authorization/permission.type';
+import { Roles } from '../../iam/authorization/decorators/roles.decorator';
+import { Role } from '../../users/enums/role.enum';
 
 @ApiTags('Prediction')
 @ApiBearerAuth()
+@Roles(Role.Admin, Role.Analyst)
 @Controller('analytics/prediction')
 export class PredictionController {
   constructor(private readonly predictionService: PredictionService) {}

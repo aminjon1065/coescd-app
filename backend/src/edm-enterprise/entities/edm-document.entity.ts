@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Department } from '../../department/entities/department.entity';
+import { OrgUnit } from '../../iam/entities/org-unit.entity';
 import { EdmV2DocumentVersion } from './edm-document-version.entity';
 import { EdmV2DocumentPermission } from './edm-document-permission.entity';
 import { EdmV2WorkflowInstance } from './edm-workflow-instance.entity';
@@ -51,6 +52,13 @@ export class EdmV2Document {
 
   @Column({ name: 'department_id', nullable: true })
   departmentId: number | null;
+
+  @ManyToOne(() => OrgUnit, { nullable: true, eager: false })
+  @JoinColumn({ name: 'org_unit_id' })
+  orgUnit: OrgUnit | null;
+
+  @Column({ name: 'org_unit_id', nullable: true })
+  orgUnitId: number | null;
 
   @Column({ name: 'current_version', default: 1 })
   currentVersion: number;

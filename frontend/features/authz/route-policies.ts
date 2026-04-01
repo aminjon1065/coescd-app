@@ -8,7 +8,7 @@ export type RoutePolicy = {
 
 export const ROUTE_POLICIES = {
   'dashboard.analytics': {
-    anyPermissions: ['analytics.read', 'reports.read'],
+    anyPermissions: ['analytics.read'],
   },
   'dashboard.tasks': {
     anyPermissions: ['tasks.read'],
@@ -38,7 +38,6 @@ export const ROUTE_POLICIES = {
     roles: [Role.Admin],
   },
   'dashboard.users': {
-    roles: [Role.Admin, Role.Manager],
     allPermissions: ['users.read'],
   },
   'dashboard.users.import': {

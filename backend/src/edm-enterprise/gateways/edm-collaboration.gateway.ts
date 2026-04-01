@@ -15,8 +15,7 @@ import { JwtService } from '@nestjs/jwt';
 import jwtConfig from '../../iam/config/jwt.config';
 import type { ConfigType } from '@nestjs/config';
 import type { ActiveUserData } from '../../iam/interfaces/activate-user-data.interface';
-import { EdmDocumentsService } from '../services/edm-documents.service';
-import { EdmVersionsService } from '../services/edm-versions.service';
+import { DocumentsFacade } from '../../modules/documents/documents.facade';
 
 /**
  * Real-time collaboration gateway for enterprise documents.
@@ -63,8 +62,7 @@ export class EdmCollaborationGateway
   private presenceMap = new Map<string, Map<number, { name: string; socketId: string; status: string }>>();
 
   constructor(
-    private readonly documentsService: EdmDocumentsService,
-    private readonly versionsService: EdmVersionsService,
+    private readonly documentsFacade: DocumentsFacade,
     private readonly jwtService: JwtService,
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
@@ -111,8 +109,8 @@ export class EdmCollaborationGateway
 
     try {
       // Load document and latest content
-      const doc = await this.documentsService.findById(docId);
-      const version = await this.versionsService.getLatest(docId);
+      const doc = await this.documentsFacade.enterprise.findById(docId, user);
+      const version = await this.documentsFacade.enterprise.getLatestVersion(docId);
 
       // Join socket.io room
       await client.join(`doc:${docId}`);
@@ -155,7 +153,9 @@ export class EdmCollaborationGateway
     }
 
     // Auto-save to database (fire-and-forget)
-    this.versionsService.save(docId, content, user.sub, 'auto_save').catch(() => {});
+    this.documentsFacade.enterprise
+      .saveContent(docId, user, content, true)
+      .catch(() => {});
 
     // Broadcast to all OTHER clients in the room
     client.to(`doc:${docId}`).emit('collab:content', {

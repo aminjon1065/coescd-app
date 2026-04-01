@@ -19,7 +19,6 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { EdmService } from './edm.service';
 import { Permissions } from '../iam/authorization/decorators/permissions.decorator';
 import { Permission } from '../iam/authorization/permission.type';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
@@ -70,12 +69,13 @@ import {
   UpdateDocumentTemplateDto,
 } from './dto/document-template.dto';
 import { EdmDashboardQueryDto, EdmReportsQueryDto } from './dto/reports.dto';
+import { DocumentsFacade } from '../modules/documents/documents.facade';
 
 @ApiTags('EDM')
 @ApiBearerAuth()
 @Controller('edm')
 export class EdmController {
-  constructor(private readonly edmService: EdmService) {}
+  constructor(private readonly documentsFacade: DocumentsFacade) {}
 
   @Post('document-kinds')
   @Permissions(Permission.DOCUMENTS_TEMPLATES_WRITE)
@@ -87,7 +87,7 @@ export class EdmController {
     @Body() dto: CreateDocumentKindDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.createDocumentKind(dto, actor);
+    return this.documentsFacade.edm.createDocumentKind(dto, actor);
   }
 
   @Get('document-kinds')
@@ -97,7 +97,7 @@ export class EdmController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   listDocumentKinds(@Query() query: GetDocumentKindsQueryDto) {
-    return this.edmService.listDocumentKinds(query);
+    return this.documentsFacade.edm.listDocumentKinds(query);
   }
 
   @Get('document-kinds/:id')
@@ -109,7 +109,7 @@ export class EdmController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Not found' })
   findDocumentKind(@Param('id', ParseIntPipe) id: number) {
-    return this.edmService.findDocumentKind(id);
+    return this.documentsFacade.edm.findDocumentKind(id);
   }
 
   @Patch('document-kinds/:id')
@@ -125,7 +125,7 @@ export class EdmController {
     @Body() dto: UpdateDocumentKindDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.updateDocumentKind(id, dto, actor);
+    return this.documentsFacade.edm.updateDocumentKind(id, dto, actor);
   }
 
   @Delete('document-kinds/:id')
@@ -140,7 +140,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    await this.edmService.deleteDocumentKind(id, actor);
+    await this.documentsFacade.edm.deleteDocumentKind(id, actor);
     return { deleted: true };
   }
 
@@ -154,7 +154,7 @@ export class EdmController {
     @Body() dto: CreateDocumentTemplateDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.createDocumentTemplate(dto, actor);
+    return this.documentsFacade.edm.createDocumentTemplate(dto, actor);
   }
 
   @Get('document-templates')
@@ -167,7 +167,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetDocumentTemplatesQueryDto,
   ) {
-    return this.edmService.listDocumentTemplates(actor, query);
+    return this.documentsFacade.edm.listDocumentTemplates(actor, query);
   }
 
   @Get('document-templates/:id')
@@ -182,7 +182,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.findDocumentTemplate(id, actor);
+    return this.documentsFacade.edm.findDocumentTemplate(id, actor);
   }
 
   @Patch('document-templates/:id')
@@ -198,7 +198,7 @@ export class EdmController {
     @Body() dto: UpdateDocumentTemplateDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.updateDocumentTemplate(id, dto, actor);
+    return this.documentsFacade.edm.updateDocumentTemplate(id, dto, actor);
   }
 
   @Delete('document-templates/:id')
@@ -213,7 +213,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    await this.edmService.deleteDocumentTemplate(id, actor);
+    await this.documentsFacade.edm.deleteDocumentTemplate(id, actor);
     return { deleted: true };
   }
 
@@ -227,7 +227,7 @@ export class EdmController {
     @Body() dto: CreateRouteTemplateDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.createRouteTemplate(dto, actor);
+    return this.documentsFacade.edm.createRouteTemplate(dto, actor);
   }
 
   @Get('route-templates')
@@ -240,7 +240,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetRouteTemplatesQueryDto,
   ) {
-    return this.edmService.listRouteTemplates(actor, query);
+    return this.documentsFacade.edm.listRouteTemplates(actor, query);
   }
 
   @Get('route-templates/:id')
@@ -255,7 +255,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.findRouteTemplate(id, actor);
+    return this.documentsFacade.edm.findRouteTemplate(id, actor);
   }
 
   @Patch('route-templates/:id')
@@ -271,7 +271,7 @@ export class EdmController {
     @Body() dto: UpdateRouteTemplateDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.updateRouteTemplate(id, dto, actor);
+    return this.documentsFacade.edm.updateRouteTemplate(id, dto, actor);
   }
 
   @Delete('route-templates/:id')
@@ -286,7 +286,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    await this.edmService.deleteRouteTemplate(id, actor);
+    await this.documentsFacade.edm.deleteRouteTemplate(id, actor);
     return { deleted: true };
   }
 
@@ -302,7 +302,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.registerDocument(id, actor);
+    return this.documentsFacade.edm.registerDocument(id, actor);
   }
 
   @Patch('documents/:id/registration-status')
@@ -318,7 +318,7 @@ export class EdmController {
     @Body() dto: UpdateRegistrationStatusDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.updateRegistrationStatus(id, dto, actor);
+    return this.documentsFacade.edm.updateRegistrationStatus(id, dto, actor);
   }
 
   @Get('registration-journal')
@@ -331,7 +331,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetRegistrationJournalQueryDto,
   ) {
-    return this.edmService.listRegistrationJournal(actor, query);
+    return this.documentsFacade.edm.listRegistrationJournal(actor, query);
   }
 
   @Post('documents/:id/resolution-tasks')
@@ -347,7 +347,7 @@ export class EdmController {
     @Body() dto: CreateResolutionTasksDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.createResolutionTasks(id, dto, actor);
+    return this.documentsFacade.edm.createResolutionTasks(id, dto, actor);
   }
 
   @Get('documents/:id/tasks')
@@ -362,7 +362,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.listDocumentTasks(id, actor);
+    return this.documentsFacade.edm.listDocumentTasks(id, actor);
   }
 
   @Get('documents/:id/task-progress')
@@ -377,7 +377,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.getDocumentTaskProgress(id, actor);
+    return this.documentsFacade.edm.getDocumentTaskProgress(id, actor);
   }
 
   @Post('alerts/process')
@@ -387,7 +387,7 @@ export class EdmController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   processDeadlineAlerts(@ActiveUser() actor: ActiveUserData) {
-    return this.edmService.processDeadlineAlerts(actor);
+    return this.documentsFacade.edm.processDeadlineAlerts(actor);
   }
 
   @Get('alerts/my')
@@ -400,7 +400,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetAlertsQueryDto,
   ) {
-    return this.edmService.listMyAlerts(actor, query);
+    return this.documentsFacade.edm.listMyAlerts(actor, query);
   }
 
   @Patch('alerts/:id/ack')
@@ -415,7 +415,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.acknowledgeAlert(id, actor);
+    return this.documentsFacade.edm.acknowledgeAlert(id, actor);
   }
 
   @Post('saved-filters')
@@ -428,7 +428,7 @@ export class EdmController {
     @Body() dto: CreateSavedFilterDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.createSavedFilter(dto, actor);
+    return this.documentsFacade.edm.createSavedFilter(dto, actor);
   }
 
   @Get('saved-filters')
@@ -441,7 +441,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetSavedFiltersQueryDto,
   ) {
-    return this.edmService.listSavedFilters(actor, query);
+    return this.documentsFacade.edm.listSavedFilters(actor, query);
   }
 
   @Patch('saved-filters/:id')
@@ -457,7 +457,7 @@ export class EdmController {
     @Body() dto: UpdateSavedFilterDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.updateSavedFilter(id, dto, actor);
+    return this.documentsFacade.edm.updateSavedFilter(id, dto, actor);
   }
 
   @Delete('saved-filters/:id')
@@ -472,7 +472,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    await this.edmService.deleteSavedFilter(id, actor);
+    await this.documentsFacade.edm.deleteSavedFilter(id, actor);
     return { deleted: true };
   }
 
@@ -486,7 +486,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
   ) {
-    return this.edmService.getSlaReport(actor, query);
+    return this.documentsFacade.edm.getSlaReport(actor, query);
   }
 
   @Get('reports/sla/export')
@@ -503,7 +503,7 @@ export class EdmController {
     const fileName = `edm-sla-report-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportSlaReportCsv(actor, query);
+    return this.documentsFacade.edm.exportSlaReportCsv(actor, query);
   }
 
   @Get('reports/sla/export/xlsx')
@@ -523,7 +523,7 @@ export class EdmController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportSlaReportXlsx(actor, query);
+    return this.documentsFacade.edm.exportSlaReportXlsx(actor, query);
   }
 
   @Get('reports/overdue')
@@ -536,7 +536,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
   ) {
-    return this.edmService.getOverdueReport(actor, query);
+    return this.documentsFacade.edm.getOverdueReport(actor, query);
   }
 
   @Get('reports/overdue/export')
@@ -553,7 +553,7 @@ export class EdmController {
     const fileName = `edm-overdue-report-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportOverdueReportCsv(actor, query);
+    return this.documentsFacade.edm.exportOverdueReportCsv(actor, query);
   }
 
   @Get('reports/overdue/export/xlsx')
@@ -573,7 +573,7 @@ export class EdmController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportOverdueReportXlsx(actor, query);
+    return this.documentsFacade.edm.exportOverdueReportXlsx(actor, query);
   }
 
   @Get('reports/workload')
@@ -586,7 +586,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmReportsQueryDto,
   ) {
-    return this.edmService.getWorkloadReport(actor, query);
+    return this.documentsFacade.edm.getWorkloadReport(actor, query);
   }
 
   @Get('reports/workload/export')
@@ -603,7 +603,7 @@ export class EdmController {
     const fileName = `edm-workload-report-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportWorkloadReportCsv(actor, query);
+    return this.documentsFacade.edm.exportWorkloadReportCsv(actor, query);
   }
 
   @Get('reports/workload/export/xlsx')
@@ -623,7 +623,7 @@ export class EdmController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportWorkloadReportXlsx(actor, query);
+    return this.documentsFacade.edm.exportWorkloadReportXlsx(actor, query);
   }
 
   @Get('reports/dashboard')
@@ -636,7 +636,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: EdmDashboardQueryDto,
   ) {
-    return this.edmService.getDashboardSummary(actor, query);
+    return this.documentsFacade.edm.getDashboardSummary(actor, query);
   }
 
   @Post('documents')
@@ -649,7 +649,7 @@ export class EdmController {
     @Body() dto: CreateEdmDocumentDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.createDraft(dto, actor);
+    return this.documentsFacade.edm.createDraft(dto, actor);
   }
 
   @Patch('documents/:id')
@@ -665,7 +665,7 @@ export class EdmController {
     @Body() dto: UpdateEdmDocumentDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.updateDraft(id, dto, actor);
+    return this.documentsFacade.edm.updateDraft(id, dto, actor);
   }
 
   @Post('documents/:id/submit')
@@ -681,7 +681,7 @@ export class EdmController {
     @Body() dto: SubmitEdmDocumentDto,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.submitToRoute(id, dto, actor);
+    return this.documentsFacade.edm.submitToRoute(id, dto, actor);
   }
 
   @Post('documents/:id/stages/:stageId/actions')
@@ -700,7 +700,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.executeStageAction(
+    return this.documentsFacade.edm.executeStageAction(
       id,
       stageId,
       dto,
@@ -723,7 +723,12 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.override(id, dto, actor, getRequestMeta(request));
+    return this.documentsFacade.edm.override(
+      id,
+      dto,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Post('documents/:id/archive')
@@ -738,7 +743,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.archive(id, actor);
+    return this.documentsFacade.edm.archive(id, actor);
   }
 
   @Get('documents')
@@ -751,7 +756,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmDocumentsQueryDto,
   ) {
-    return this.edmService.findAll(actor, query);
+    return this.documentsFacade.edm.findAll(actor, query);
   }
 
   @Get('documents/:id')
@@ -766,7 +771,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.findOne(id, actor);
+    return this.documentsFacade.edm.findOne(id, actor);
   }
 
   @Get('queues/inbox')
@@ -779,7 +784,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
   ) {
-    return this.edmService.listQueue('inbox', actor, query);
+    return this.documentsFacade.edm.listQueue('inbox', actor, query);
   }
 
   @Get('queues/outbox')
@@ -792,7 +797,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
   ) {
-    return this.edmService.listQueue('outbox', actor, query);
+    return this.documentsFacade.edm.listQueue('outbox', actor, query);
   }
 
   @Get('queues/my-approvals')
@@ -805,7 +810,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
   ) {
-    return this.edmService.listQueue('my-approvals', actor, query);
+    return this.documentsFacade.edm.listQueue('my-approvals', actor, query);
   }
 
   @Get('mailboxes/incoming')
@@ -818,7 +823,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
   ) {
-    return this.edmService.listMailbox('incoming', actor, query);
+    return this.documentsFacade.edm.listMailbox('incoming', actor, query);
   }
 
   @Get('mailboxes/outgoing')
@@ -831,7 +836,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetEdmQueueQueryDto,
   ) {
-    return this.edmService.listMailbox('outgoing', actor, query);
+    return this.documentsFacade.edm.listMailbox('outgoing', actor, query);
   }
 
   @Get('documents/:id/route')
@@ -846,7 +851,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.findRoute(id, actor);
+    return this.documentsFacade.edm.findRoute(id, actor);
   }
 
   @Get('documents/:id/audit')
@@ -862,7 +867,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetDocumentAuditQueryDto,
   ) {
-    return this.edmService.findAudit(id, actor, query);
+    return this.documentsFacade.edm.findAudit(id, actor, query);
   }
 
   @Get('documents/:id/audit/export')
@@ -882,7 +887,7 @@ export class EdmController {
     const fileName = `edm-document-${id}-audit-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportDocumentAuditCsv(id, actor, query);
+    return this.documentsFacade.edm.exportDocumentAuditCsv(id, actor, query);
   }
 
   @Get('documents/:id/audit/export/xlsx')
@@ -905,7 +910,7 @@ export class EdmController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportDocumentAuditXlsx(id, actor, query);
+    return this.documentsFacade.edm.exportDocumentAuditXlsx(id, actor, query);
   }
 
   @Get('documents/:id/history')
@@ -921,7 +926,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Query() query: GetDocumentHistoryQueryDto,
   ) {
-    return this.edmService.findHistory(id, actor, query);
+    return this.documentsFacade.edm.findHistory(id, actor, query);
   }
 
   @Get('documents/:id/history/export')
@@ -941,7 +946,7 @@ export class EdmController {
     const fileName = `edm-document-${id}-history-${new Date().toISOString().slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportDocumentHistoryCsv(id, actor, query);
+    return this.documentsFacade.edm.exportDocumentHistoryCsv(id, actor, query);
   }
 
   @Get('documents/:id/history/export/xlsx')
@@ -964,7 +969,7 @@ export class EdmController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return this.edmService.exportDocumentHistoryXlsx(id, actor, query);
+    return this.documentsFacade.edm.exportDocumentHistoryXlsx(id, actor, query);
   }
 
   @Post('documents/:id/forward')
@@ -981,7 +986,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.forwardDocument(
+    return this.documentsFacade.edm.forwardDocument(
       id,
       dto,
       actor,
@@ -1003,7 +1008,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.assignResponsible(
+    return this.documentsFacade.edm.assignResponsible(
       id,
       dto,
       actor,
@@ -1025,7 +1030,12 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.createReply(id, dto, actor, getRequestMeta(request));
+    return this.documentsFacade.edm.createReply(
+      id,
+      dto,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Get('documents/:id/replies')
@@ -1040,7 +1050,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.listReplies(id, actor);
+    return this.documentsFacade.edm.listReplies(id, actor);
   }
 
   @Get('documents/:id/files')
@@ -1055,7 +1065,7 @@ export class EdmController {
     @Param('id', ParseIntPipe) id: number,
     @ActiveUser() actor: ActiveUserData,
   ) {
-    return this.edmService.findFiles(id, actor);
+    return this.documentsFacade.edm.findFiles(id, actor);
   }
 
   @Post('documents/:id/files/:fileId')
@@ -1073,7 +1083,12 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.linkFile(id, fileId, actor, getRequestMeta(request));
+    return this.documentsFacade.edm.linkFile(
+      id,
+      fileId,
+      actor,
+      getRequestMeta(request),
+    );
   }
 
   @Delete('documents/:id/files/:fileId')
@@ -1091,7 +1106,7 @@ export class EdmController {
     @ActiveUser() actor: ActiveUserData,
     @Req() request: Request,
   ) {
-    return this.edmService.unlinkFile(
+    return this.documentsFacade.edm.unlinkFile(
       id,
       fileId,
       actor,

@@ -9,6 +9,6 @@ export const operationsZoneNavigation: ZoneNavigationGroup = {
     { url: '/dashboard/documentation', requiredAnyPermissions: [Permission.DOCUMENTS_READ] },
     { url: '/dashboard/tasks', requiredAnyPermissions: [Permission.TASKS_READ] },
     { url: '/dashboard/files', requiredAnyPermissions: [Permission.FILES_READ] },
+    { url: '/dashboard/gis', requiredAnyPermissions: [Permission.GIS_READ, Permission.GIS_WRITE] },
   ],
 };
-

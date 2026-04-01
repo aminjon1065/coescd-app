@@ -45,6 +45,10 @@ import { BusinessRolePermissionProfile } from './authorization/entities/business
 import { DelegationContextService } from './authentication/delegation-context.service';
 import { DelegationValidationMiddleware } from './authentication/middleware/delegation-validation.middleware';
 import { EnterpriseIamSeed } from './seeds/enterprise.seed';
+import { OrgUnitsController } from './org-units/org-units.controller';
+import { OrgUnitsService } from './org-units/org-units.service';
+import { BusinessRolesController } from './business-roles/business-roles.controller';
+import { BusinessRolesService } from './business-roles/business-roles.service';
 
 @Module({
   imports: [
@@ -58,6 +62,7 @@ import { EnterpriseIamSeed } from './seeds/enterprise.seed';
       BusinessRoleEntity,
       BusinessRolePermissionProfile,
       OrgUnit,
+      User,
       IamDelegation,
       FileAccessAuditEntity,
       UserChangeAuditLog,
@@ -88,6 +93,8 @@ import { EnterpriseIamSeed } from './seeds/enterprise.seed';
     DelegationContextService,
     RolePermissionsService,
     AuditLogsAdminService,
+    OrgUnitsService,
+    BusinessRolesService,
   ],
   exports: [
     JwtModule,
@@ -101,6 +108,8 @@ import { EnterpriseIamSeed } from './seeds/enterprise.seed';
     AuthenticationController,
     AuthorizationAdminController,
     AuditLogsAdminController,
+    OrgUnitsController,
+    BusinessRolesController,
   ],
 })
 export class IamModule implements NestModule {

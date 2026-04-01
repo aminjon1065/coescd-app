@@ -12,6 +12,8 @@ import { HashingService } from '../../iam/hashing/hashing.service';
 import { Permission } from '../../iam/authorization/permission.type';
 import type { PermissionType } from '../../iam/authorization/permission.type';
 import type { ActiveUserData } from '../../iam/interfaces/activate-user-data.interface';
+import { OrgUnit } from '../../iam/entities/org-unit.entity';
+import { BusinessRoleEntity } from '../../iam/authorization/entities/business-role.entity';
 import { UserChangeAuditLog } from '../entities/user-change-audit-log.entity';
 import { User } from '../entities/user.entity';
 import { Role } from '../enums/role.enum';
@@ -65,6 +67,10 @@ export class UsersBulkImportService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
+    @InjectRepository(OrgUnit)
+    private readonly orgUnitRepository: Repository<OrgUnit>,
+    @InjectRepository(BusinessRoleEntity)
+    private readonly businessRoleRepository: Repository<BusinessRoleEntity>,
     @InjectRepository(UserChangeAuditLog)
     private readonly userChangeAuditRepository: Repository<UserChangeAuditLog>,
     @InjectRepository(BulkImportOperation)
@@ -88,8 +94,14 @@ export class UsersBulkImportService {
     }
 
     const departments = await this.departmentRepository.find();
+    const orgUnits = await this.orgUnitRepository.find({
+      relations: { parent: true },
+    });
+    const businessRoles = await this.businessRoleRepository.find({
+      where: { isActive: true },
+    });
     const users = await this.userRepository.find({
-      relations: { department: true },
+      relations: { department: true, orgUnit: true },
     });
     const userIndex = this.toUserIndex(users);
 
@@ -207,6 +219,30 @@ export class UsersBulkImportService {
         );
       }
 
+      const orgUnit = this.resolveOrgUnit(record, orgUnits);
+      if (orgUnit.error) {
+        rowErrors.push(
+          this.err(
+            rowNumber,
+            orgUnit.field,
+            'org_unit_not_found',
+            orgUnit.error,
+          ),
+        );
+      }
+
+      const businessRole = this.resolveBusinessRole(record, businessRoles);
+      if (businessRole.error) {
+        rowErrors.push(
+          this.err(
+            rowNumber,
+            businessRole.field,
+            'business_role_not_found',
+            businessRole.error,
+          ),
+        );
+      }
+
       const permissions: PermissionType[] = [];
       if ((record.permissions ?? '').trim()) {
         const parsed = record.permissions
@@ -251,6 +287,8 @@ export class UsersBulkImportService {
         name,
         role,
         departmentId: department.value?.id ?? null,
+        orgUnitId: orgUnit.value?.id ?? null,
+        businessRole: businessRole.value?.code ?? null,
         position,
         isActive,
         permissions,
@@ -353,12 +391,16 @@ export class UsersBulkImportService {
     }
 
     const users = await this.userRepository.find({
-      relations: { department: true },
+      relations: { department: true, orgUnit: true },
     });
     const userIndex = this.toUserIndex(users);
     const departments = await this.departmentRepository.find();
+    const orgUnits = await this.orgUnitRepository.find();
     const departmentIndex = new Map<number, Department>(
       departments.map((department) => [department.id, department]),
+    );
+    const orgUnitIndex = new Map<number, OrgUnit>(
+      orgUnits.map((orgUnit) => [orgUnit.id, orgUnit]),
     );
 
     const summary = {
@@ -375,6 +417,9 @@ export class UsersBulkImportService {
         const department = row.departmentId
           ? (departmentIndex.get(row.departmentId) ?? null)
           : null;
+        const orgUnit = row.orgUnitId
+          ? (orgUnitIndex.get(row.orgUnitId) ?? null)
+          : null;
 
         if (!existing) {
           const created = this.userRepository.create({
@@ -386,6 +431,8 @@ export class UsersBulkImportService {
             permissions: row.permissions,
             isActive: row.isActive,
             department: department ?? undefined,
+            orgUnit: orgUnit ?? undefined,
+            businessRole: row.businessRole,
           });
           const saved = await this.userRepository.save(created);
           userIndex.set(saved.email.toLowerCase(), saved);
@@ -411,6 +458,14 @@ export class UsersBulkImportService {
         }
         if ((existing.department?.id ?? null) !== (department?.id ?? null)) {
           existing.department = department;
+          changed = true;
+        }
+        if ((existing.orgUnit?.id ?? null) !== (orgUnit?.id ?? null)) {
+          existing.orgUnit = orgUnit;
+          changed = true;
+        }
+        if ((existing.businessRole ?? null) !== row.businessRole) {
+          existing.businessRole = row.businessRole;
           changed = true;
         }
         if (session.allowRoleUpdate && existing.role !== row.role) {
@@ -674,6 +729,8 @@ export class UsersBulkImportService {
         existing.role === row.role &&
         existing.isActive === row.isActive &&
         (existing.department?.id ?? null) === row.departmentId &&
+        (existing.orgUnit?.id ?? null) === row.orgUnitId &&
+        (existing.businessRole ?? null) === row.businessRole &&
         [...(existing.permissions ?? [])].sort().join(',') ===
           [...row.permissions].sort().join(',');
       if (noChange) {
@@ -738,6 +795,86 @@ export class UsersBulkImportService {
     }
 
     return { value: null as Department | null };
+  }
+
+  private resolveOrgUnit(record: Record<string, string>, orgUnits: OrgUnit[]) {
+    const byId = (record.org_unit_id ?? '').trim();
+    const byPath = (record.org_unit_path ?? '').trim();
+    const byName = (record.org_unit_name ?? '').trim();
+
+    if (byId) {
+      const id = Number(byId);
+      if (!Number.isFinite(id) || id <= 0) {
+        return {
+          field: 'org_unit_id',
+          error: 'org_unit_id must be positive integer',
+        };
+      }
+      const orgUnit = orgUnits.find((item) => item.id === id);
+      if (!orgUnit) {
+        return {
+          field: 'org_unit_id',
+          error: `Org unit with id ${id} not found`,
+        };
+      }
+      return { value: orgUnit };
+    }
+
+    if (byPath) {
+      const orgUnit = orgUnits.find(
+        (item) => (item.path ?? '').toLowerCase() === byPath.toLowerCase(),
+      );
+      if (!orgUnit) {
+        return {
+          field: 'org_unit_path',
+          error: `Org unit with path '${byPath}' not found`,
+        };
+      }
+      return { value: orgUnit };
+    }
+
+    if (byName) {
+      const exactMatches = orgUnits.filter(
+        (item) => item.name.toLowerCase() === byName.toLowerCase(),
+      );
+      if (exactMatches.length === 1) {
+        return { value: exactMatches[0] };
+      }
+      if (exactMatches.length > 1) {
+        return {
+          field: 'org_unit_name',
+          error: `Org unit name '${byName}' is ambiguous; use org_unit_id or org_unit_path`,
+        };
+      }
+      return {
+        field: 'org_unit_name',
+        error: `Org unit '${byName}' not found`,
+      };
+    }
+
+    return { value: null as OrgUnit | null };
+  }
+
+  private resolveBusinessRole(
+    record: Record<string, string>,
+    businessRoles: BusinessRoleEntity[],
+  ) {
+    const code = (record.business_role ?? '').trim();
+    if (!code) {
+      return { value: null as BusinessRoleEntity | null };
+    }
+
+    const businessRole = businessRoles.find(
+      (item) => item.code.toLowerCase() === code.toLowerCase(),
+    );
+    if (!businessRole) {
+      return {
+        field: 'business_role',
+        error: `Business role '${code}' not found`,
+      };
+    }
+
+    return { value: businessRole };
   }
 
   private toRecord(

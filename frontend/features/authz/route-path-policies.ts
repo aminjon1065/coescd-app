@@ -7,6 +7,7 @@ type RoutePathPolicy = {
 
 const ROUTE_PATH_POLICIES: RoutePathPolicy[] = [
   { prefix: '/dashboard/analytic', policyKey: 'dashboard.analytics' },
+  { prefix: '/dashboard/analytics', policyKey: 'dashboard.analytics' },
   { prefix: '/dashboard/tasks', policyKey: 'dashboard.tasks' },
   { prefix: '/dashboard/documentation', policyKey: 'dashboard.documents' },
   { prefix: '/dashboard/files', policyKey: 'dashboard.files' },

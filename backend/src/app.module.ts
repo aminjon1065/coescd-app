@@ -9,22 +9,19 @@ import { envValidationSchema } from './config/env.validation';
 import { UsersModule } from './users/users.module';
 import { IamModule } from './iam/iam.module';
 import { DepartmentModule } from './department/department.module';
-import { TaskModule } from './task/task.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-import { DocumentModule } from './document/document.module';
 import { FilesModule } from './files/files.module';
 import { OpsModule } from './ops/ops.module';
-import { EdmModule } from './edm/edm.module';
 import { GisModule } from './gis/gis.module';
 import { ChatModule } from './chat/chat.module';
 import { CallsModule } from './calls/calls.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { EdmEnterpriseModule } from './edm-enterprise/edm-enterprise.module';
 import { AnalyticsPlatformModule } from './analytics-platform/analytics-platform.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EdmAlertsScheduler } from './edm/edm-alerts.scheduler';
-import { TaskManagementModule } from './task-management/task-management.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -73,19 +70,16 @@ import { TaskManagementModule } from './task-management/task-management.module';
     UsersModule,
     IamModule,
     DepartmentModule,
-    TaskModule,
+    TasksModule,
     AnalyticsModule,
-    DocumentModule,
+    DocumentsModule,
     FilesModule,
     OpsModule,
-    EdmModule,
     GisModule,
     ChatModule,
     CallsModule,
     NotificationsModule,
-    EdmEnterpriseModule,
     AnalyticsPlatformModule,
-    TaskManagementModule,
   ],
   controllers: [AppController],
   providers: [

@@ -36,6 +36,7 @@ export async function createDocument(payload: {
   title: string;
   docType: string;
   departmentId?: number;
+  orgUnitId?: number;
   tags?: string[];
   metadata?: Record<string, unknown>;
 }): Promise<IDocumentV2> {

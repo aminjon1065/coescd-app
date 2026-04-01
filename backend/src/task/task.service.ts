@@ -29,12 +29,20 @@ export class TaskService {
     private readonly fileAttachmentsService: FileAttachmentsService,
   ) {}
 
-  async create(dto: CreateTaskDto, creatorId: number): Promise<Task> {
-    const creator = await this.userRepo.findOneBy({ id: creatorId });
+  async create(dto: CreateTaskDto, actor: ActiveUserData): Promise<Task> {
+    const creatorId = actor.sub;
+    const creator = await this.userRepo.findOne({
+      where: { id: creatorId },
+      relations: { department: true, orgUnit: true },
+    });
     if (!creator) throw new NotFoundException('Creator not found');
 
-    const receiver = await this.userRepo.findOneBy({ id: dto.receiverId });
+    const receiver = await this.userRepo.findOne({
+      where: { id: dto.receiverId },
+      relations: { department: true, orgUnit: true },
+    });
     if (!receiver) throw new NotFoundException('Receiver not found');
+    this.scopeService.assertUserScope(actor, receiver);
 
     const task = this.taskRepo.create({
       title: dto.title,
@@ -58,8 +66,10 @@ export class TaskService {
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.creator', 'creator')
       .leftJoinAndSelect('creator.department', 'creatorDepartment')
+      .leftJoinAndSelect('creator.orgUnit', 'creatorOrgUnit')
       .leftJoinAndSelect('task.receiver', 'receiver')
       .leftJoinAndSelect('receiver.department', 'receiverDepartment')
+      .leftJoinAndSelect('receiver.orgUnit', 'receiverOrgUnit')
       .orderBy('task.createdAt', query.sortOrder === 'asc' ? 'ASC' : 'DESC');
 
     if (query.status) {
@@ -83,6 +93,8 @@ export class TaskService {
       receiverAlias: 'receiver',
       creatorDepartmentAlias: 'creatorDepartment',
       receiverDepartmentAlias: 'receiverDepartment',
+      creatorOrgUnitPathAlias: 'creatorOrgUnit.path',
+      receiverOrgUnitPathAlias: 'receiverOrgUnit.path',
     });
 
     const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
@@ -98,8 +110,8 @@ export class TaskService {
     const task = await this.taskRepo.findOne({
       where: { id },
       relations: {
-        creator: { department: true },
-        receiver: { department: true },
+        creator: { department: true, orgUnit: true },
+        receiver: { department: true, orgUnit: true },
       },
     });
     if (!task) throw new NotFoundException('Task not found');
@@ -115,8 +127,8 @@ export class TaskService {
     const task = await this.taskRepo.findOne({
       where: { id },
       relations: {
-        creator: { department: true },
-        receiver: { department: true },
+        creator: { department: true, orgUnit: true },
+        receiver: { department: true, orgUnit: true },
       },
     });
     if (!task) throw new NotFoundException('Task not found');
@@ -126,8 +138,12 @@ export class TaskService {
       if (!actor.permissions?.includes(Permission.TASKS_ASSIGN)) {
         throw new ForbiddenException('Missing permission: tasks.assign');
       }
-      const receiver = await this.userRepo.findOneBy({ id: dto.receiverId });
+      const receiver = await this.userRepo.findOne({
+        where: { id: dto.receiverId },
+        relations: { department: true, orgUnit: true },
+      });
       if (!receiver) throw new NotFoundException('Receiver not found');
+      this.scopeService.assertUserScope(actor, receiver);
       task.receiver = receiver;
     }
 
@@ -142,8 +158,8 @@ export class TaskService {
     const task = await this.taskRepo.findOne({
       where: { id },
       relations: {
-        creator: { department: true },
-        receiver: { department: true },
+        creator: { department: true, orgUnit: true },
+        receiver: { department: true, orgUnit: true },
       },
     });
     if (!task) throw new NotFoundException('Task not found');

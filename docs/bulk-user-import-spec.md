@@ -17,7 +17,7 @@ In scope:
 - CSV ingestion API for user lifecycle bulk operations
 - validation/error report contract
 - idempotent upsert behavior
-- role/department mapping rules
+- role/department/org unit mapping rules
 - audit requirements
 
 Out of scope:
@@ -53,14 +53,21 @@ Required columns:
 Optional columns:
 1. `department_id`
 2. `department_name`
-3. `position`
-4. `is_active`
-5. `permissions`
-6. `password`
+3. `org_unit_id`
+4. `org_unit_name`
+5. `org_unit_path`
+6. `business_role`
+7. `position`
+8. `is_active`
+9. `permissions`
+10. `password`
 
 Rules:
 - `department_id` has priority over `department_name` if both provided
-- `role` allowed values: `admin`, `manager`, `regular`
+- `org_unit_id` has priority over `org_unit_path`, `org_unit_path` has priority over `org_unit_name`
+- `org_unit_name` should only be used when names are unique; otherwise use `org_unit_id` or `org_unit_path`
+- `business_role` must match an active business role code
+- `role` allowed values: `chairperson`, `first_deputy`, `deputy`, `department_head`, `division_head`, `analyst`, `chancellery`, `employee`, `regular`, `manager`, `admin`
 - `is_active` allowed values: `true`, `false` (default: `true`)
 - `permissions` is comma-separated permission list
 - `password` required only for newly created users if policy requires manual password import
@@ -71,6 +78,8 @@ Row-level validation:
 - valid email format
 - role in enum
 - department exists (by `department_id` or exact `department_name`)
+- org unit exists (by `org_unit_id`, exact `org_unit_path`, or exact `org_unit_name`)
+- business role exists and is active
 - permissions belong to supported permission enum
 - manager/admin role rules can enforce non-null department if policy enabled
 
@@ -158,6 +167,8 @@ Mutable by upsert:
 - `name`
 - `position`
 - `department`
+- `orgUnit`
+- `businessRole`
 - `role` (if `allowRoleUpdate=true`)
 - `permissions` (if `allowPermissionUpdate=true`)
 - `isActive`
@@ -184,6 +195,8 @@ Recommended error codes:
 - `invalid_role`
 - `invalid_permission`
 - `department_not_found`
+- `org_unit_not_found`
+- `business_role_not_found`
 - `duplicate_email_in_file`
 - `forbidden_role_change`
 - `password_missing_for_new_user`
@@ -212,4 +225,3 @@ Recommended internals:
 2. Re-running same file with same `idempotencyKey` is safe.
 3. Validation report is actionable (row + field + code + message).
 4. All applied changes are auditable per user and per operation.
-

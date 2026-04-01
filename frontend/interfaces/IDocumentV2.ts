@@ -24,6 +24,13 @@ export interface DocDepartment {
   name: string;
 }
 
+export interface DocOrgUnit {
+  id: number;
+  name: string;
+  type: string;
+  path?: string | null;
+}
+
 /* ── Core document ── */
 export interface IDocumentV2 {
   id: string;
@@ -34,6 +41,8 @@ export interface IDocumentV2 {
   ownerId: number;
   department: DocDepartment | null;
   departmentId: number | null;
+  orgUnit: DocOrgUnit | null;
+  orgUnitId: number | null;
   currentVersion: number;
   isDeleted: boolean;
   externalRef: string | null;
@@ -183,6 +192,7 @@ export interface DocSearchParams {
   status?: DocV2Status;
   ownerId?: number;
   departmentId?: number;
+  orgUnitId?: number;
   tags?: string[];
   dateFrom?: string;
   dateTo?: string;

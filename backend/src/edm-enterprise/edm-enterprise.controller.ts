@@ -11,12 +11,6 @@ import {
 } from '@nestjs/common';
 import { AccessTokenGuard } from '../iam/authentication/guards/access-token/access-token.guard';
 import type { ActiveUserData } from '../iam/interfaces/activate-user-data.interface';
-import { EdmDocumentsService } from './services/edm-documents.service';
-import { EdmVersionsService } from './services/edm-versions.service';
-import { EdmWorkflowEngineService } from './services/edm-workflow-engine.service';
-import { EdmPermissionsService } from './services/edm-permissions.service';
-import { EdmCommentsService } from './services/edm-comments.service';
-import { EdmAuditService } from './services/edm-audit.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { SaveContentDto } from './dto/save-content.dto';
@@ -25,18 +19,12 @@ import { GrantPermissionDto } from './dto/grant-permission.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { SearchDocumentsDto } from './dto/search-documents.dto';
 import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { DocumentsFacade } from '../modules/documents/documents.facade';
 
 @UseGuards(AccessTokenGuard)
 @Controller('documents')
 export class EdmEnterpriseController {
-  constructor(
-    private readonly documentsService: EdmDocumentsService,
-    private readonly versionsService: EdmVersionsService,
-    private readonly workflowService: EdmWorkflowEngineService,
-    private readonly permissionsService: EdmPermissionsService,
-    private readonly commentsService: EdmCommentsService,
-    private readonly auditService: EdmAuditService,
-  ) {}
+  constructor(private readonly documentsFacade: DocumentsFacade) {}
 
   /* ──────────────────── DOCUMENTS ──────────────────── */
 
@@ -45,7 +33,7 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Body() dto: CreateDocumentDto,
   ) {
-    return this.documentsService.create(user.sub, dto);
+    return this.documentsFacade.enterprise.create(user, dto);
   }
 
   @Get()
@@ -53,7 +41,7 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Query() query: SearchDocumentsDto,
   ) {
-    const [items, total] = await this.documentsService.search({
+    const [items, total] = await this.documentsFacade.enterprise.search(user, {
       ...query,
       dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
       dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
@@ -68,12 +56,12 @@ export class EdmEnterpriseController {
 
   @Get('my-queue')
   async myQueue(@ActiveUser() user: ActiveUserData) {
-    return this.documentsService.myQueue(user.sub);
+    return this.documentsFacade.enterprise.myQueue(user);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.documentsService.findById(id);
+  async findOne(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.documentsFacade.enterprise.findById(id, user);
   }
 
   @Patch(':id/metadata')
@@ -82,7 +70,7 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Body() dto: UpdateDocumentDto,
   ) {
-    return this.documentsService.updateMetadata(id, user.sub, dto);
+    return this.documentsFacade.enterprise.updateMetadata(id, user, dto);
   }
 
   @Post(':id/content')
@@ -91,31 +79,36 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Body() dto: SaveContentDto,
   ) {
-    await this.documentsService.saveContent(id, user.sub, dto.content, dto.autoSave ?? true);
+    await this.documentsFacade.enterprise.saveContent(
+      id,
+      user,
+      dto.content,
+      dto.autoSave ?? true,
+    );
     return { ok: true };
   }
 
   @Delete(':id')
   async delete(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
-    await this.documentsService.delete(id, user.sub);
+    await this.documentsFacade.enterprise.delete(id, user);
     return { ok: true };
   }
 
   @Post(':id/archive')
   async archive(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
-    return this.documentsService.archive(id, user.sub);
+    return this.documentsFacade.enterprise.archive(id, user);
   }
 
   /* ──────────────────── VERSIONS ──────────────────── */
 
   @Get(':id/versions')
   async listVersions(@Param('id') id: string) {
-    return this.versionsService.list(id);
+    return this.documentsFacade.enterprise.listVersions(id);
   }
 
   @Get(':id/versions/:vn')
   async getVersion(@Param('id') id: string, @Param('vn') vn: string) {
-    return this.versionsService.getVersion(id, parseInt(vn, 10));
+    return this.documentsFacade.enterprise.getVersion(id, parseInt(vn, 10));
   }
 
   @Post(':id/versions/:vn/restore')
@@ -124,19 +117,25 @@ export class EdmEnterpriseController {
     @Param('vn') vn: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return this.versionsService.restore(id, parseInt(vn, 10), user.sub);
+    return this.documentsFacade.enterprise.restoreVersion(
+      id,
+      parseInt(vn, 10),
+      user.sub,
+    );
   }
 
   /* ──────────────────── WORKFLOW ──────────────────── */
 
   @Post(':id/workflow/start')
   async startWorkflow(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
-    return this.workflowService.start(id, user.sub);
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'edit');
+    return this.documentsFacade.enterprise.startWorkflow(id, user.sub);
   }
 
   @Get(':id/workflow')
-  async getWorkflow(@Param('id') id: string) {
-    return this.workflowService.getState(id);
+  async getWorkflow(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'view');
+    return this.documentsFacade.enterprise.getWorkflow(id);
   }
 
   @Post(':id/workflow/transition')
@@ -145,19 +144,21 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Body() dto: WorkflowTransitionDto,
   ) {
-    return this.workflowService.transition(id, dto.action, user.sub, dto.comment);
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'approve');
+    return this.documentsFacade.enterprise.transitionWorkflow(id, dto, user.sub);
   }
 
   @Get('workflow/definitions')
   async listDefinitions() {
-    return this.workflowService.listDefinitions();
+    return this.documentsFacade.enterprise.listWorkflowDefinitions();
   }
 
   /* ──────────────────── PERMISSIONS ──────────────────── */
 
   @Get(':id/permissions')
-  async listPermissions(@Param('id') id: string) {
-    return this.permissionsService.listForDocument(id);
+  async listPermissions(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'share');
+    return this.documentsFacade.enterprise.listPermissions(id);
   }
 
   @Post(':id/permissions')
@@ -166,28 +167,27 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Body() dto: GrantPermissionDto,
   ) {
-    return this.permissionsService.grant(
-      id,
-      dto.principalType,
-      dto.principalId,
-      dto.permission,
-      user.sub,
-      dto.expiresAt ? new Date(dto.expiresAt) : null,
-      dto.conditions,
-    );
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'share');
+    return this.documentsFacade.enterprise.grantPermission(id, dto, user.sub);
   }
 
   @Delete(':id/permissions/:pid')
-  async revokePermission(@Param('pid') pid: string) {
-    await this.permissionsService.revoke(pid);
+  async revokePermission(
+    @Param('id') id: string,
+    @Param('pid') pid: string,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'share');
+    await this.documentsFacade.enterprise.revokePermission(pid);
     return { ok: true };
   }
 
   /* ──────────────────── COMMENTS ──────────────────── */
 
   @Get(':id/comments')
-  async listComments(@Param('id') id: string) {
-    return this.commentsService.listThreads(id);
+  async listComments(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'view');
+    return this.documentsFacade.enterprise.listComments(id);
   }
 
   @Post(':id/comments')
@@ -196,52 +196,58 @@ export class EdmEnterpriseController {
     @ActiveUser() user: ActiveUserData,
     @Body() dto: CreateCommentDto,
   ) {
-    return this.commentsService.create(
-      id,
-      user.sub,
-      dto.body,
-      dto.parentId,
-      dto.anchor,
-      dto.isSuggestion,
-    );
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'comment');
+    return this.documentsFacade.enterprise.addComment(id, user.sub, dto);
   }
 
   @Patch(':id/comments/:cid')
   async updateComment(
+    @Param('id') id: string,
     @Param('cid') cid: string,
+    @ActiveUser() user: ActiveUserData,
     @Body('body') body: string,
   ) {
-    return this.commentsService.update(cid, body);
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'comment');
+    return this.documentsFacade.enterprise.updateComment(cid, body);
   }
 
   @Post(':id/comments/:cid/resolve')
   async resolveComment(
+    @Param('id') id: string,
     @Param('cid') cid: string,
     @ActiveUser() user: ActiveUserData,
     @Body('status') status: 'resolved' | 'accepted' | 'rejected' = 'resolved',
   ) {
-    return this.commentsService.resolve(cid, user.sub, status);
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'comment');
+    return this.documentsFacade.enterprise.resolveComment(cid, user.sub, status);
   }
 
   @Delete(':id/comments/:cid')
   async deleteComment(
+    @Param('id') id: string,
     @Param('cid') cid: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    await this.commentsService.delete(cid, user.sub);
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'comment');
+    await this.documentsFacade.enterprise.deleteComment(cid, user.sub);
     return { ok: true };
   }
 
   /* ──────────────────── ATTACHMENTS ──────────────────── */
 
   @Get(':id/attachments')
-  async listAttachments(@Param('id') id: string) {
-    return this.documentsService.listAttachments(id);
+  async listAttachments(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.documentsFacade.enterprise.listAttachments(id, user);
   }
 
   @Delete(':id/attachments/:aid')
-  async deleteAttachment(@Param('aid') aid: string) {
-    await this.documentsService.deleteAttachment(aid);
+  async deleteAttachment(
+    @Param('id') id: string,
+    @Param('aid') aid: string,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'edit');
+    await this.documentsFacade.enterprise.deleteAttachment(aid, user);
     return { ok: true };
   }
 
@@ -250,11 +256,12 @@ export class EdmEnterpriseController {
   @Get(':id/activity')
   async getActivity(
     @Param('id') id: string,
+    @ActiveUser() user: ActiveUserData,
     @Query('limit') limit = '50',
     @Query('offset') offset = '0',
   ) {
-    const [items, total] = await this.auditService.findByEntity(
-      'document',
+    await this.documentsFacade.enterprise.requirePermission(id, user, 'view');
+    const [items, total] = await this.documentsFacade.enterprise.getActivity(
       id,
       parseInt(limit, 10),
       parseInt(offset, 10),

@@ -16,6 +16,14 @@ import type { DashboardWidgetConfig } from '@/features/dashboard/types';
 import { Permission } from '@/lib/permissions';
 
 export const dashboardByRole: Record<Role, DashboardWidgetConfig[]> = {
+  [Role.Chairperson]: managerDashboardPreset,
+  [Role.FirstDeputy]: managerDashboardPreset,
+  [Role.Deputy]: managerDashboardPreset,
+  [Role.DepartmentHead]: managerDashboardPreset,
+  [Role.DivisionHead]: managerDashboardPreset,
+  [Role.Analyst]: regularDashboardPreset,
+  [Role.Chancellery]: regularDashboardPreset,
+  [Role.Employee]: regularDashboardPreset,
   [Role.Admin]: adminDashboardPreset,
   [Role.Manager]: managerDashboardPreset,
   [Role.Regular]: regularDashboardPreset,
@@ -70,6 +78,50 @@ const commonQuickActions: DashboardQuickAction[] = [
 ];
 
 export const quickActionsByRole: Record<Role, DashboardQuickAction[]> = {
+  [Role.Chairperson]: [
+    ...commonQuickActions,
+    {
+      key: 'users',
+      href: '/dashboard/users',
+      label: 'Работники',
+      icon: UsersIcon,
+      anyPermissions: [Permission.USERS_READ],
+    },
+  ],
+  [Role.FirstDeputy]: [
+    ...commonQuickActions,
+    {
+      key: 'users',
+      href: '/dashboard/users',
+      label: 'Работники',
+      icon: UsersIcon,
+      anyPermissions: [Permission.USERS_READ],
+    },
+  ],
+  [Role.Deputy]: [
+    ...commonQuickActions,
+    {
+      key: 'users',
+      href: '/dashboard/users',
+      label: 'Работники',
+      icon: UsersIcon,
+      anyPermissions: [Permission.USERS_READ],
+    },
+  ],
+  [Role.DepartmentHead]: [
+    ...commonQuickActions,
+    {
+      key: 'users',
+      href: '/dashboard/users',
+      label: 'Работники',
+      icon: UsersIcon,
+      anyPermissions: [Permission.USERS_READ],
+    },
+  ],
+  [Role.DivisionHead]: commonQuickActions,
+  [Role.Analyst]: commonQuickActions,
+  [Role.Chancellery]: commonQuickActions,
+  [Role.Employee]: commonQuickActions,
   [Role.Regular]: commonQuickActions,
   [Role.Manager]: [
     ...commonQuickActions,
@@ -106,4 +158,3 @@ export const quickActionsByRole: Record<Role, DashboardQuickAction[]> = {
     },
   ],
 };
-

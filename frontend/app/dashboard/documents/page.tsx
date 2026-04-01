@@ -25,6 +25,8 @@ import type { DocV2Status, DocSearchParams } from '@/interfaces/IDocumentV2';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useOrgUnitsQuery } from '@/hooks/queries/useOrgUnits';
+import { useDepartmentsQuery } from '@/hooks/queries/useDepartments';
 import {
   Dialog,
   DialogContent,
@@ -64,6 +66,11 @@ export default function DocumentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState('internal');
+  const [newOrgUnitId, setNewOrgUnitId] = useState('');
+  const [newDepartmentId, setNewDepartmentId] = useState('');
+
+  const orgUnitsQuery = useOrgUnitsQuery(Boolean(user));
+  const departmentsQuery = useDepartmentsQuery(Boolean(user));
 
   const listQuery = useQuery({
     queryKey: ['documents-v2-list', params],
@@ -78,15 +85,26 @@ export default function DocumentsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createDocument({ title: newTitle, docType: newType }),
+    mutationFn: () =>
+      createDocument({
+        title: newTitle,
+        docType: newType,
+        orgUnitId: newOrgUnitId ? Number(newOrgUnitId) : undefined,
+        departmentId: newDepartmentId ? Number(newDepartmentId) : undefined,
+      }),
     onSuccess: (doc) => {
       qc.invalidateQueries({ queryKey: ['documents-v2-list'] });
       setCreateOpen(false);
       setNewTitle('');
       setNewType('internal');
+      setNewOrgUnitId(user?.orgUnit?.id ? String(user.orgUnit.id) : '');
+      setNewDepartmentId(user?.department?.id ? String(user.department.id) : '');
       window.location.href = `/dashboard/documents/${doc.id}`;
     },
   });
+
+  const orgUnits = orgUnitsQuery.data ?? [];
+  const departments = departmentsQuery.data ?? [];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +116,14 @@ export default function DocumentsPage() {
   const items = activeTab === 'all' ? (listQuery.data?.items ?? []) : (queueQuery.data ?? []);
   const isLoading = activeTab === 'all' ? listQuery.isLoading : queueQuery.isLoading;
 
+  const openCreateDialog = (open: boolean) => {
+    setCreateOpen(open);
+    if (open) {
+      setNewOrgUnitId(user?.orgUnit?.id ? String(user.orgUnit.id) : orgUnits[0]?.id ? String(orgUnits[0].id) : '');
+      setNewDepartmentId(user?.department?.id ? String(user.department.id) : '');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
       {/* ── Header ── */}
@@ -108,7 +134,7 @@ export default function DocumentsPage() {
             Управление документооборотом организации
           </p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <Dialog open={createOpen} onOpenChange={openCreateDialog}>
           <DialogTrigger asChild>
             <Button className="bg-[oklch(0.546_0.245_262.881)] hover:bg-[oklch(0.48_0.24_262.881)] text-white dark:bg-[oklch(0.546_0.245_262.881)]">
               <Plus className="w-4 h-4 mr-1" />
@@ -141,11 +167,41 @@ export default function DocumentsPage() {
                   ))}
                 </select>
               </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Оргструктура</Label>
+                <select
+                  value={newOrgUnitId}
+                  onChange={(e) => setNewOrgUnitId(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Не выбрано</option>
+                  {orgUnits.map((orgUnit) => (
+                    <option key={orgUnit.id} value={orgUnit.id}>
+                      {orgUnit.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Департамент</Label>
+                <select
+                  value={newDepartmentId}
+                  onChange={(e) => setNewDepartmentId(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Не выбрано</option>
+                  {departments.map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setCreateOpen(false)}>Отмена</Button>
+              <Button variant="ghost" onClick={() => openCreateDialog(false)}>Отмена</Button>
               <Button
-                disabled={!newTitle.trim() || createMutation.isPending}
+                disabled={!newTitle.trim() || !newOrgUnitId || createMutation.isPending}
                 onClick={() => createMutation.mutate()}
                 className="bg-[oklch(0.546_0.245_262.881)] hover:bg-[oklch(0.48_0.24_262.881)] text-white"
               >
@@ -202,6 +258,23 @@ export default function DocumentsPage() {
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={params.orgUnitId ? String(params.orgUnitId) : ''}
+            onChange={(e) =>
+              setParams((p) => ({
+                ...p,
+                orgUnitId: e.target.value ? Number(e.target.value) : undefined,
+                page: 1,
+              }))
+            }
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="">Все оргединицы</option>
+            {orgUnits.map((orgUnit) => (
+              <option key={orgUnit.id} value={orgUnit.id}>{orgUnit.name}</option>
             ))}
           </select>
 
@@ -268,6 +341,11 @@ export default function DocumentsPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-foreground truncate max-w-xs">{doc.title}</p>
+                          {doc.orgUnit?.name ? (
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {doc.orgUnit.name}
+                            </div>
+                          ) : null}
                           {doc.tags.length > 0 && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <Tag className="w-2.5 h-2.5 text-muted-foreground" />

@@ -11,14 +11,20 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@ne
 import { CreateDisasterCategoryDto } from './dto/create-disaster-category.dto';
 import { UpdateDisasterCategoryDto } from './dto/update-disaster-category.dto';
 import { CategoriesService } from './categories.service';
+import { Roles } from '../../iam/authorization/decorators/roles.decorator';
+import { Permissions } from '../../iam/authorization/decorators/permissions.decorator';
+import { Role } from '../../users/enums/role.enum';
+import { Permission } from '../../iam/authorization/permission.type';
 
 @ApiTags('Disaster Categories')
 @ApiBearerAuth()
+@Roles(Role.Admin, Role.Analyst)
 @Controller('disasterCategories')
 export class CategoriesController {
   constructor(private readonly service: CategoriesService) {}
 
   @Post()
+  @Permissions(Permission.ANALYTICS_WRITE)
   @ApiOperation({ summary: 'Create a new disaster category' })
   @ApiResponse({ status: 201, description: 'Created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -28,6 +34,7 @@ export class CategoriesController {
   }
 
   @Get()
+  @Permissions(Permission.ANALYTICS_READ)
   @ApiOperation({ summary: 'Retrieve all disaster categories' })
   @ApiResponse({ status: 200, description: 'Success' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -36,6 +43,7 @@ export class CategoriesController {
   }
 
   @Get(':id')
+  @Permissions(Permission.ANALYTICS_READ)
   @ApiOperation({ summary: 'Retrieve a single disaster category by ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Success' })
@@ -46,6 +54,7 @@ export class CategoriesController {
   }
 
   @Patch(':id')
+  @Permissions(Permission.ANALYTICS_WRITE)
   @ApiOperation({ summary: 'Update a disaster category by ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Success' })
@@ -57,6 +66,7 @@ export class CategoriesController {
   }
 
   @Delete(':id')
+  @Permissions(Permission.ANALYTICS_WRITE)
   @ApiOperation({ summary: 'Delete a disaster category by ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Success' })

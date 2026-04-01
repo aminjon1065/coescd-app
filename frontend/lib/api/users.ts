@@ -7,8 +7,10 @@ export interface GetUsersParams {
   limit?: number;
   role?: string;
   departmentId?: number;
+  orgUnitId?: number;
   isActive?: boolean;
   q?: string;
+  businessRole?: string;
 }
 
 export interface CreateUserPayload {
@@ -17,7 +19,9 @@ export interface CreateUserPayload {
   password: string;
   role?: string;
   departmentId?: number;
+  orgUnitId?: number;
   position?: string;
+  businessRole?: string;
 }
 
 export const usersApi = {

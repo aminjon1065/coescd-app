@@ -10,7 +10,7 @@ export default function Page() {
       <RouteTitleHead routeKey="dashboard.users" />
       <ProtectedRouteGate
         policyKey="dashboard.users"
-        deniedDescription="Раздел сотрудников доступен руководителю или администратору."
+        deniedDescription="Раздел сотрудников доступен пользователям с правом просмотра пользователей."
       >
         <UsersTable />
       </ProtectedRouteGate>

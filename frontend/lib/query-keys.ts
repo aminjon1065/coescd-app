@@ -38,6 +38,8 @@ export const queryKeys = {
     list: (filters: {
       search?: string;
       departmentId?: number | string;
+      orgUnitId?: number | string;
+      businessRole?: string;
       isManager?: boolean;
       managerDepartmentId?: number | null;
     }) => ['users', 'list', filters] as const,
@@ -47,6 +49,16 @@ export const queryKeys = {
   departments: {
     all: () => ['departments'] as const,
     list: () => ['departments', 'list'] as const,
+  },
+
+  orgUnits: {
+    all: () => ['org-units'] as const,
+    list: () => ['org-units', 'list'] as const,
+  },
+
+  businessRoles: {
+    all: () => ['business-roles'] as const,
+    list: () => ['business-roles', 'list'] as const,
   },
 
   // ── Notifications ─────────────────────────────────────────────────────────

@@ -31,6 +31,11 @@ export class SearchDocumentsDto {
   departmentId?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  orgUnitId?: number;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[];

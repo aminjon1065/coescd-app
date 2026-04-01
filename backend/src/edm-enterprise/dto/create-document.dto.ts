@@ -7,6 +7,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateDocumentDto {
   @IsString()
@@ -18,9 +19,16 @@ export class CreateDocumentDto {
   docType: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   departmentId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  orgUnitId?: number;
 
   @IsOptional()
   @IsArray()

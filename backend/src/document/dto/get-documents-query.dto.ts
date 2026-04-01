@@ -1,6 +1,7 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/http/pagination-query.dto';
+import { Type } from 'class-transformer';
 
 const documentTypes = ['incoming', 'outgoing', 'internal'] as const;
 const documentStatuses = ['draft', 'sent', 'received', 'archived'] as const;
@@ -23,4 +24,10 @@ export class GetDocumentsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   q?: string;
+
+  @ApiPropertyOptional({ type: Number })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  orgUnitId?: number;
 }

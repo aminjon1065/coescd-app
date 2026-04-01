@@ -14,6 +14,7 @@ import { EdmV2WorkflowAssignment } from '../entities/edm-workflow-assignment.ent
 import { EdmV2Document } from '../entities/edm-document.entity';
 import { EdmAuditService } from './edm-audit.service';
 import { User } from '../../users/entities/user.entity';
+import { Department } from '../../department/entities/department.entity';
 
 @Injectable()
 export class EdmWorkflowEngineService {
@@ -30,6 +31,8 @@ export class EdmWorkflowEngineService {
     private readonly docRepo: Repository<EdmV2Document>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Department)
+    private readonly departmentRepo: Repository<Department>,
     private readonly auditService: EdmAuditService,
   ) {}
 
@@ -39,7 +42,7 @@ export class EdmWorkflowEngineService {
   async start(documentId: string, actorId: number): Promise<EdmV2WorkflowInstance> {
     const doc = await this.docRepo.findOneOrFail({
       where: { id: documentId },
-      relations: ['owner'],
+      relations: ['owner', 'department', 'department.chief', 'orgUnit'],
     });
 
     // Find active workflow definition matching doc type
@@ -172,7 +175,10 @@ export class EdmWorkflowEngineService {
       });
 
       // Assign next step
-      const doc = await this.docRepo.findOneOrFail({ where: { id: documentId }, relations: ['owner'] });
+      const doc = await this.docRepo.findOneOrFail({
+        where: { id: documentId },
+        relations: ['owner', 'department', 'department.chief', 'orgUnit'],
+      });
       await this.resolveAndAssign(instance, nextStep, doc);
     }
 
@@ -271,14 +277,86 @@ export class EdmWorkflowEngineService {
     if (assignee.type === 'document_owner') return [doc.ownerId];
     if (assignee.type === 'user' && assignee.value) return [parseInt(assignee.value, 10)];
     if (assignee.type === 'role' && assignee.value) {
-      const users = await this.userRepo.find({ where: { role: assignee.value as any } });
+      const users = await this.userRepo
+        .createQueryBuilder('user')
+        .where('user.isActive = true')
+        .andWhere('(user.role = :role OR user.businessRole = :businessRole)', {
+          role: assignee.value,
+          businessRole: assignee.value,
+        })
+        .getMany();
       return users.map((u) => u.id);
     }
-    if (assignee.type === 'department_head' && doc.departmentId) {
-      // Return doc owner as fallback when no explicit dept head role
-      return [doc.ownerId];
+    if (assignee.type === 'department_head') {
+      const departmentHeadIds = await this.resolveDepartmentHeadAssignees(doc);
+      if (departmentHeadIds.length > 0) {
+        return departmentHeadIds;
+      }
     }
     return [doc.ownerId];
+  }
+
+  private async resolveDepartmentHeadAssignees(
+    doc: EdmV2Document,
+  ): Promise<number[]> {
+    if (doc.department?.chief?.id) {
+      return [doc.department.chief.id];
+    }
+
+    if (doc.departmentId) {
+      const department = await this.departmentRepo.findOne({
+        where: { id: doc.departmentId },
+        relations: ['chief'],
+      });
+      if (department?.chief?.id) {
+        return [department.chief.id];
+      }
+    }
+
+    if (doc.orgUnitId) {
+      const preferredBusinessRoles =
+        doc.orgUnit?.type === 'division'
+          ? ['Division Head', 'Department Head']
+          : ['Department Head', 'Division Head'];
+
+      const users = await this.userRepo
+        .createQueryBuilder('user')
+        .leftJoin('user.orgUnit', 'orgUnit')
+        .where('user.isActive = true')
+        .andWhere('orgUnit.id = :orgUnitId', { orgUnitId: doc.orgUnitId })
+        .andWhere(
+          '(user.businessRole IN (:...businessRoles) OR user.role IN (:...roles))',
+          {
+            businessRoles: preferredBusinessRoles,
+            roles: ['department_head', 'division_head', 'manager'],
+          },
+        )
+        .orderBy(
+          `CASE
+            WHEN user.businessRole = :primaryBusinessRole THEN 0
+            WHEN user.businessRole = :secondaryBusinessRole THEN 1
+            WHEN user.role = :primaryRole THEN 2
+            WHEN user.role = :secondaryRole THEN 3
+            ELSE 4
+          END`,
+          'ASC',
+        )
+        .setParameters({
+          primaryBusinessRole: preferredBusinessRoles[0],
+          secondaryBusinessRole: preferredBusinessRoles[1],
+          primaryRole:
+            doc.orgUnit?.type === 'division' ? 'division_head' : 'department_head',
+          secondaryRole:
+            doc.orgUnit?.type === 'division' ? 'department_head' : 'division_head',
+        })
+        .getMany();
+
+      if (users.length > 0) {
+        return users.map((user) => user.id);
+      }
+    }
+
+    return [];
   }
 
   private computeDeadline(

@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Department } from '../../department/entities/department.entity';
+import { OrgUnit } from '../../iam/entities/org-unit.entity';
 
 export type DocumentType = 'incoming' | 'outgoing' | 'internal';
 export type DocumentStatus = 'draft' | 'sent' | 'received' | 'archived';
@@ -49,6 +50,10 @@ export class Document {
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
   department: Department;
+
+  @ManyToOne(() => OrgUnit, { nullable: true })
+  @JoinColumn({ name: 'org_unit_id' })
+  orgUnit: OrgUnit | null;
 
   @Column({ name: 'file_name', nullable: true })
   fileName: string;

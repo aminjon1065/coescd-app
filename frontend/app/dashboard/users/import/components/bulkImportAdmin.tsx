@@ -326,7 +326,8 @@ export default function BulkImportAdmin() {
               />
               <div className="text-xs text-muted-foreground">
                 Required columns: email, name, role. Optional: password, position,
-                department_id, department_name, is_active, permissions.
+                department_id, department_name, org_unit_id, org_unit_name,
+                org_unit_path, business_role, is_active, permissions.
               </div>
             </div>
             <label className="flex items-center gap-2 text-sm">

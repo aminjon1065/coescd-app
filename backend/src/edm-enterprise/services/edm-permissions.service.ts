@@ -1,19 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   EdmV2DocumentPermission,
   PermissionLevel,
   PrincipalType,
 } from '../entities/edm-document-permission.entity';
 import { EdmV2Document } from '../entities/edm-document.entity';
-import { EdmV2WorkflowInstance } from '../entities/edm-workflow-instance.entity';
 import { EdmV2WorkflowAssignment } from '../entities/edm-workflow-assignment.entity';
+import { Role } from '../../users/enums/role.enum';
 
 interface UserContext {
   id: number;
-  role: string;
+  role: Role;
   departmentId?: number | null;
+  orgUnitId?: number | null;
+  orgUnitPath?: string | null;
 }
 
 @Injectable()
@@ -32,14 +34,12 @@ export class EdmPermissionsService {
     document: EdmV2Document,
     permission: PermissionLevel,
   ): Promise<boolean> {
-    // 1. Admin bypass
-    if (user.role === 'Admin') return true;
+    if (user.role === Role.Admin) return true;
 
-    // 2. Explicit document-level grant (user, role, or department)
+    // 2. Explicit document-level grant (user or department)
     const grants = await this.permRepo.find({
       where: [
         { documentId: document.id, principalType: 'user', principalId: user.id, permission },
-        { documentId: document.id, principalType: 'role', principalId: user.id, permission },
         { documentId: document.id, principalType: 'department', principalId: user.departmentId ?? -1, permission },
       ],
     });
@@ -127,18 +127,30 @@ export class EdmPermissionsService {
     document: EdmV2Document,
     permission: PermissionLevel,
   ): Promise<boolean> {
+    const sameOrgSubtree =
+      !!user.orgUnitPath &&
+      !!document.orgUnit?.path &&
+      (document.orgUnit.path === user.orgUnitPath ||
+        document.orgUnit.path.startsWith(`${user.orgUnitPath}.`));
     const sameDept = user.departmentId != null && user.departmentId === document.departmentId;
     const isOwner = user.id === document.ownerId;
     const editableStatus = ['draft', 'rejected'].includes(document.status);
     const isAssignee = await this.isCurrentAssignee(user.id, document.id);
+    const inScope = isOwner || sameDept || sameOrgSubtree || isAssignee;
 
     type RuleMap = Record<PermissionLevel, boolean>;
-    const rules: Record<string, RuleMap> = {
-      Admin:        { view: true, comment: true, edit: true, approve: true, share: true, delete: true },
-      Chairperson:  { view: true, comment: true, edit: sameDept, approve: true, share: sameDept, delete: sameDept },
-      FirstDeputy:  { view: sameDept, comment: sameDept, edit: sameDept && editableStatus, approve: isAssignee, share: sameDept, delete: false },
-      Deputy:       { view: sameDept, comment: sameDept, edit: isOwner && editableStatus, approve: isAssignee, share: isOwner, delete: false },
-      Regular:      { view: isOwner || sameDept, comment: isOwner || sameDept, edit: isOwner && editableStatus, approve: isAssignee, share: isOwner, delete: isOwner },
+    const rules: Partial<Record<Role, RuleMap>> = {
+      [Role.Admin]: { view: true, comment: true, edit: true, approve: true, share: true, delete: true },
+      [Role.Chairperson]: { view: true, comment: true, edit: editableStatus, approve: true, share: true, delete: false },
+      [Role.FirstDeputy]: { view: true, comment: true, edit: editableStatus, approve: true, share: true, delete: false },
+      [Role.Deputy]: { view: true, comment: true, edit: editableStatus, approve: true, share: true, delete: false },
+      [Role.DepartmentHead]: { view: inScope, comment: inScope, edit: (isOwner || sameDept || sameOrgSubtree) && editableStatus, approve: isAssignee, share: sameDept || sameOrgSubtree, delete: isOwner && editableStatus },
+      [Role.DivisionHead]: { view: inScope, comment: inScope, edit: (isOwner || sameOrgSubtree) && editableStatus, approve: isAssignee, share: sameOrgSubtree, delete: isOwner && editableStatus },
+      [Role.Manager]: { view: inScope, comment: inScope, edit: (isOwner || sameDept || sameOrgSubtree) && editableStatus, approve: isAssignee, share: sameDept || sameOrgSubtree, delete: isOwner && editableStatus },
+      [Role.Chancellery]: { view: inScope, comment: inScope, edit: (isOwner || sameDept) && editableStatus, approve: isAssignee, share: sameDept, delete: false },
+      [Role.Analyst]: { view: inScope, comment: inScope, edit: isOwner && editableStatus, approve: isAssignee, share: isOwner, delete: isOwner && editableStatus },
+      [Role.Employee]: { view: inScope, comment: inScope, edit: isOwner && editableStatus, approve: isAssignee, share: isOwner, delete: isOwner && editableStatus },
+      [Role.Regular]: { view: inScope, comment: inScope, edit: isOwner && editableStatus, approve: isAssignee, share: isOwner, delete: isOwner && editableStatus },
     };
 
     return rules[user.role]?.[permission] ?? false;

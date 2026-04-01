@@ -11,12 +11,16 @@ import { UserChangeAuditLog } from './entities/user-change-audit-log.entity';
 import { UsersBulkImportService } from './bulk-import/users-bulk-import.service';
 import { UsersBulkImportStorage } from './bulk-import/users-bulk-import.storage';
 import { BulkImportOperation } from './entities/bulk-import-operation.entity';
+import { OrgUnit } from '../iam/entities/org-unit.entity';
+import { BusinessRoleEntity } from '../iam/authorization/entities/business-role.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       User,
       Department,
+      OrgUnit,
+      BusinessRoleEntity,
       UserChangeAuditLog,
       BulkImportOperation,
     ]),

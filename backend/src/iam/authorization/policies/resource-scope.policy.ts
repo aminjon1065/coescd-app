@@ -64,7 +64,7 @@ export class UserScopePolicyHandler implements PolicyHandler<UserScopePolicy> {
 
     const targetUser = await this.userRepository.findOne({
       where: { id },
-      relations: { department: true },
+      relations: { department: true, orgUnit: true },
     });
     if (!targetUser) {
       throw new Error('Target user not found');
@@ -105,8 +105,8 @@ export class DocumentScopePolicyHandler
     const document = await this.documentRepository.findOne({
       where: { id },
       relations: {
-        sender: { department: true },
-        receiver: { department: true },
+        sender: { department: true, orgUnit: true },
+        receiver: { department: true, orgUnit: true },
         department: true,
       },
     });
@@ -146,8 +146,8 @@ export class TaskScopePolicyHandler implements PolicyHandler<TaskScopePolicy> {
     const task = await this.taskRepository.findOne({
       where: { id },
       relations: {
-        creator: { department: true },
-        receiver: { department: true },
+        creator: { department: true, orgUnit: true },
+        receiver: { department: true, orgUnit: true },
       },
     });
     if (!task) {

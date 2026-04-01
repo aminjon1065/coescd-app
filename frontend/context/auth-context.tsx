@@ -6,6 +6,7 @@ import axios, { setAccessToken as setAxiosAccessToken } from '@/lib/axios';
 import Loading from '@/app/loading';
 import { Role } from '@/enums/RoleEnum';
 import { IDepartment } from '@/interfaces/IDepartment';
+import { IOrgUnit } from '@/interfaces/IOrgUnit';
 import { getRoleDashboardPath } from '@/features/authz/roles';
 
 interface AuthUser {
@@ -14,7 +15,9 @@ interface AuthUser {
   name: string;
   role: Role;
   permissions: string[];
+  businessRole?: string | null;
   department?: IDepartment | null;
+  orgUnit?: IOrgUnit | null;
 }
 
 interface AuthContextType {

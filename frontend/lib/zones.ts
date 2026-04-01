@@ -19,6 +19,7 @@ export function resolveVisibleZones(user: ZoneUser | null | undefined): AppZone[
       Permission.DOCUMENTS_READ,
       Permission.TASKS_READ,
       Permission.FILES_READ,
+      Permission.GIS_READ,
     ])
   ) {
     zones.add(AppZone.OPERATIONS);
@@ -35,13 +36,7 @@ export function resolveVisibleZones(user: ZoneUser | null | undefined): AppZone[
     zones.add(AppZone.ADMIN);
   }
 
-  if (
-    hasAnyPermission(user, [
-      Permission.REPORTS_READ,
-      Permission.ANALYTICS_READ,
-      Permission.GIS_READ,
-    ])
-  ) {
+  if (hasAnyPermission(user, [Permission.ANALYTICS_READ])) {
     zones.add(AppZone.ANALYTICS);
   }
 
